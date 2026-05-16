@@ -1,0 +1,43 @@
+# .NET build
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.sln.iml
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Logs
+logs/
+*.log
+
+# Secrets — KVKK kritik
+.env
+.env.*
+appsettings.Development.json
+appsettings.Production.json
+secrets.json
+*.pfx
+
+# Hangfire local
+hangfire-storage/
+
+# Claude Code local cache
+.claude/cache/
+.claude/sessions/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes (eğer host'a bind edilirse)
+docker-volumes/
+postgres-data/

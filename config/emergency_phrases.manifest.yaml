@@ -1,0 +1,19 @@
+artifact: emergency_phrases
+current_version: v2
+versions:
+  v1:
+    date: 2026-05-16
+    file: emergency_phrases.v1.json
+    status: superseded
+    phrase_count: 28
+    notes: "Initial phrase set. Hybrid (c) approach."
+  v2:
+    date: 2026-05-16
+    file: emergency_phrases.v2.json
+    status: pending_review
+    phrase_count: 33
+    notes: |
+      Role explicitly downgraded to layer1_soft_signal.
+      Authority statement embedded in JSON header.
+      downstream_consumers list added.
+      Carbon monoxide family added (4 phrases).

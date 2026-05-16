@@ -1,0 +1,29 @@
+artifact: taxonomy
+current_version: v3
+versions:
+  v1:
+    date: 2026-05-16
+    file: taxonomy.v1.yaml
+    status: superseded
+    locked_decisions: 3
+    notes: "Initial lock. neighbor_dispute separate, multi_ticket, hybrid emergency."
+  v2:
+    date: 2026-05-16
+    file: taxonomy.v2.yaml
+    status: superseded
+    locked_decisions: 5
+    notes: |
+      PE first-pass after KARAR paketi v2 (5 kararlık).
+      Never locked; superseded by v3 after PM review patches.
+  v3:
+    date: 2026-05-16
+    file: taxonomy.v3.yaml
+    status: pending_review
+    locked_decisions: 5
+    notes: |
+      PM v2 review patches applied:
+      - decision_origin convention fix (PE proposes, PM confirms)
+      - orchestrator_rule_constraints (max_swap_depth: 2)
+      - mismatch_log dual-confidence split (emergency + category)
+      - confidence.output_fields added for internal consistency
+      - decision_matrix low_any split for parallelism
