@@ -20,10 +20,12 @@ logs/
 *.log
 
 # Secrets — KVKK kritik
+# NOT: appsettings.Development.json TRACKED (sadece log seviyeleri, secret YOK)
+# Secrets → dotnet user-secrets (repo dışı: ~/.microsoft/usersecrets/)
 .env
 .env.*
-appsettings.Development.json
 appsettings.Production.json
+appsettings.*.local.json
 secrets.json
 *.pfx
 
