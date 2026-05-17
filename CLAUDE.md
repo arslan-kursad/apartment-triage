@@ -62,3 +62,39 @@ Dependency akışı: Web → Application + Infrastructure → Domain. Infrastruc
 ## Kapanmış kararlar (don't re-open)
 
 .NET seçimi, custom orchestrator, HttpClient direct, Razor Pages, Hangfire, WhatsApp Cloud API direct, repo private, ONNX local, Fly.io. Detay: `docs/primer.md` §3.
+
+## Model Routing Policy
+
+Default: **Sonnet 4.6** (regular thinking).
+Escalate only when task complexity warrants. Pro pool limited resource.
+
+### Sonnet 4.6 (default) — workhorse
+- Daily coding: scaffolding, CRUD, refactor, test yazımı
+- High-volume tasks: eval case generation, batch operations
+- Boilerplate: DTO/entity mapping, validation, simple endpoints
+- File operations: rename, move, simple edits
+- Hızlı iterasyon gereken her şey
+
+### Sonnet 4.6 Extended Thinking — orta zorluk
+Şu sinyallerden biri varsa:
+- Multi-step reasoning ("orchestrator_rule pseudocode'unu C# koda çevir")
+- Cross-file impact analysis (3+ dosyaya yayılan değişiklik)
+- Architecture trade-off karşılaştırması (A vs B vs C)
+- Edge case detection ("bu kod hangi durumlarda kırılır?")
+- Debugging: stack trace + birden fazla suspect
+
+### Opus 4.7 — decisive moments
+Sadece şu durumlarda:
+- Architecture decision (ADR drafting)
+- Complex prompt engineering (taxonomy, classifier prompt v1)
+- Gnarly multi-system debugging (Code + DB + LLM API üçlüsü karışmış)
+- PM strategic conversation (Project chat default Opus)
+- Loom prep (Day 18+)
+
+### Opus 4.6 — sadece şu durumda
+Opus 4.7 pool sıkışıksa fallback. Aksi halde 4.7 tercih.
+
+### Self-check
+- Günde 1-2 Opus seçimi normal
+- 4+ kez Opus = task'i alt-task'lere böl, çoğunu Sonnet'e bırak
+- Pro %70 dolarsa Opus kullanımı kısıtla
