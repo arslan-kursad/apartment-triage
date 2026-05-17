@@ -1,3 +1,4 @@
+using ApartmentTriage.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ApartmentTriage.Infrastructure.Persistence;
@@ -5,15 +6,17 @@ namespace ApartmentTriage.Infrastructure.Persistence;
 public sealed class ApartmentTriageDbContext : DbContext
 {
     public ApartmentTriageDbContext(DbContextOptions<ApartmentTriageDbContext> options)
-        : base(options)
-    {
-    }
+        : base(options) { }
+
+    public DbSet<Resident> Residents => Set<Resident>();
+    public DbSet<Message> Messages => Set<Message>();
+    public DbSet<Ticket> Tickets => Set<Ticket>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Entity configurations will be applied from this assembly via reflection
+        // Picks up all IEntityTypeConfiguration<T> in this assembly automatically
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApartmentTriageDbContext).Assembly);
     }
 }
