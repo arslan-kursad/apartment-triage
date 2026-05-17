@@ -34,6 +34,14 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         b.Property(t => t.LocationHint)
             .HasMaxLength(100);
 
+        // Context: cause-effect data per taxonomy.v3.yaml § multi_issue.causal_relation_spec
+        // Notes: operational follow-up (technician, manager). Separate by intent.
+        b.Property(t => t.Context)
+            .HasMaxLength(2000);
+
+        b.Property(t => t.Notes)
+            .HasMaxLength(2000);
+
         b.Property(t => t.CreatedAt).IsRequired();
         b.Property(t => t.UpdatedAt).IsRequired();
 
