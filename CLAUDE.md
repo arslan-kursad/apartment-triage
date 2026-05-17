@@ -98,3 +98,104 @@ Opus 4.7 pool sıkışıksa fallback. Aksi halde 4.7 tercih.
 - Günde 1-2 Opus seçimi normal
 - 4+ kez Opus = task'i alt-task'lere böl, çoğunu Sonnet'e bırak
 - Pro %70 dolarsa Opus kullanımı kısıtla
+
+---
+
+## DECISION AUTHORITY
+
+### Can Decide (otonom hareket et, sormadan ilerle)
+- Implementation detail: değişken adlandırma, internal helper method'lar, file organization
+- Test yapısı: test isimlendirme, fixture organizasyonu, assertion style
+- Code refactoring (public API'yi bozmadığı sürece)
+- Logging detayı: structured log field'ları, log level kararları
+- Local dev environment kararları (Docker compose layout, local seed data)
+- Library version (aşağıdaki semver tablosuna göre)
+
+### Library Version Authority
+
+| Bump | Örnek | Authority |
+|------|-------|-----------|
+| Patch (X.Y.A → X.Y.B) | Npgsql 8.0.10 → 8.0.11 | Otonom |
+| Minor — pasif | EF Core 8.0.x → 8.1.x, mevcut API kullanımıyla | Otonom |
+| Minor — aktif | Aynı bump, yeni 8.1 API'larını kullanmaya başlıyorsan | Architect flag |
+| Major (X.* → Y.*) | Npgsql 8.x → 9.x | Architect flag |
+| Yeni dependency | Yeni NuGet package | Architect flag |
+
+**Pasif vs aktif tanımı:** Bump sonrası `git diff` sadece `.csproj` ve `packages.lock.json` etkiliyorsa → pasif (otonom). Source kod dosyaları da değişiyorsa → aktif (flag at).
+
+**Transitive dependency:** Bir bump altındaki dependency'leri de çekerse ve locked stack'i ihlal ederse → flag.
+
+### Cannot Decide (Architect onayı zorunlu)
+- Locked stack ihlali (primer §3)
+- Yeni NuGet dependency eklenmesi
+- Database schema değişikliği (migration üretimi)
+- Public API surface değişikliği (IAgent, IMessageChannel, IAnthropicClient)
+- Cross-agent abstraction değişikliği
+- Infrastructure/hosting yön kararı
+- Secret yönetimi mekanizması
+- Test framework değişikliği
+
+### Must Signal (scope dışında bir şeyle karşılaştığında)
+1. Eylem yapma.
+2. Architect'e flag at:
+
+```
+FLAG: [tek cümle problem tanımı]
+Context: [neden bu karar gerekti, hangi task içinde çıktı]
+Proposed direction: [önerin varsa — yoksa "açık" yaz]
+Blocking: [bu olmadan ne ilerleyemez]
+```
+
+3. Architect cevap verene kadar paralel iş yapabilirsin — flag'lenen alana dokunma.
+4. PM'e direkt gitme. Architect filter'dır.
+
+### Anti-Pattern (dur sinyalleri)
+- "Bu sadece küçük bir iyileştirme, Architect'i meşgul etmeye değmez"
+- "Mantıklı olan bu, retroactive de onaylanır zaten"
+- "PM/Architect'in cevabını beklersem timeline kayıyor"
+- "Implementation detay, yazmaya gerek yok"
+
+---
+
+## ACUTE DECISIONS UNDER PRESSURE
+
+Bu protokol **istisna mekanizmasıdır, yol değildir.**
+
+### Akut durum nedir, ne değildir
+
+**Akut:**
+- Dev loop tamamen bloke (build/test/run çalışmıyor)
+- Bir bağımlılık/servis kullanılamaz, alternatife geçilmeden ilerlenemez
+- Saatler içinde karar verilmezse o günün ana hedefi düşer
+
+**Akut değil:**
+- "Daha iyi bir yol buldum" → proactive proposal, flag at
+- "Bu refactor şimdi kolay, sonra zor" → scope creep, flag at
+- "Implementation sırasında fark ettim ki" → önce Architect onayı almalıydın, DUR
+- Performance optimization fırsatı → flag at
+
+### Protokol (sırayla)
+
+1. **2 satır ön bildirim** (eylemden ÖNCE):
+
+```
+ACUTE: [bloker tanımı, tek satır]
+Acting on: [yapacağın değişiklik, tek satır] — retroactive review için ADR draftlayacağım.
+```
+
+2. **Minimum viable eylem** — bloker'ı aşacak en küçük değişiklik. Fırsatçılığa dönüşmesin.
+
+3. **Eylem sonrası retroactive ADR draft** — aynı gün içinde:
+   - Status: Proposed (Accepted değil — Architect onaylayacak)
+   - Acute justification bölümü ekle
+   - Reversibility analysis ekle
+
+4. **Architect retroactive review** — Approved / Approved with conditions / Rejected
+
+### Kırmızı çizgiler (akut bile olsa yapılmaz)
+Locked decision (primer §3) ihlali. Stack değişimi acute justification ile bile geçmez.
+
+### Canonical örnek: Neon vakası (Day 3)
+Local Postgres Docker 8GB RAM'de stabil çalışmadı → dev loop bloke → Neon free tier'a geçildi.
+Doğru karar, eksik protokol: ön bildirim PM thread'ine değil kendi session'ında yapıldı, retroactive ADR yazılmadı.
+ADR-0004 bu kararı formalize ediyor.
