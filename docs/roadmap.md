@@ -248,3 +248,15 @@ Her gün 15 dakika, bir markdown dosyasına:
 
 **Doküman versiyonu:** v2 — 14 May 2026
 **Bir sonraki güncelleme:** Day 7 sonu (Phase 1 retrospective)
+
+---
+
+## Pending Updates (Day 7 retro'da formal işlenecek)
+
+Bu bölüm sıcak değişiklikleri yansıtır. Day 7 Phase 1 retrospective sırasında roadmap'in ana gövdesine işlenir.
+
+- **§1 Stratejik Kararlar — Hosting:** "Hosting: Fly.io free tier" → "Hosting: Fly.io free tier (app), Neon Postgres (DB, Frankfurt, pgvector pre-installed)". Karar tarihi: Day 3 (17 May). Gerekçe: journal/day-03.md. Trade-off: KVKK md. 9 yurt dışı veri transferi (Day 9 Security & Compliance review'a parking lot, mitigation: açık rıza Day 13 disclosure).
+
+- **§4 Risk Register — Yeni satır:** "Eski donanım + yeni SDK uyumsuzluğu" (örn. macOS 12 Tier 3, Docker Desktop). Olasılık: Düşük, Etki: Orta. Mitigation: cloud-first fallback strategy (Neon proof of concept).
+
+- **§5 Day-by-Day Roadmap — 1 günlük kayma:** Phase 1 DoD Day 7 → Day 8. Day 4 = Agent abstraction (orijinal Day 3 işi), Day 5 = ClassifierAgent (orijinal Day 4), Day 6 = Orchestrator + Telegram başlangıç, Day 7 = Telegram tamam + Eval suite başlangıç, Day 8 = Phase 1 closing + Phase 2 (Enricher) başlangıç (overlap).

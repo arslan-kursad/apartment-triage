@@ -32,9 +32,10 @@ secrets.json
 # Hangfire local
 hangfire-storage/
 
-# Claude Code local cache
+# Claude Code local cache + worktrees (local dev only)
 .claude/cache/
 .claude/sessions/
+.claude/worktrees/
 
 # OS
 .DS_Store
