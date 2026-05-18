@@ -73,6 +73,15 @@
 - ADR-0006 docs/decisions/ commit (Build)
 - Meta BM: provisioning yenile, TT hat takibi
 
+### Teknik Borç Kaydı
+- **Day 8 — SecondaryIssuesJson typed migration:**
+  Ticket.SecondaryIssuesJson şu an DB'de string.
+  ClassifierOutput.SecondaryIssues typed record olarak
+  implement edildi. Orchestrator JsonSerializer.Serialize()
+  köprüsü kuruyor (geçici). Day 8 Enricher PR'ında
+  typed migration açılacak — Architect flag gerektirir
+  (schema değişikliği).
+
 ### Açık Kalan
 - Repo Private kontrolü (Kürşad)
 - Verification belgeler hazırlığı (vergi levhası, kimlik,
