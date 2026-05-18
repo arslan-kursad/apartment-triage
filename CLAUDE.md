@@ -57,6 +57,7 @@ Dependency akışı: Web → Application + Infrastructure → Domain. Infrastruc
 - Postgres column naming: `snake_case` (EFCore.NamingConventions plugin).
 - Enum serialization: `JsonStringEnumConverter` + snake_case policy.
 - pgvector extension: raw SQL migration (`migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS vector;")`).
+- DateTime: Always use UTC. Store as `DateTime` with `Kind=Utc`. `DateTimeOffset` migration Day 14+ olarak reconsidered.
 - Test before commit: `dotnet build && dotnet test` clean olmalı.
 
 ## Kapanmış kararlar (don't re-open)
