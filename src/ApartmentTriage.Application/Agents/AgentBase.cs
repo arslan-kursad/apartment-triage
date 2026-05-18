@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 namespace ApartmentTriage.Application.Agents;
 
 public abstract class AgentBase<TIn, TOut> : IAgent<TIn, TOut>
+    where TIn : class
+    where TOut : class
 {
     protected readonly ILogger Logger;
     protected virtual int MaxRetries => 3;
