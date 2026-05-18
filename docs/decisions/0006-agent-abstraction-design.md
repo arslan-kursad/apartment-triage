@@ -152,6 +152,15 @@ ayağa kaldırılmasına gerek yok.
   ile test edildi; production ClassifierAgent escalation rules
   Day 7 eval suite'te kalibre edilecek
 
+**Footnote — DI registration pattern (Day 5, Architect kararı):**
+Aynı `IAgent<TIn,TOut>` tipinin iki model varyantını (Haiku/Sonnet)
+DI'a register etmek için .NET 8 Keyed Services tercih edildi.
+Factory pattern (3 agent × 2 model = 6 factory class) over-engineering,
+strongly-typed subclass anti-pattern. `AgentKeys` static class
+Application layer'da sabit key'leri tutar; `AddKeyedSingleton` +
+`[FromKeyedServices]` attribute ile zero extra dependency.
+Day 8 Enricher eklendiğinde aynı pattern, `AgentKeys`'e 2 sabit eklenir.
+
 ## Alternatives Considered
 
 ### Alternative A: Exception-based error handling
