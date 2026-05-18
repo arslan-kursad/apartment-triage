@@ -227,9 +227,10 @@ public class TriageOrchestratorTests
 
         result.Tickets.Should().HaveCount(1);
         result.Tickets[0].Category.Should().Be(TicketCategory.Structural);
-        // After swap, original primary (Electrical/Medium) becomes EffectOfPrimary secondary.
-        // effect_of_primary rule: severity >= Medium → upgrade Structural from High to Urgent.
-        result.Tickets[0].Severity.Should().Be(TicketSeverity.Urgent);
+        // Swap-origin secondary (original Electrical/Medium primary) is excluded from the
+        // effect_of_primary upgrade rule — its severity was already evaluated by the classifier.
+        // Final: Structural/High (not Urgent). Architect decision 2026-05-19.
+        result.Tickets[0].Severity.Should().Be(TicketSeverity.High);
     }
 
     // ── Orchestrator rule: same category, same location → single ticket ──────

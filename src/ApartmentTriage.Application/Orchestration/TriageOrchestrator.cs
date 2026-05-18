@@ -109,12 +109,18 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
     }
 
     // Implements taxonomy.v3.yaml § multi_issue.orchestrator_rule
+    // swapOrigins: secondaries that were the original primary before a cause_of_primary swap.
+    // The effect_of_primary severity upgrade is NOT applied to swap-origin secondaries —
+    // their severity was already factored in by the classifier when it evaluated the original primary.
     private List<Ticket> ApplyOrchestratorRule(
         Message message,
         ClassifierOutput output,
         string? secondaryIssuesJson,
-        int swapDepth = 0)
+        int swapDepth = 0,
+        HashSet<ClassifierSecondaryIssue>? swapOrigins = null)
     {
+        swapOrigins ??= [];
+
         if (output.SecondaryIssues.Count == 0)
             return [CreatePrimaryTicket(message, output, secondaryIssuesJson)];
 
@@ -133,16 +139,19 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
                 return [CreatePrimaryTicket(message, output, secondaryIssuesJson)];
             }
 
-            var swapped = SwapPrimaryWithCause(output, causeOfPrimary);
+            var (swapped, swapOrigin) = SwapPrimaryWithCause(output, causeOfPrimary);
+            var newSwapOrigins = new HashSet<ClassifierSecondaryIssue>(swapOrigins, ReferenceEqualityComparer.Instance) { swapOrigin };
             var newSecondaryJson = swapped.SecondaryIssues.Count > 0
                 ? JsonSerializer.Serialize(swapped.SecondaryIssues)
                 : null;
-            return ApplyOrchestratorRule(message, swapped, newSecondaryJson, swapDepth + 1);
+            return ApplyOrchestratorRule(message, swapped, newSecondaryJson, swapDepth + 1, newSwapOrigins);
         }
 
-        // effect_of_primary → single ticket, severity upgrade if effect >= medium
+        // effect_of_primary → single ticket, severity upgrade if effect >= medium.
+        // Swap-origin secondaries are excluded from the upgrade check (Architect decision 2026-05-19):
+        // their severity was already evaluated by the classifier as the original primary.
         var effects = output.SecondaryIssues
-            .Where(s => s.CausalRelation == CausalRelation.EffectOfPrimary)
+            .Where(s => s.CausalRelation == CausalRelation.EffectOfPrimary && !swapOrigins.Contains(s))
             .ToList();
 
         if (effects.Count > 0)
@@ -228,10 +237,11 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
     }
 
     // Swaps primary with cause_of_primary secondary per taxonomy spec.
-    private static ClassifierOutput SwapPrimaryWithCause(
+    // Returns the swapped output AND the new secondary that represents the original primary,
+    // so the caller can track it as a swap-origin and skip the effect upgrade rule for it.
+    private static (ClassifierOutput Swapped, ClassifierSecondaryIssue SwapOrigin) SwapPrimaryWithCause(
         ClassifierOutput output, ClassifierSecondaryIssue cause)
     {
-        // Original primary becomes an effect snippet in the new primary's secondary list
         var originalPrimaryAsEffect = new ClassifierSecondaryIssue(
             Category: output.Category,
             Severity: output.Severity,
@@ -244,13 +254,15 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
             .Append(originalPrimaryAsEffect)
             .ToList();
 
-        return output with
+        var swapped = output with
         {
             Category = cause.Category,
             Severity = cause.Severity,
             LocationHint = cause.LocationHint,
             SecondaryIssues = newSecondaries
         };
+
+        return (swapped, originalPrimaryAsEffect);
     }
 
     private static Ticket CreatePrimaryTicket(Message message, ClassifierOutput output, string? secondaryIssuesJson)
