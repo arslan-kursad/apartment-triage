@@ -1,4 +1,6 @@
+using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Infrastructure.Persistence;
+using ApartmentTriage.Infrastructure.Persistence.Repositories;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,8 @@ public static class DependencyInjection
                     connectionString,
                     npgsql => npgsql.UseVector())
                 .UseSnakeCaseNamingConvention());
+
+        services.AddScoped<ITicketRepository, TicketRepository>();
 
         // Hangfire — PostgreSQL storage (no Redis)
         services.AddHangfire(cfg => cfg
