@@ -1,0 +1,229 @@
+{
+  "cases": [
+    {
+      "case_id": "plumbing_normal_01",
+      "input": {
+        "raw_text": "Mutfak musluğu damlatıyor, her gece damlama sesi geliyor. Tamir istiyorum.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "plumbing",
+        "is_emergency": false,
+        "severity": "low"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "electrical_normal_01",
+      "input": {
+        "raw_text": "Oturma odasındaki prizlerin ikisi çalışmıyor, başka odalar normal.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "electrical",
+        "is_emergency": false,
+        "severity": "medium"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "gas_normal_01",
+      "input": {
+        "raw_text": "Kombinin gaz tarafında sorun var, çalışmıyor. Teknisyen bakabilir mi?",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "gas",
+        "is_emergency": false,
+        "severity": "medium"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "heating_cooling_normal_01",
+      "input": {
+        "raw_text": "Radyatörlerim hiç ısınmıyor, üşüyoruz. Kombi kalorifer tarafını bakabilir misiniz?",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "heating_cooling",
+        "is_emergency": false,
+        "severity": "medium"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "elevator_normal_01",
+      "input": {
+        "raw_text": "Asansör kapısı düzgün kapanmıyor, birkaç kez açılıp kapandı. Bakım gerekiyor.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "elevator",
+        "is_emergency": false,
+        "severity": "high"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "structural_normal_01",
+      "input": {
+        "raw_text": "Balkondaki dış duvarda uzunca bir çatlak oluştu. Görünce baktım, giderek büyüyor sanırım.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "structural",
+        "is_emergency": false,
+        "severity": "medium"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "noise_normal_01",
+      "input": {
+        "raw_text": "Üst kattaki komşu her gece 23:00'den sonra yüksek sesle müzik açıyor, uyuyamıyoruz.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "noise",
+        "is_emergency": false,
+        "severity": "low"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "common_area_normal_01",
+      "input": {
+        "raw_text": "Bodrum kattaki ortak depo kapısının kilidi bozulmuş, kapı açık kalıyor.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "common_area",
+        "is_emergency": false,
+        "severity": "low"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "security_normal_01",
+      "input": {
+        "raw_text": "Giriş kapısının şifresini çok kişi biliyor, değiştirilmesi lazım. Güvenlik açığı var.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "security",
+        "is_emergency": false,
+        "severity": "medium"
+      },
+      "tags": ["normal"]
+    },
+    {
+      "case_id": "emergency_gas_01",
+      "input": {
+        "raw_text": "GAZ KOKUSU VAR YA!! ÇIKIN DIŞARI ACİL ÇIKIN HEMEN",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": true,
+        "matched_phrases": ["gaz kokusu", "acil"]
+      },
+      "expected": {
+        "category": "gas",
+        "is_emergency": true,
+        "severity": "urgent"
+      },
+      "tags": ["emergency"]
+    },
+    {
+      "case_id": "emergency_elevator_01",
+      "input": {
+        "raw_text": "Asansörde mahsur kaldım! Kapılar açılmıyor, yardım edin lütfen!",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": true,
+        "matched_phrases": ["mahsur"]
+      },
+      "expected": {
+        "category": "elevator",
+        "is_emergency": true,
+        "severity": "urgent"
+      },
+      "tags": ["emergency"]
+    },
+    {
+      "case_id": "emergency_electrical_fire_01",
+      "input": {
+        "raw_text": "Elektrik panosundan kıvılcım çıkıyor ve yanık kokusu geliyor, şu an acil!",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": true,
+        "matched_phrases": ["kıvılcım", "acil", "şu an"]
+      },
+      "expected": {
+        "category": "electrical",
+        "is_emergency": true,
+        "severity": "urgent"
+      },
+      "tags": ["emergency"]
+    },
+    {
+      "case_id": "fp_heat_weather_01",
+      "input": {
+        "raw_text": "Bu hafta hava yangın gibi sıcak, klimayı açayım dedim çalışmıyor.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": true,
+        "matched_phrases": ["yanıyor"]
+      },
+      "expected": {
+        "category": "heating_cooling",
+        "is_emergency": false,
+        "severity": "medium"
+      },
+      "tags": ["false_positive"]
+    },
+    {
+      "case_id": "fp_emoji_only_01",
+      "input": {
+        "raw_text": "🔥🔥🔥",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "other",
+        "is_emergency": false,
+        "severity": "low"
+      },
+      "tags": ["false_positive"]
+    },
+    {
+      "case_id": "edge_swap_cause_of_primary_01",
+      "input": {
+        "raw_text": "Salon prizi yandı, tavandan su damladığı için devreye girdi sanırım.",
+        "channel_type": "WhatsApp",
+        "emergency_suspected": false,
+        "matched_phrases": []
+      },
+      "expected": {
+        "category": "electrical",
+        "is_emergency": false,
+        "severity": "medium"
+      },
+      "tags": ["edge"]
+    }
+  ]
+}
