@@ -1,5 +1,5 @@
 artifact: taxonomy
-current_version: v3
+current_version: v4
 versions:
   v1:
     date: 2026-05-16
@@ -18,7 +18,7 @@ versions:
   v3:
     date: 2026-05-16
     file: taxonomy.v3.yaml
-    status: pending_review
+    status: superseded
     locked_decisions: 5
     notes: |
       PM v2 review patches applied:
@@ -27,3 +27,16 @@ versions:
       - mismatch_log dual-confidence split (emergency + category)
       - confidence.output_fields added for internal consistency
       - decision_matrix low_any split for parallelism
+  v4:
+    date: 2026-05-20
+    file: taxonomy.v4.yaml
+    status: locked
+    pm_review_completed: 2026-05-20
+    locked_decisions: 6
+    notes: |
+      Day 7 swap-origin muafiyet lock (Interpretation B):
+      - swap_cause_no_severity_upgrade locked decision added
+      - effect_of_primary EXCEPTION documented for swap-origin secondaries
+      - orchestrator_rule_constraints.swap_cause_no_severity_upgrade bölümü eklendi
+      - examples: swap_cause_no_severity_upgrade scenario eklendi (documentation only, not parsed)
+      - taxonomy examples bölümü: documentation only, not parsed at runtime (teyit: 2026-05-20)

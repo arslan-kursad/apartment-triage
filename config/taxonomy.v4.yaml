@@ -1,0 +1,471 @@
+version: v4
+created_at: 2026-05-20
+supersedes: v3
+status: locked
+pm_review_completed: 2026-05-20
+
+locked_decisions:
+  neighbor_dispute_as_separate_category: true
+  multi_issue_strategy: multi_ticket
+  emergency_layer: hybrid_phrase_set_layer1_llm_layer2_confirmation_required
+  utility_outage_subtype: true
+  cause_effect_handling: single_ticket_severity_upgrade
+  same_category_split_rule: location_based
+  swap_cause_no_severity_upgrade: true  # NEW v4 — Interpretation B locked
+
+categories:
+  plumbing:
+    description_en: "Indoor water supply, drainage, leaks, clogs, pressure (internal plumbing only)"  # CHANGED v2
+    description_tr: "İç su tesisatı, sızıntı, tıkanma, basınç (dış kaynak hariç)"  # CHANGED v2
+    baseline_priority: medium
+
+  electrical:
+    description_en: "Electrical wiring, outlets, breakers, lighting circuits"
+    description_tr: "Elektrik tesisatı, priz, sigorta, aydınlatma devreleri"
+    baseline_priority: medium
+
+  gas:
+    description_en: "Natural gas, gas-side of combi boiler, gas odor or leak"
+    description_tr: "Doğalgaz, kombi gaz tarafı, gaz kokusu/kaçağı"
+    baseline_priority: urgent
+
+  heating_cooling:
+    description_en: "Boiler heat side, radiators, AC, climate equipment"
+    description_tr: "Kombi (ısı tarafı), kalorifer, klima, radyatör"
+    baseline_priority: medium
+
+  elevator:
+    description_en: "Elevator malfunction, getting stuck, door issues"
+    description_tr: "Asansör arızası, mahsur kalma, kapı sorunu"
+    baseline_priority: high
+
+  structural:
+    description_en: "Cracks, roof, windows, doors, balcony, facade, external water ingress"  # CHANGED v2
+    description_tr: "Çatlak, çatı (su sızıntısı dahil), pencere, kapı, balkon, dış cephe"  # CHANGED v2
+    baseline_priority: medium
+
+  common_area:
+    description_en: "Stairwell, entrance, parking, garden, attic, cleaning"
+    description_tr: "Merdiven, giriş, otopark, bahçe, çatı katı, temizlik"
+    baseline_priority: low
+
+  pest:
+    description_en: "Rodents, insects, pigeons, infestation"
+    description_tr: "Fare, hamamböceği, güvercin, karınca, haşere"
+    baseline_priority: low
+
+  noise:
+    description_en: "Noise complaint"
+    description_tr: "Gürültü şikayeti"
+    baseline_priority: low
+
+  neighbor_dispute:
+    description_en: "Non-noise inter-resident dispute"
+    description_tr: "Gürültü dışı komşu anlaşmazlığı"
+    baseline_priority: low
+    routing_note: "Default action: route to building manager for individual mediation"
+
+  billing:
+    description_en: "Dues, invoices, payment disputes"
+    description_tr: "Aidat, fatura, ödeme uyuşmazlığı"
+    baseline_priority: low
+
+  security:
+    description_en: "Locks, cameras, suspicious activity, break-ins"
+    description_tr: "Kapı/kilit, kamera, şüpheli aktivite, hırsızlık"
+    baseline_priority: medium
+
+  announcement:
+    description_en: "Announcement/info, not a ticket"
+    description_tr: "Duyuru, bilgi paylaşımı — ticket değil"
+    baseline_priority: n_a
+    subtypes:  # NEW v2
+      regular_announcement:
+        description_tr: "Apartman içi duyuru (toplantı, bakım programı, vs.)"
+        skip_ticket: true
+        notify_resident: false
+        notify_manager: false
+      external_outage:
+        description_tr: "Şehir kaynaklı kesinti (İSKİ, BEDAŞ, doğalgaz dağıtım, vs.)"
+        skip_ticket: true
+        info_only: true
+        notify_resident: false
+        notify_manager:  # NEW v2
+          mode: dashboard_toggle
+          default: off
+          storage_key: dashboard.settings.notify_external_outage
+        examples_tr:
+          - "Yarın 10:00-14:00 arası su kesintisi olacak"
+          - "BEDAŞ'tan mesaj geldi, akşam elektrik gidecek"
+          - "İGDAŞ doğalgaz bakım, bu hafta sonu"
+
+  other:
+    description_en: "None of the above; fallback bucket"
+    description_tr: "Yukarıdakilerin hiçbiri; güvenlik ağı"
+    baseline_priority: low
+    health_target: "<5% of total traffic"
+
+priority_modifiers:
+  upgrade_signals_tr:
+    - "bastı"
+    - "sel"
+    - "yanıyor"
+    - "duman"
+    - "mahsur"
+    - "kıvılcım"
+    - "kötü oldum"
+    - "yaralı"
+    - "şu an"
+    - "acil"
+    - "lütfen hemen"
+  upgrade_signals_pattern:
+    - all_caps_dominant
+    - multiple_exclamations_3_plus
+    - burst_messages_3_within_60s
+  downgrade_signals_tr:
+    - "küçük"
+    - "az bir"
+    - "sadece"
+    - "şikayet değil"
+    - "soru"
+    - "fark ettim"
+    - "ne zaman uygun olursa"
+    - "acelesi yok"
+
+multi_issue:
+  strategy: multi_ticket_with_cause_effect_and_location_awareness  # CHANGED v2
+
+  classifier_output_shape:
+    primary_category: "<enum>"
+    primary_severity: "<enum>"
+    location_hint: "<text or null>"  # NEW v2
+    secondary_issues:
+      - category: "<enum>"
+        severity: "<enum>"
+        snippet: "<text>"
+        location_hint: "<text or null>"  # NEW v2
+        causal_relation: "<independent | effect_of_primary | cause_of_primary>"  # NEW v2
+
+  causal_relation_spec:  # NEW v2
+    independent:
+      description_tr: |
+        Secondary issue, primary'den fiziksel/işleyiş olarak ayrı bir sorun.
+        Farklı işçilik gerektirir, farklı root cause.
+      orchestrator_action: |
+        Severity >= medium ise ayrı ticket aç (per secondary).
+        Severity < medium ise tek ticket, secondary'yi notes'a ekle.
+      example_tr: |
+        "Salonda priz çalışmıyor, banyo lavabosu da sızdırıyor"
+        → primary: electrical, secondary: plumbing (independent, medium)
+        → İki ayrı ticket: elektrikçi + tesisatçı.
+
+    effect_of_primary:
+      description_tr: |
+        Secondary, primary'nin gözlemlenen sonucudur/semptomudur.
+        Aynı root cause, sadece etki noktası farklı.
+      orchestrator_action: |
+        Tek ticket. Root cause = primary.
+        Secondary snippet'leri ticket.context alanına yaz (notes değil — notes operational; context cause-effect data).
+        Effect severity >= medium ise primary_severity'yi bir seviye yukarı çek.
+        EXCEPTION (NEW v4): swap-origin secondary'ye bu upgrade uygulanmaz.
+        Neden: swap öncesi Classifier bu severity'yi zaten değerlendirdi;
+        tekrar upgrade = circular over-escalation (Interpretation B — locked).
+      example_tr: |
+        "Çatıdan su geliyor, oda tavanı ıslandı"
+        → primary: structural (high), secondary: plumbing (effect_of_primary, medium)
+        → Tek structural ticket, severity high, tavan ıslanması context'e.
+
+    cause_of_primary:
+      description_tr: |
+        Secondary, primary'nin altında yatan asıl nedendir.
+        Primary aslında bir semptom; rol değişikliği gerekir.
+      orchestrator_action: |
+        Primary ve secondary rollerini swap et.
+        Yeni primary = orijinal secondary (gerçek kök neden).
+        Orijinal primary = effect snippet olarak yeni ticket.context'e.
+        Yeni primary_severity = orijinal primary_severity + (varsa) gözlem severity'si.
+        Swap sonrası rule yeniden değerlendirilir; bkz. orchestrator_rule_constraints.
+      example_tr: |
+        "Salon prizi yandı, tavandan su damladığı için"
+        → initial: primary electrical (medium), secondary structural (cause_of_primary, high)
+        → SWAP: primary structural (high), electrical hasarı context'e
+        → Çatıcı/sızdırmazlık işi öncelikli, elektrikçi sonra.
+
+  location_hint_spec:  # NEW v2
+    type: string
+    max_length: 100
+    nullable: true
+    normalization: none
+    case_handling: preserve_original
+    extraction_guidance: |
+      LLM, mesajdan lokasyon referansını serbest metin olarak çıkarır.
+      Olabilecek değer tipleri:
+        - oda adı (salon, mutfak, banyo, yatak odası)
+        - kat referansı (1. kat, 3. kat koridoru, zemin)
+        - daire referansı (5 numara, 12 numaranın balkonu)
+        - bölge (giriş, otopark, çatı katı, bodrum)
+        - bileşik (salon ve mutfak, üst kat tavanı)
+      null değeri: lokasyon belirtilmemiş VEYA tüm daireyi kapsıyor.
+    validation: |
+      Day 1-14: validation yok, serbest metin saklanır.
+      Day 14+: gerçek değer dağılımı analiz edilir, enum migration kararı verilir.
+    downstream_usage: |
+      Orchestrator: same-category split rule input.
+      Dashboard: ticket detayında "Lokasyon" alanı olarak gösterilir.
+      Eval: location_hint extraction accuracy ayrı metric olarak track edilir.
+    examples_tr:
+      - "salon"
+      - "mutfak"
+      - "yatak odası"
+      - "1. kat koridoru"
+      - "5 numaranın balkonu"
+      - "salon ve mutfak"
+      - null
+
+  orchestrator_rule: |
+    if secondary_issues is empty:
+      → single ticket
+
+    elif any secondary has causal_relation == "cause_of_primary":
+      → swap primary with that secondary (see causal_relation_spec.cause_of_primary)
+      → re-run rule with swapped state
+      → respect orchestrator_rule_constraints.max_swap_depth
+
+    elif any secondary has causal_relation == "effect_of_primary":
+      → single ticket, root cause = primary
+      → append effect snippets to ticket.context
+      → upgrade primary_severity by one level if any effect.severity >= medium
+         AND secondary is NOT a swap-origin (see orchestrator_rule_constraints.swap_cause_no_severity_upgrade)
+
+    elif all secondary share primary_category:
+      if all secondary share location_hint with primary:
+        → single ticket, append secondary snippets to notes
+      else:
+        → separate ticket per distinct location_hint
+
+    elif secondary has category != primary AND severity >= medium AND causal_relation == "independent":
+      → separate ticket per such secondary
+
+    else:
+      → single ticket, secondary in notes
+
+  orchestrator_rule_constraints:  # NEW v3 — recursion safety for cause_of_primary swap
+    max_swap_depth: 2
+    on_max_depth_reached:
+      action: "log warning, son state ile devam"
+      log_location: logs/orchestrator/swap_depth_warnings.jsonl
+      log_fields:
+        timestamp: ISO 8601 UTC
+        message_id: UUID
+        swap_chain: ["<category>", "<category>", "<category>"]
+        final_primary: "<category>"
+        rationale: "max_swap_depth reached; ticket created with last evaluated state"
+    rationale_tr: |
+      cause_of_primary swap'ı re-run gerektirir; eğer yeni primary'nin de cause_of_primary
+      secondary'leri varsa infinite recursion riski. max_swap_depth 2 = en fazla 2 swap,
+      sonra mevcut state ile devam edilir. Pratikte 2+ derinlik nadir; ya gerçek bir
+      cascade vakası ya da Classifier hatası. İkinci durumu warning log yakalar.
+    swap_cause_no_severity_upgrade:  # NEW v4 — Interpretation B
+      rule: |
+        Swap uygulandıktan sonra, orijinal primary (artık effect_of_primary secondary)
+        severity'si, yeni primary_severity'yi upgrade etmez.
+      rationale_tr: |
+        Interpretation B kararı (2026-05-19, Kürşad onayı):
+        Classifier, swap öncesi tüm issue'ları görerek severity ataması yaptı.
+        Swap sonrası aynı severity bilgisini tekrar yukarı çevirmek circular over-escalation
+        riski taşır. Örnek: Medium electrical secondary, swap sonrası primary structural (high)
+        olsa — electrical artık effect_of_primary, severity medium. Bu medium severity,
+        structural'ı Urgent'a yükseltmez; Classifier zaten High atadı.
+      implementation_note: |
+        TriageOrchestrator.cs: ReferenceEqualityComparer ile swap-origin secondary'ler
+        izlenir. effect_of_primary upgrade kodu swap-origin kontrolü yapar, upgrade'i skip eder.
+        Runtime'da taxonomy YAML parse edilmez; bu alan documentation only, not parsed.
+      loom_note: |
+        "Tek mesajda Medium → Urgent yanlış upgrade nasıl önlendi" — Loom Q3 anlatı hammaddesi.
+
+  resident_reply_pattern_single: |
+    Sayın komşu, mesajınızdan {primary_summary} sorununu anladım, bilet #{primary_id} açtım.
+
+  resident_reply_pattern_multiple: |
+    Sayın komşu, mesajınızdan {n} ayrı konu çıkardım:
+    (1) {primary_summary} — bilet #{primary_id}
+    (2) {secondary_summary} — bilet #{secondary_id}
+
+  examples:  # documentation only, not parsed at runtime
+    - input_tr: "Çatıdan su geliyor, oda tavanı ıslandı"
+      primary_category: structural
+      primary_severity: high
+      location_hint: "oda"
+      secondary_issues:
+        - category: plumbing
+          severity: medium
+          snippet: "tavan ıslandı"
+          location_hint: "oda"
+          causal_relation: effect_of_primary
+      handling: single_ticket_cause_effect
+      rationale_tr: |
+        Kök neden çatı sızıntısı (structural). Tavan ıslanması bunun gözlemlenen etkisi,
+        bağımsız bir tesisat sorunu değil. Tek işçilik (çatıcı) yeterli.
+
+    - input_tr: "Salonda priz çalışmıyor, mutfaktaki priz de yandı"
+      primary_category: electrical
+      primary_severity: medium
+      location_hint: "salon"
+      secondary_issues:
+        - category: electrical
+          severity: medium
+          snippet: "mutfak prizi yandı"
+          location_hint: "mutfak"
+          causal_relation: independent
+      handling: separate_tickets_by_location
+      rationale_tr: |
+        Aynı kategori (electrical) ama farklı location_hint (salon vs mutfak).
+        Tamirci için iki ayrı job site. İki ayrı ticket = iki ayrı checklist.
+
+    - input_tr: "Salon prizi yandı, tavandan su damladığı için"
+      scenario: swap_cause_no_severity_upgrade  # NEW v4 — Interpretation B example
+      pre_swap:
+        primary_category: electrical
+        primary_severity: medium
+        secondary_issues:
+          - category: structural
+            severity: high
+            snippet: "tavandan su damladığı için"
+            causal_relation: cause_of_primary
+      post_swap:
+        primary_category: structural
+        primary_severity: high  # orijinal primary_severity'den gelir (medium electrical → high structural)
+        secondary_issues:
+          - category: electrical
+            severity: medium
+            snippet: "salon prizi yandı"
+            causal_relation: effect_of_primary
+            swap_origin: true  # bu secondary swap ile oluştu; severity upgrade'e tabi DEĞİL
+            swap_cause_no_severity_upgrade: true  # documentation only, not parsed at runtime
+      handling: single_ticket_cause_effect_post_swap
+      severity_upgrade_applied: false  # medium electrical, structural'ı Urgent'a çekmez
+      rationale_tr: |
+        Swap sonrası: structural = primary (high), electrical = swap-origin effect_of_primary secondary (medium).
+        Interpretation B: swap-origin secondary'ye effect_of_primary severity upgrade uygulanmaz.
+        Neden: Classifier tüm mesajı görerek severity ataması yaptı. Swap-origin secondary'nin
+        severity'si zaten bu değerlendirmenin parçasıydı. Tekrar upgrade = circular over-escalation.
+        Structural ticket severity: high (swap öncesi secondary severity'sinden gelir, re-upgrade'den değil).
+
+confidence:
+  enum: [low, medium, high]
+  output_fields:  # NEW v3 — required for mismatch log dual-confidence schema (see emergency.mismatch_log_spec)
+    emergency_confidence: "<enum>  # Classifier'ın emergency=true/false kararına dair konfidansı"
+    category_confidence: "<enum>   # Classifier'ın primary_category seçimine dair konfidansı"
+  rationale_for_split_tr: |
+    Layer 2 (Classifier LLM) emergency yargısı ve kategori yargısı bağımsız mental model gerektirir.
+    Emergency'den emin olup kategoriden emin olmama (örn. "ev yanıyor" → emergency net,
+    structural mı fire damage'den electrical mi belirsiz) olağan bir durum.
+    Tek confidence field'ı bu ayrımı kaybeder; mismatch log analizi zayıflar.
+  ambiguity_reasons_enum:
+    - missing_location
+    - missing_severity
+    - category_ambiguous
+    - language_unclear
+    - needs_visual
+    - non_actionable
+  decision_matrix:
+    high_no_clarification:    { action: open_ticket }
+    high_with_clarification:  { action: open_ticket_and_ask }
+    medium_no_clarification:  { action: open_ticket_flag_human_review }
+    medium_with_clarification: { action: ask_clarification_first }
+    low_no_clarification:     { action: ask_clarification_first }  # NEW v3 — split from low_any for parallelism
+    low_with_clarification:   { action: ask_clarification_first }  # NEW v3 — split from low_any for parallelism
+  decision_matrix_note: |
+    low_* satırları aynı action'a düşüyor (ask_clarification_first). Parallelism için
+    explicit ayrıldı; high_* ve medium_* satırları clarification varlığına göre
+    farklı action veriyor, low_* ise her durumda clarification bekliyor.
+    Bu field hangi confidence level'ı kullandığını da net olarak input olarak kullanır:
+    burada **emergency_confidence ve category_confidence'ın daha düşüğü** karar girdisidir.
+
+emergency:
+  architecture: two_layer_confirmation_required  # CHANGED v2
+  layer_1:
+    name: phrase_match
+    source: config/emergency_phrases.v2.json
+    output_field: "emergency_suspected: bool"
+    role: soft_signal_only  # CHANGED v2
+    standalone_authority: false
+  layer_2:
+    name: llm_classification
+    consumes: "layer_1.emergency_suspected (passed as awareness hint in Classifier prompt)"
+    output_field: "llm_confirmed_emergency: bool"
+    role: decision_authority  # CHANGED v2
+  override_rule: |
+    Emergency route activates IFF:
+      layer_1.emergency_suspected == true AND layer_2.llm_confirmed_emergency == true
+
+    Mismatch cases (logged per mismatch_log_spec):
+      - layer_1=true, layer_2=false:
+          → standard ticket flow (confidence-driven action)
+          → log mismatch_type: "false_phrase_alarm"
+      - layer_1=false, layer_2=true:
+          → emergency route activates (Layer 2 has authority)
+          → log mismatch_type: "phrase_gap"
+      - both true:
+          → emergency route + parallel clarification if ambiguity_reasons non-empty
+
+  mismatch_log_spec:  # NEW v2
+    path: logs/router/mismatch_log.jsonl
+    format: JSON Lines (one event per line, append-only)
+    write_trigger: "Layer 1 ↔ Layer 2 disagreement only. Agreement cases NOT logged."
+    schema_per_line:
+      timestamp: "ISO 8601 UTC, e.g. 2026-05-30T14:23:11Z"
+      message_id: "UUID of the incoming WhatsApp message"
+      message_text_redacted: |
+        Mesaj metni, KVKK redaksiyonu sonrası:
+        - Telefon numaraları → [PHONE]
+        - 2+ kelimelik özel isimler → [NAME]
+        - Daire numarası referansları korunur (operasyonel veri)
+      layer1_phrase_hit: bool
+      layer1_phrases_matched: ["<phrase>", ...]
+      layer2_emergency: bool
+      layer2_emergency_confidence: "low | medium | high"  # CHANGED v3 — split from single layer2_confidence
+      layer2_category_confidence: "low | medium | high"   # NEW v3 — see confidence.output_fields
+      layer2_emergency_rationale: "string (max 200 char)"
+      classifier_primary_category: "<enum>"
+      mismatch_type: "false_phrase_alarm | phrase_gap"
+    schema_change_rationale_tr: |
+      v2'de tek "layer2_confidence" field'ı vardı. v3'te emergency ve category
+      konfidansları ayrıldı çünkü mismatch analizi için bunlar bağımsız sinyaller:
+      - Emergency mismatch + high category confidence = Layer 2 net kararla emergency reddetti → phrase set fazla geniş
+      - Emergency mismatch + low category confidence = Layer 2 kafası karışık → mesajı manuel incele
+      Tek field bu ayrımı kaybediyordu.
+    rotation: "Daily file rotation: mismatch_log.YYYY-MM-DD.jsonl"
+    retention: "90 days, then automated delete"
+    purpose: |
+      Day 14+ phrase set iteration sinyali.
+      - false_phrase_alarm frequency >= 3/week → ilgili phrase fazla geniş, revize edilmeli
+      - phrase_gap frequency >= 3/week → benzer phrase'ler set'e eklenmeli
+    privacy_note: |
+      logs/ klasörü .gitignore'da. Bu dosyalar repo'ya commit edilmez.
+
+external_outage_notification_spec:  # NEW v2
+  decision_origin: |
+    KARAR 2 (Utility Outage) paketinde sadece `optional_broadcast: true` belirtilmişti.
+    "Optional" semantiği belirsizdi. PM review öncesi açık nokta olarak soruldu
+    (dashboard toggle vs frequency cap vs default-on).
+    PE proposed dashboard_toggle as concretization.
+    Status: pending_pm_confirmation.
+    # PM lock anında bu satır "pm_confirmed_YYYY-MM-DD" formatına güncellenir.
+  proposed: dashboard_toggle (default off)  # CHANGED v3 — was "chosen"; renamed pre-confirmation
+  rationale_tr: |
+    Üç seçenek tartıldı:
+    (1) Default on, frequency cap (örn. günde max 3 bildirim)
+        → Sivas binasının external_outage frekansı bilinmiyor. "Doğru cap" hangi rakam? Bilinmiyor.
+        → Premature optimization riski; Day 14 öncesi data yok.
+    (2) Default off, hiç toggle yok (sadece log)
+        → Manager hiçbir bildirim almaz; external_outage tespit edildi mi bilemez.
+        → Sistemin değer önerisi zayıflar.
+    (3) Default off, dashboard toggle (PE PROPOSAL)
+        → Manager isterse açar, istemezse log'da kalır.
+        → "Tüm İSKİ mesajları bana gelsin mi yoksa sadece kritik olanlar mı" kararı manager'a bırakılmış olur.
+        → Day 14+ data ile default değişebilir; toggle esnekliği korur.
+  implementation_note: |
+    Dashboard tarafında basit boolean toggle: "Şehir kesintilerinde bildirim al".
+    Toggle açıldığında external_outage detect edildiğinde tek push/email gönderir.
+    Toggle kapalı: sessizce announcement olarak log'lanır, ticket açılmaz.
