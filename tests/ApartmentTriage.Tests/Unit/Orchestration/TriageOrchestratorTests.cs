@@ -269,4 +269,45 @@ public class TriageOrchestratorTests
         result.IsSuccess.Should().BeFalse();
         result.Error!.Kind.Should().Be(AgentErrorKind.Semantic);
     }
+
+    // ── Clarification flow (Option C) ────────────────────────────────────────
+
+    [Fact]
+    public async Task AmbiguityReasons_SurfacedInTriageResult()
+    {
+        var reasons = new List<AmbiguityReason> { AmbiguityReason.MissingLocation };
+        var output = Helpers.Output(ambiguity: reasons);
+        var haiku = new FakeClassifierAgent(AgentResult<ClassifierOutput>.Ok(output));
+        var orchestrator = Helpers.Build(haiku);
+
+        var result = await orchestrator.ProcessAsync(Helpers.MakeMessage());
+
+        result.IsSuccess.Should().BeTrue();
+        result.AmbiguityReasons.Should().Contain(AmbiguityReason.MissingLocation);
+    }
+
+    [Fact]
+    public async Task NoAmbiguityReasons_ResultHasEmptyList()
+    {
+        var haiku = new FakeClassifierAgent(AgentResult<ClassifierOutput>.Ok(Helpers.Output()));
+        var orchestrator = Helpers.Build(haiku);
+
+        var result = await orchestrator.ProcessAsync(Helpers.MakeMessage());
+
+        result.IsSuccess.Should().BeTrue();
+        result.AmbiguityReasons.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FailResult_HasEmptyAmbiguityReasons()
+    {
+        var haiku = new FakeClassifierAgent(AgentResult<ClassifierOutput>.Fail(
+            new AgentError(AgentErrorKind.Semantic, "parse error")));
+        var orchestrator = Helpers.Build(haiku);
+
+        var result = await orchestrator.ProcessAsync(Helpers.MakeMessage());
+
+        result.IsSuccess.Should().BeFalse();
+        result.AmbiguityReasons.Should().BeEmpty();
+    }
 }
