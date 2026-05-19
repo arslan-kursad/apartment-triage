@@ -1,0 +1,59 @@
+## Day 7 — 20 May 2026 (Çarşamba)
+
+### Bugün yapılanlar
+- CLAUDE.md DateTime UTC convention eklendi (f99ab43). Day 5'ten taşınan görev kapatıldı.
+  "Always use DateTime with Kind=Utc. Set via DateTime.UtcNow. EF Core relies on default
+  Npgsql timestamptz mapping behavior. DateTimeOffset migration reconsidered Day 14+."
+- taxonomy.v4.yaml lock tamamlandı (6bfe1f1):
+  Swap-origin muafiyet kararı (Interpretation B) taxonomy'ye formal işlendi.
+  locked_decisions: 6 (v3'ten +1: swap_cause_no_severity_upgrade).
+  Teyit sorusu → Senaryo A: examples bölümü documentation only, runtime'da parse edilmiyor.
+  TriageOrchestrator hardcoded C# logic kullanıyor. Commit mesajına inline not eklendi.
+- Eval Runner implement edildi (8ca5acf + c165193):
+  EvalScoring: CategoryAccuracy / EmergencyRecall / EmergencyPrecision — 3 metrik ayrı.
+  ClassifierEvalTests: [Trait("Category","Eval")], SingletonHttpClientFactory shim,
+  ANTHROPIC_API_KEY env var, yoksa silent return.
+  15 fixture case (EmbeddedResource):
+    9 normal, 3 emergency, 2 false_positive, 1 edge (swap cause_of_primary).
+  expected.severity fixture'da var, scoring'de kullanılmıyor (Day 8+ Enricher).
+  CI filter: dotnet test --filter "Category!=Eval"
+- origin/main senkron: 24d7327 → c165193 (4 commit, fast-forward).
+- 25/25 unit test, 0 warning, 0 error.
+- Day 7 görev paketi Architect tarafından onaylandı.
+
+### Beklemediğim problem / sürpriz
+- Eval baseline (%80+) teyit edilemedi: ANTHROPIC_API_KEY lokal ortamda yok.
+  Eval runner manuel trigger gerekiyor. Phase 1 DoD bu kalemsiz kapanmıyor.
+- Telegram adapter Day 6'dan taşındı, Day 7'de de tamamlanamadı. Phase 1 DoD açığı.
+- Clarification flow Day 7 scope'undaydı, implement edilmedi. Day 8'e devredildi.
+- Day 8 scope sıkıştı: Telegram + eval + clarification + Enricher aynı güne.
+
+### Aldığım karar + sebep
+- **Karar:** Day 8'de Telegram önce, Enricher sonra.
+  - **Neden:** Phase 1 DoD Telegram olmadan kapanmaz. IMessageChannel abstraction hazır,
+    Telegram adapter hızlı (1-2 saat). Enricher complex (ONNX, pgvector), öğleden sonraya.
+  - **Alternatif:** Paralel. Reddedildi — context switching cost Phase 1 DoD'u geciktirir.
+- **Karar:** ANTHROPIC_API_KEY Day 8 sabahı kurulacak.
+  - **Neden:** Eval baseline Phase 1 DoD'un kritik kalemi.
+    Gerçek API çağrısı bugün başlamıyor.
+
+### Architect Notu (Day 7 kapanış)
+- SingletonHttpClientFactory shim tests/Eval/ içinde kalmalı.
+  Application veya Infrastructure'a taşınmamalı. Test infra üretim koduna sızmasın.
+
+### Pro Usage Note
+- Day 7 Sonnet 4.6 ağırlıklı (routing policy uyumlu).
+- Gerçek API çağrısı hâlâ $0. Day 8'de eval run ile Anthropic budget saati başlıyor.
+- Anthropic Console $30 alert: kurulumu teyit edilmedi.
+
+### Yarın (Day 8, 21 May Perşembe)
+- ANTHROPIC_API_KEY setup (sabah ilk iş)
+- Telegram adapter implement
+- Eval run: Category ≥80%, Recall ≥95%, Precision ≥70%
+- Clarification flow
+- ONNX dependency proposal → Architect → Enricher
+- Phase 1 DoD review (akşam)
+
+### Teknik Borç
+- SecondaryIssuesJson typed migration (Day 8, Architect flag gerektirir)
+- Hangfire dashboard auth (Day 13)
