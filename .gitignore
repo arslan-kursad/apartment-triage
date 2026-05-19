@@ -32,6 +32,9 @@ secrets.json
 # Hangfire local
 hangfire-storage/
 
+# ONNX model files — large binaries, download via scripts/download-models.sh
+models/
+
 # Claude Code local cache + worktrees (local dev only)
 .claude/cache/
 .claude/sessions/

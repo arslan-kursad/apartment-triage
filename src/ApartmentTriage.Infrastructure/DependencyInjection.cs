@@ -1,7 +1,9 @@
 using ApartmentTriage.Application.Channels;
+using ApartmentTriage.Application.Embeddings;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Infrastructure.Channels;
+using ApartmentTriage.Infrastructure.Embeddings;
 using ApartmentTriage.Infrastructure.Persistence;
 using ApartmentTriage.Infrastructure.Persistence.Repositories;
 using Hangfire;
@@ -59,6 +61,23 @@ public static class DependencyInjection
         });
 
         services.AddKeyedSingleton<IMessageChannel, TelegramAdapter>(ChannelType.Telegram);
+
+        return services;
+    }
+
+    public static IServiceCollection AddEmbeddings(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var modelPath = configuration["Embeddings:ModelPath"]
+            ?? throw new InvalidOperationException(
+                "Embeddings:ModelPath not found. " +
+                "Set via user-secrets or EMBEDDINGS__MODELPATH env var. " +
+                "Run scripts/download-models.sh to download the model.");
+
+        // Singleton: InferenceSession is thread-safe and expensive to initialize.
+        // DI container disposes OnnxEmbeddingService (IDisposable) on app shutdown.
+        services.AddSingleton<IEmbeddingService>(_ => new OnnxEmbeddingService(modelPath));
 
         return services;
     }

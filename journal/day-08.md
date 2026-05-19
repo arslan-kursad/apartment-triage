@@ -16,9 +16,10 @@
 **Overall: PASS**
 
 **Başarısız case:** `[common_area_normal_01]` → expected: CommonArea, got: Security  
-Tesiste ortak alan meselesi Security olarak sınıflandırılmış. Fixture veya prompt revizyonu Day 16 prompt v2 iterasyonuna park edildi.
+Fixture: "Bodrum kattaki ortak depo kapısının kilidi bozulmuş, kapı açık kalıyor." Kilit + açık kapı → model Security'ye çekmiş. Boundary: Security = erişim kontrolü / hırsızlık / vandalizm; CommonArea = ortak tesis bakımı / hasar. Day 16 prompt v2'de bu ayrım few-shot örnek ile netleştirilecek.
 
 **False positive emergency (precision 3/4):** 1 case gerçek emergency değilken emergency olarak işaretlendi. %75 hâlâ threshold üstünde (%70), Day 16'ya park edildi.
+- Muhtemel case: `fp_heat_weather_01` — "Bu hafta hava yangın gibi sıcak, klimayı açayım dedim çalışmıyor." + `emergency_suspected=true` + matched_phrases=["yanıyor"]. "Yangın gibi" deyimi + phrase match birlikte model'i emergency'ye çekmiş. Loom Q3: "context-confusing idiom + soft signal = false positive." Day 16 prompt v2'ye negative example olarak girilecek: `is_emergency: false` + explicit reasoning idiom != actual fire.
 
 ### Beklemediğim problem / sürpriz
 - Telegram.Bot v22 breaking change: tüm API metodları extension method'a taşındı, `Async` suffix kaldırıldı (`GetUpdatesAsync` → `GetUpdates`, `SendTextMessageAsync` → `SendMessage`). Build-time catch — runtime surprise yok.

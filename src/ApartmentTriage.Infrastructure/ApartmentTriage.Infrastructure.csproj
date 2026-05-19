@@ -22,6 +22,9 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
 
+    <!-- ONNX embedding (multilingual-e5-small, CPU-only) -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.26.0" />
+
     <!-- Telegram channel adapter (dev/fallback) -->
     <PackageReference Include="Telegram.Bot" Version="22.10.0.1" />
 
