@@ -1,8 +1,8 @@
 # ClassifierAgent manifest — loaded at startup via AgentManifestLoader
 agent_id: classifier
 model: claude-haiku-4-5-20251001
-prompt_version: "1.0.0"
-system_prompt_path: agents/classifier/system_prompt.txt
+prompt_version: "v1.0.0"
+system_prompt_path: agents/classifier/prompts/classifier.v1.md
 
 retry:
   max_attempts: 3
