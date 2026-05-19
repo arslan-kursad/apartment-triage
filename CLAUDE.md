@@ -9,7 +9,7 @@ Bu dosya özettir. Detaylı bağlam:
 - `docs/primer.md` — kişi, iletişim modu, kapanmış kararlar (sorgulanmaz)
 - `docs/roadmap.md` — takvim, faz planı, risk register
 - `journal/` — günlük decision journal (Loom Q4 hammaddesi)
-- `config/taxonomy.v3.yaml` — LOCKED, kategorize taksonomi
+- `config/taxonomy.v4.yaml` — LOCKED, kategorize taksonomi
 - `config/emergency_phrases.v2.json` — LOCKED, acil durum tetikleyicileri
 
 ## Stack (kapanmış, sorgulanmaz)
@@ -57,7 +57,7 @@ Dependency akışı: Web → Application + Infrastructure → Domain. Infrastruc
 - Postgres column naming: `snake_case` (EFCore.NamingConventions plugin).
 - Enum serialization: `JsonStringEnumConverter` + snake_case policy.
 - pgvector extension: raw SQL migration (`migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS vector;")`).
-- DateTime: Always use UTC. Store as `DateTime` with `Kind=Utc`. `DateTimeOffset` migration Day 14+ olarak reconsidered.
+- DateTime: Always use `DateTime` with `Kind=Utc`. Set via `DateTime.UtcNow`. EF Core relies on default Npgsql timestamptz mapping behavior. `DateTimeOffset` migration reconsidered Day 14+.
 - Test before commit: `dotnet build && dotnet test` clean olmalı.
 
 ## Kapanmış kararlar (don't re-open)
