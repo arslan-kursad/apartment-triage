@@ -102,10 +102,10 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
         await _ticketRepository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
-            "TriageOrchestrator: created {Count} ticket(s) for message {MessageId} (escalated={Escalated})",
-            tickets.Count, message.Id, escalated);
+            "TriageOrchestrator: created {Count} ticket(s) for message {MessageId} (escalated={Escalated}, ambiguity={AmbiguityCount})",
+            tickets.Count, message.Id, escalated, output.AmbiguityReasons.Count);
 
-        return TriageResult.Ok(tickets, escalated);
+        return TriageResult.Ok(tickets, escalated, output.AmbiguityReasons);
     }
 
     // Implements taxonomy.v3.yaml § multi_issue.orchestrator_rule
