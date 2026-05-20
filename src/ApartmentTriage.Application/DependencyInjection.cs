@@ -1,6 +1,7 @@
 using ApartmentTriage.Application.Agents;
 using ApartmentTriage.Application.Agents.Anthropic;
 using ApartmentTriage.Application.Agents.Classifier;
+using ApartmentTriage.Application.Agents.Router;
 using ApartmentTriage.Application.Orchestration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,6 +32,13 @@ public static class DependencyInjection
                 sp.GetRequiredService<IAnthropicClient>(),
                 AnthropicModels.Sonnet46,
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ClassifierAgent>>()));
+
+        services.AddKeyedScoped<IAgent<RouterInput, RouterOutput>, RouterAgent>(
+            AgentKeys.RouterHaiku,
+            (sp, _) => new RouterAgent(
+                sp.GetRequiredService<IAnthropicClient>(),
+                AnthropicModels.Haiku45,
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<RouterAgent>>()));
 
         return services;
     }
