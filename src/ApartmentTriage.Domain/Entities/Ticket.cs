@@ -34,6 +34,9 @@ public sealed class Ticket
     /// </summary>
     public string? SecondaryIssuesJson { get; private set; }
 
+    /// <summary>384-dim multilingual-e5-small embedding. Null until EnricherAgent processes the ticket.</summary>
+    public float[]? EmbeddingVector { get; private set; }
+
     // Emergency layer
     public bool IsEmergency { get; private set; }
     public bool EmergencyConfirmedByLlm { get; private set; }
@@ -98,6 +101,12 @@ public sealed class Ticket
     public void SetNotes(string notes)
     {
         Notes = notes;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetEmbeddingVector(float[] vector)
+    {
+        EmbeddingVector = vector;
         UpdatedAt = DateTime.UtcNow;
     }
 
