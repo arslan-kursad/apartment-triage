@@ -2,6 +2,7 @@ using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Pgvector;
 
 namespace ApartmentTriage.Infrastructure.Persistence.Configurations;
 
@@ -54,6 +55,13 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .WithMany()
             .HasForeignKey(t => t.SourceMessageId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // float[] ↔ Vector conversion; vector(384) pgvector column type
+        b.Property(t => t.EmbeddingVector)
+            .HasColumnType("vector(384)")
+            .HasConversion(
+                v => new Vector(v!),
+                v => v.ToArray());
 
         b.HasIndex(t => t.ResidentId);
         b.HasIndex(t => t.Status);
