@@ -8,6 +8,29 @@
 
 ---
 
+> ## ⚠️ Önemli Not — İletişim Formatı (Tüm Conversation ve Agent'lar İçin)
+>
+> Bu projede açılan **tüm conversation'lar** (Build, QA Hunter, Security & Compliance,
+> Prompt Engineer, Architect vb.) ve **tüm agent'lar** Architect'e iletecekleri her türlü
+> çıktıyı — proposal, FLAG, durum özeti, soru, onay talebi — aşağıdaki **Build Notu**
+> formatında, kopyalanabilir blok içinde sunmalıdır. Tek satır bile olsa format uygulanır.
+>
+> ```
+> ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+> Build Notu — [Agent/Conversation Adı]
+> Kime   : Architect
+> Tarih  : YYYY-MM-DD (Day NN)
+> ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+>
+> [Not / soru / flag / proposal içeriği]
+> ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+> ```
+>
+> **Neden:** Tüm koordinasyon Architect üzerinden yürür. PM'e direkt gidilmez.
+> Kopyalanabilir format, Architect'in içeriği başka thread'e taşımasını kolaylaştırır.
+
+---
+
 ## 1. Stratejik Kararlar (Kilitli)
 
 | Karar | Sonuç |
