@@ -54,6 +54,25 @@
 - ONNX dependency proposal → Architect → Enricher
 - Phase 1 DoD review (akşam)
 
+### Keşke önceden bilseymişim — Loom Q4 hammaddesi
+
+**Konu:** Domain boundary + infrastructure type onayı.
+
+Proposal'da `Vector? EmbeddingVector` onaylandı ama Domain.csproj'un
+sıfır NuGet constraint'i gözden kaçırıldı. Build sırasında fark edildi:
+Domain'e Pgvector eklemek yeni paket bağımlılığı = Cannot Decide kapsamı.
+
+Çözüm: `float[]` Domain'de, `float[]↔Vector` value converter Infrastructure'da.
+Similarity search raw SQL — EF LINQ operator'ları float[] property'de çalışmıyor.
+
+**Öğrenilen:** Infrastructure type'ı propose ederken domain boundary'yi
+explicit kontrol et. `Vector`, `NpgsqlTsVector`, `JsonDocument` gibi
+"framework primitive" gibi görünen tipler aslında infrastructure concern.
+
+**Loom Q4 çerçevesi (pozitif):** "Build constraint'i yakaladı, Architect
+birlikte review etti, Clean Architecture'ın neden var olduğunu canlı görmüş
+olduk. Reflex → proposal → retroactive onay protokolü işe yaradı."
+
 ### Teknik Borç
 - SecondaryIssuesJson typed migration (Day 8, Architect flag gerektirir)
 - Hangfire dashboard auth (Day 13)
