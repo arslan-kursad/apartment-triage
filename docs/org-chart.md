@@ -24,8 +24,8 @@
 - [x] **✅ Agent — Comm Coach** *(kuruldu: Day 0)*
 - [ ] **🟢 Agent — Prompt Engineer** *(Day 1, 15 May)* ← bir sonraki
 - [ ] **⏳ Agent — Architect** *(Day 2, 16 May)*
-- [ ] **⏳ Agent — QA Hunter** *(Day 8, 22 May)*
-- [ ] **⏳ Agent — Security & Compliance** *(Day 9, 23 May)*
+- [x] **✅ Agent — QA Hunter** *(kuruldu: Day 7, 21 May)*
+- [x] **✅ Agent — Security & Compliance** *(kuruldu: Day 7, 21 May)*
 - [ ] **⏳ Agent — Decision Journalist** *(Day 15, 29 May)*
 - [ ] **⏳ Agent — Loom Producer** *(Day 18, 1 Jun)*
 
@@ -73,3 +73,4 @@ Operasyonel/administrative thread'ler — paperwork, account setup, infrastructu
 
 - **v1 — 14 May (Day 0):** İlk versiyon, 4 katman.
 - **v2 — 14 May (Day 0):** Ops Layer eklendi (Meta Business Verification için). Comm Coach kurulum işaretlendi.
+- **v3 — 21 May (Day 7):** QA Hunter + Security & Compliance kuruldu.
