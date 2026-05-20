@@ -305,8 +305,12 @@ await _context.Database.ExecuteSqlRawAsync(
     "UPDATE tickets SET embedding_vector = NULL WHERE resident_id = @p0",
     residentId);
 ```
-VACUUM notu: Neon managed Postgres'te `VACUUM tickets` komutu için izin kontrol edilmeli.
-İzin yoksa NULL update yeterli — PostgreSQL autovacuum halleder.
+VACUUM kontrol (Day 12'de implemente ederken):
+```
+dotnet run → ExecuteSqlRaw("VACUUM tickets")
+```
+- İzin hatası alınırsa → S&C'a bildir, NULL update yeterli.
+- autovacuum aktifse (Neon default) → kabul, ek adım gerekmez.
 KVKK md. 7 "imha" gereksinimi NULL update ile karşılanır; autovacuum konfigürasyonu Neon tarafında.
 
 ### AKSİYON 3 — Log Retention (file/cloud sink eklenirse)
