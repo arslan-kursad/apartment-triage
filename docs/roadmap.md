@@ -251,12 +251,20 @@ Her gün 15 dakika, bir markdown dosyasına:
 
 ---
 
-## Pending Updates (Day 7 retro'da formal işlenecek)
+## Pending Updates (Day 6 revize)
 
-Bu bölüm sıcak değişiklikleri yansıtır. Day 7 Phase 1 retrospective sırasında roadmap'in ana gövdesine işlenir.
+Bu bölüm sıcak değişiklikleri yansıtır. Bir sonraki formal roadmap güncellemesinde ana gövdeye işlenir.
 
 - **§1 Stratejik Kararlar — Hosting:** "Hosting: Fly.io free tier" → "Hosting: Fly.io free tier (app), Neon Postgres (DB, Frankfurt, pgvector pre-installed)". Karar tarihi: Day 3 (17 May). Gerekçe: journal/day-03.md. Trade-off: KVKK md. 9 yurt dışı veri transferi (Day 9 Security & Compliance review'a parking lot, mitigation: açık rıza Day 13 disclosure).
 
 - **§4 Risk Register — Yeni satır:** "Eski donanım + yeni SDK uyumsuzluğu" (örn. macOS 12 Tier 3, Docker Desktop). Olasılık: Düşük, Etki: Orta. Mitigation: cloud-first fallback strategy (Neon proof of concept).
 
-- **§5 Day-by-Day Roadmap — 1 günlük kayma:** Phase 1 DoD Day 7 → Day 8. Day 4 = Agent abstraction (orijinal Day 3 işi), Day 5 = ClassifierAgent (orijinal Day 4), Day 6 = Orchestrator + Telegram başlangıç, Day 7 = Telegram tamam + Eval suite başlangıç, Day 8 = Phase 1 closing + Phase 2 (Enricher) başlangıç (overlap).
+- **§5 Day-by-Day Roadmap — Phase 1 gerçek bitiş tarihi:** Phase 1 DoD Day 6 (20 May) kapandı — 1 gün erken.
+
+- **§5 Phase 2 revize:** Phase 2 Day 7–14 (8 gün, 1 gün kazanıldı).
+
+- **§3 Communication Checklist — tarih güncellemeleri:**
+  - Babanın bilgilendirilmesi: Day 10 (24 May) — öne çekildi
+  - KVKK disclosure mesajı: Day 11 (25 May) — öne çekildi
+  - Live Deploy hedefi: Day 13 (27 May)
+  - Day 14: Buffer gün (monitoring + WhatsApp fine-tuning)
