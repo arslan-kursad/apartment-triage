@@ -58,6 +58,7 @@ Dependency akışı: Web → Application + Infrastructure → Domain. Infrastruc
 - Enum serialization: `JsonStringEnumConverter` + snake_case policy.
 - pgvector extension: raw SQL migration (`migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS vector;")`).
 - DateTime: Always use `DateTime` with `Kind=Utc`. Set via `DateTime.UtcNow`. EF Core relies on default Npgsql timestamptz mapping behavior. `DateTimeOffset` migration reconsidered Day 14+.
+- Journal naming: `journal/YYYY-MM-DD_dayNN.md` (e.g., `journal/2026-05-21_day07.md`).
 - Test before commit: `dotnet build && dotnet test` clean olmalı.
 
 ## Kapanmış kararlar (don't re-open)
