@@ -291,3 +291,33 @@ Bu bölüm sıcak değişiklikleri yansıtır. Bir sonraki formal roadmap günce
   - KVKK disclosure mesajı: Day 11 (25 May) — öne çekildi
   - Live Deploy hedefi: Day 13 (27 May)
   - Day 14: Buffer gün (monitoring + WhatsApp fine-tuning)
+
+---
+
+## Day 12 Açık Maddeler (S&C Direktifi — 21 May)
+
+Aşağıdaki maddeler Day 12 (26 May) Production Hardening scope'unda implement edilecek.
+
+### AKSİYON 2 — EmbeddingVector Anonymization
+AnonymizationService'te EmbeddingVector için EF null update değil, explicit SQL:
+```csharp
+await _context.Database.ExecuteSqlRawAsync(
+    "UPDATE tickets SET embedding_vector = NULL WHERE resident_id = @p0",
+    residentId);
+```
+VACUUM notu: Neon managed Postgres'te `VACUUM tickets` komutu için izin kontrol edilmeli.
+İzin yoksa NULL update yeterli — PostgreSQL autovacuum halleder.
+KVKK md. 7 "imha" gereksinimi NULL update ile karşılanır; autovacuum konfigürasyonu Neon tarafında.
+
+### AKSİYON 3 — Log Retention (file/cloud sink eklenirse)
+Serilog rolling file sink ayarları:
+- `retainedFileCountLimit`: 30 gün
+- `fileSizeLimitBytes`: 50 MB (öneri)
+- Log'larda kalan PII için retention period boyunca erişim kontrolü zorunlu.
+Şu an Console-only sink — Day 12'de file/cloud sink eklenirse bu ayarlar uygulanır.
+
+### AKSİYON 4 — WhatsApp Webhook Path Constraint (Day 10 referans)
+Day 10 WhatsApp adapter başlangıcında:
+- Endpoint: `POST /api/webhook/whatsapp` — sabit, path parametresi YOK
+- Sender phone/ID query string'e girmez
+- Tüm sender data sadece request body'den okunur
