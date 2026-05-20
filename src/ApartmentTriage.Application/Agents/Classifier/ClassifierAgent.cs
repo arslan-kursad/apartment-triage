@@ -79,7 +79,8 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
         }
         catch (Exception ex)
         {
-            Logger.LogWarning("Classifier: could not extract JSON from response. Raw: {Raw}", raw);
+            var safeRaw = raw.Length > 200 ? raw[..200] + "…" : raw;
+            Logger.LogWarning("Classifier: could not extract JSON from response. Raw: {Raw}", safeRaw);
             return AgentResult<ClassifierOutput>.Fail(new AgentError(
                 AgentErrorKind.Semantic, "No JSON object found in LLM response", ex));
         }

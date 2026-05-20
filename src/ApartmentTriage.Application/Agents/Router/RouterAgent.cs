@@ -145,9 +145,10 @@ public sealed class RouterAgent : AgentBase<RouterInput, RouterOutput>
         }
         catch (Exception)
         {
+            var safeRaw = raw.Length > 200 ? raw[..200] + "…" : raw;
             Logger.LogWarning(
                 "RouterAgent [{TicketId}] LLM response JSON extract failed — defaulting to AssignTechnician. Raw: {Raw}",
-                ticketId, raw);
+                ticketId, safeRaw);
             return AgentResult<RouterOutput>.Ok(new RouterOutput(
                 RoutingAction.AssignTechnician, null, null, ConfidenceLevel.Low));
         }
