@@ -143,7 +143,7 @@ public sealed class RouterAgent : AgentBase<RouterInput, RouterOutput>
                 throw new InvalidOperationException("No JSON object found");
             json = raw[start..(end + 1)];
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             Logger.LogWarning(
                 "RouterAgent [{TicketId}] LLM response JSON extract failed — defaulting to AssignTechnician. Raw: {Raw}",
