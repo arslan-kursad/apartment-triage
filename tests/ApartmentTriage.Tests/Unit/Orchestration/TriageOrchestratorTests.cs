@@ -1,5 +1,6 @@
 using ApartmentTriage.Application.Agents;
 using ApartmentTriage.Application.Agents.Classifier;
+using ApartmentTriage.Application.Agents.Enricher;
 using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
@@ -44,6 +45,11 @@ internal sealed class FakeTicketRepository : ITicketRepository
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default)
         => Task.CompletedTask;
+
+    public Task<IReadOnlyList<SimilarTicket>> FindSimilarAsync(
+        float[] vector, Guid excludeTicketId, int topK = 5,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<SimilarTicket>>([]);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
