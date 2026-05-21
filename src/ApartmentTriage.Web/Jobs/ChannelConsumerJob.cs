@@ -1,61 +1,105 @@
-// SKELETON — not wired to Hangfire yet.
-// Demonstrates the clarification flow integration (Option C, Day 8).
-// Full registration pending Day 9: resident resolution + message persistence.
-
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Application.Orchestration;
+using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ApartmentTriage.Web.Jobs;
 
 /// <summary>
-/// Reads messages from a channel, runs triage, and sends clarification replies when needed.
-/// Clarification is sent by the caller (Option C) — orchestrator stays channel-agnostic.
+/// Polls the Telegram channel once per minute, runs triage for each new message,
+/// and sends clarification replies when the orchestrator signals ambiguity (Option C).
 /// </summary>
 public sealed class ChannelConsumerJob(
-    IMessageChannel channel,
+    [FromKeyedServices(ChannelType.Telegram)] IMessageChannel channel,
+    IResidentRepository residentRepository,
+    IMessageRepository messageRepository,
     ITriageOrchestrator orchestrator,
     ILogger<ChannelConsumerJob> logger)
 {
-    public async Task RunAsync(CancellationToken ct = default)
+    // 55s budget per job execution: allows one 30s Telegram long-poll to complete,
+    // processes results, then starts a second poll before the next 60s trigger fires.
+    private static readonly TimeSpan JobBudget = TimeSpan.FromSeconds(55);
+
+    public async Task RunAsync(CancellationToken hangfireCt = default)
     {
-        await foreach (var incoming in channel.ReadMessagesAsync(ct))
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(hangfireCt);
+        cts.CancelAfter(JobBudget);
+
+        try
         {
-            // TODO Day 9: resolve Resident, persist as Message entity, handle idempotency
-            var message = BuildPlaceholderMessage(incoming, channel.ChannelType);
-
-            var result = await orchestrator.ProcessAsync(message, ct);
-
-            if (!result.IsSuccess)
-            {
-                logger.LogWarning(
-                    "Triage failed for {ExternalId}: {Error}",
-                    incoming.ExternalId, result.Error!.Message);
-                continue;
-            }
-
-            // Option C: caller sends clarification — orchestrator does not know the channel.
-            // incoming.SenderId = channel-native recipient ID (Telegram chat_id, WhatsApp E.164).
-            var clarification = ClarificationTemplates.BuildMessage(result.AmbiguityReasons);
-            if (clarification is not null)
-            {
-                logger.LogInformation(
-                    "Sending clarification to {SenderId} ({Reasons})",
-                    incoming.SenderId,
-                    string.Join(", ", result.AmbiguityReasons));
-
-                await channel.SendAsync(incoming.SenderId, clarification, ct);
-            }
+            await foreach (var incoming in channel.ReadMessagesAsync(cts.Token))
+                await ProcessIncomingAsync(incoming, cts.Token);
+        }
+        catch (OperationCanceledException) when (!hangfireCt.IsCancellationRequested)
+        {
+            // Normal: 55s budget exhausted. Next execution starts in ~5s.
         }
     }
 
-    // Temporary bridge until full ingestion pipeline (resident registry + Message persistence) lands.
-    private static Message BuildPlaceholderMessage(IncomingMessage incoming, ChannelType channelType) =>
-        Message.Create(
-            residentId: Guid.Empty,
-            channelType: channelType,
+    private async Task ProcessIncomingAsync(IncomingMessage incoming, CancellationToken ct)
+    {
+        if (await messageRepository.ExistsAsync(incoming.ExternalId, channel.ChannelType, ct))
+        {
+            logger.LogDebug("Skipping duplicate message {ExternalId}", incoming.ExternalId);
+            return;
+        }
+
+        if (!long.TryParse(incoming.SenderId, out var telegramId))
+        {
+            logger.LogWarning("Non-numeric Telegram SenderId {SenderId} — skipping", incoming.SenderId);
+            return;
+        }
+
+        var resident = await residentRepository.FindByTelegramIdAsync(telegramId, ct)
+            ?? await CreateResidentAsync(telegramId, ct);
+
+        var message = Message.Create(
+            residentId: resident.Id,
+            channelType: channel.ChannelType,
             externalMessageId: incoming.ExternalId,
             rawText: incoming.Text,
             receivedAt: incoming.ReceivedAt.UtcDateTime);
+
+        await messageRepository.AddAsync(message, ct);
+        await messageRepository.SaveChangesAsync(ct);
+
+        var result = await orchestrator.ProcessAsync(message, ct);
+
+        if (!result.IsSuccess)
+        {
+            logger.LogWarning(
+                "Triage failed for {ExternalId}: {Error}",
+                incoming.ExternalId, result.Error!.Message);
+            return;
+        }
+
+        message.MarkProcessed();
+        await messageRepository.SaveChangesAsync(ct);
+
+        // Option C: orchestrator is channel-agnostic; caller sends clarification.
+        var clarification = ClarificationTemplates.BuildMessage(result.AmbiguityReasons);
+        if (clarification is not null)
+        {
+            logger.LogInformation(
+                "Sending clarification to {SenderId} — reasons: {Reasons}",
+                incoming.SenderId, string.Join(", ", result.AmbiguityReasons));
+
+            await channel.SendAsync(incoming.SenderId, clarification, ct);
+        }
+    }
+
+    private async Task<Resident> CreateResidentAsync(long telegramId, CancellationToken ct)
+    {
+        var resident = Resident.Create(telegramId: telegramId);
+        await residentRepository.AddAsync(resident, ct);
+        await residentRepository.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Auto-created resident {ResidentId} for Telegram {TelegramId}",
+            resident.Id, telegramId);
+
+        return resident;
+    }
 }

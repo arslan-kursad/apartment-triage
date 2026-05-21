@@ -1,5 +1,7 @@
+using ApartmentTriage.Application;
 using ApartmentTriage.Infrastructure;
 using ApartmentTriage.Web.Endpoints;
+using ApartmentTriage.Web.Jobs;
 using Hangfire;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -27,6 +29,20 @@ try
 
     builder.Services.AddInfrastructure(connectionString);
 
+    // Anthropic API client
+    var anthropicApiKey = builder.Configuration["Anthropic:ApiKey"]
+        ?? throw new InvalidOperationException(
+            "Anthropic:ApiKey not configured. " +
+            "Run: dotnet user-secrets set \"Anthropic:ApiKey\" \"<key>\"");
+
+    builder.Services.AddAnthropicClient(anthropicApiKey);
+
+    // Application layer — triage pipeline, orchestrator, agents
+    builder.Services.AddApplication();
+
+    // Telegram channel (Singleton keyed adapter + ITelegramBotClient)
+    builder.Services.AddTelegramChannel(builder.Configuration);
+
     // Razor Pages (dashboard UI)
     builder.Services.AddRazorPages();
 
@@ -43,6 +59,14 @@ try
 
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
+    // Recurring jobs — composition root owns job scheduling, not Infrastructure.
+    // Telegram consumer: 1-minute CRON (Hangfire minimum).
+    // 55s internal budget per execution (see ChannelConsumerJob.JobBudget).
+    RecurringJob.AddOrUpdate<ChannelConsumerJob>(
+        recurringJobId: "telegram-consumer",
+        methodCall: job => job.RunAsync(CancellationToken.None),
+        cronExpression: Cron.Minutely());
 
     app.Run();
 }
