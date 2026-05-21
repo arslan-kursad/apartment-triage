@@ -11,7 +11,6 @@ internal sealed class ResidentConfiguration : IEntityTypeConfiguration<Resident>
         b.HasKey(r => r.Id);
 
         b.Property(r => r.ApartmentNumber)
-            .IsRequired()
             .HasMaxLength(20);
 
         b.Property(r => r.DisplayName)

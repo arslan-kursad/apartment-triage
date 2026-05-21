@@ -8,8 +8,8 @@ public sealed class Resident
 {
     public Guid Id { get; private set; }
 
-    /// <summary>Daire numarası, free-text: "5", "12A", "Bodrum 1".</summary>
-    public string ApartmentNumber { get; private set; } = string.Empty;
+    /// <summary>Daire numarası, free-text: "5", "12A", "Bodrum 1". Null on first auto-created contact; updated when resident identifies themselves.</summary>
+    public string? ApartmentNumber { get; private set; }
 
     /// <summary>Display name from channel profile — may be null until first contact.</summary>
     public string? DisplayName { get; private set; }
@@ -29,17 +29,15 @@ public sealed class Resident
     private Resident() { } // EF Core
 
     public static Resident Create(
-        string apartmentNumber,
+        string? apartmentNumber = null,
         string? displayName = null,
         string? whatsAppNumber = null,
         long? telegramId = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(apartmentNumber);
-
         return new Resident
         {
             Id = Guid.NewGuid(),
-            ApartmentNumber = apartmentNumber.Trim(),
+            ApartmentNumber = apartmentNumber?.Trim(),
             DisplayName = displayName?.Trim(),
             WhatsAppNumber = whatsAppNumber?.Trim(),
             TelegramId = telegramId,
