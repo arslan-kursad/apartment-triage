@@ -30,6 +30,8 @@ public static class DependencyInjection
                 .UseSnakeCaseNamingConvention());
 
         services.AddScoped<ITicketRepository, TicketRepository>();
+        services.AddScoped<IResidentRepository, ResidentRepository>();
+        services.AddScoped<IMessageRepository, MessageRepository>();
 
         // Hangfire — PostgreSQL storage (no Redis)
         services.AddHangfire(cfg => cfg
@@ -40,6 +42,18 @@ public static class DependencyInjection
 
         services.AddHangfireServer();
 
+        return services;
+    }
+
+    public static IServiceCollection AddWhatsAppChannel(this IServiceCollection services)
+    {
+        // Single instance registered under two keys:
+        //   IMessageChannel (ChannelType.WhatsApp) — consumed by ChannelConsumerJob
+        //   WhatsAppAdapter (ChannelType.WhatsApp)  — consumed by webhook endpoint (TryEnqueue)
+        services.AddKeyedSingleton<WhatsAppAdapter>(ChannelType.WhatsApp);
+        services.AddKeyedSingleton<IMessageChannel>(
+            ChannelType.WhatsApp,
+            (sp, key) => sp.GetRequiredKeyedService<WhatsAppAdapter>((ChannelType)key!));
         return services;
     }
 

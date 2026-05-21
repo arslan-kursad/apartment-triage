@@ -1,4 +1,5 @@
 using ApartmentTriage.Infrastructure;
+using ApartmentTriage.Web.Endpoints;
 using Hangfire;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -38,6 +39,7 @@ try
 
     app.UseHangfireDashboard("/hangfire");
     app.MapRazorPages();
+    app.MapWhatsAppWebhook();
 
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
