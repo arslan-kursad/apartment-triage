@@ -7,5 +7,8 @@ public enum AmbiguityReason
     CategoryAmbiguous,
     LanguageUnclear,
     NeedsVisual,
-    NonActionable
+    NonActionable,
+    InsufficientDetail,
+    UnclearUrgency,
+    MultipleCategories
 }
