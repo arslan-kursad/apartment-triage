@@ -84,18 +84,18 @@ public class RouterAgent_Layer1_EmergencyTests
     }
 
     [Fact]
-    public async Task IsEmergency_LowConfidence_FallsThroughToRules()
+    public async Task IsEmergency_LowConfidence_EscalatesToManager_NoLlm()
     {
-        // Low confidence emergency → Layer 1 does NOT fire, falls through to rules.
-        // Severity=Medium, no ambiguity, no similar → Layer 3 (LLM).
-        var llm = new QueuedClient("""{"action":"assign_technician"}""");
+        // Low confidence emergency → Layer 1 does NOT fire (only High/Medium does).
+        // Layer 2 Rule 1 fires: minimum safety guarantee → EscalateToManager.
+        // LLM must NOT be called (NeverCalledClient enforces this).
         var input = RouterHelpers.Build(isEmergency: true, emergencyConf: ConfidenceLevel.Low);
-        var agent = new RouterAgent(llm, AnthropicModels.Haiku45, NullLogger<RouterAgent>.Instance);
-
-        var result = await agent.ExecuteAsync(input, RouterHelpers.Ctx());
+        var result = await RouterHelpers.Agent().ExecuteAsync(input, RouterHelpers.Ctx());
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Action.Should().NotBe(RoutingAction.TriggerEmergency);
+        result.Value!.Action.Should().Be(RoutingAction.EscalateToManager);
+        result.Value.ConfidenceLevel.Should().Be(ConfidenceLevel.Medium);
+        result.Value.NotificationNote.Should().NotBeNullOrEmpty();
     }
 }
 
@@ -167,11 +167,25 @@ public class RouterAgent_Layer2_RuleTests
     }
 
     [Fact]
-    public async Task Rule_Priority_Urgent_BeforeNonActionable()
+    public async Task Rule_Priority_NonActionable_BeforeUrgent()
     {
-        // Urgent fires before NonActionable check.
+        // Rule ordering: NonActionable (Rule 2) fires before Urgent (Rule 3).
+        // When both conditions are present, Archive wins over EscalateToManager.
         var input = RouterHelpers.Build(
             severity: TicketSeverity.Urgent,
+            ambiguity: [AmbiguityReason.NonActionable]);
+        var result = await RouterHelpers.Agent().ExecuteAsync(input, RouterHelpers.Ctx());
+
+        result.Value!.Action.Should().Be(RoutingAction.Archive);
+    }
+
+    [Fact]
+    public async Task Rule_Priority_LowConfidenceEmergency_BeforeNonActionable()
+    {
+        // Rule 1 (emergency minimum guarantee) fires before Rule 2 (NonActionable).
+        var input = RouterHelpers.Build(
+            isEmergency: true,
+            emergencyConf: ConfidenceLevel.Low,
             ambiguity: [AmbiguityReason.NonActionable]);
         var result = await RouterHelpers.Agent().ExecuteAsync(input, RouterHelpers.Ctx());
 

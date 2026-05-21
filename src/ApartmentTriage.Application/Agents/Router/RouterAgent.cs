@@ -68,19 +68,43 @@ public sealed class RouterAgent : AgentBase<RouterInput, RouterOutput>
     }
 
     // Returns non-null when a rule fires; null means fall through to LLM.
-    private static RouterOutput? ApplyRules(RouterInput input)
+    private RouterOutput? ApplyRules(RouterInput input)
     {
-        // Rule 1: Urgent severity → escalate
-        if (input.Severity == TicketSeverity.Urgent)
+        // RULE ORDER (fixed — do not reorder without ADR):
+        // 1. IsEmergency=true + Low confidence → EscalateToManager  (minimum safety guarantee)
+        // 2. AmbiguityReasons=[NonActionable]  → Archive
+        // 3. Severity=Urgent                  → EscalateToManager
+        // 4. AmbiguityReasons non-empty        → NotifyResident
+        // 5. SimilarTickets.Any(>0.90)         → AssignTechnician
+
+        // Rule 1: Emergency low-confidence minimum guarantee — escalate rather than ignore.
+        // High/Medium confidence takes the Layer 1 fast-path (TriggerEmergency) earlier.
+        // Low confidence here means "possibly emergency" — err on the side of caution.
+        if (input.IsEmergency && input.EmergencyConfidence == ConfidenceLevel.Low)
+        {
+            Logger.LogInformation(
+                "RouterAgent [{TicketId}] Layer 2 → EscalateToManager " +
+                "(IsEmergency=true, EmergencyConfidence=Low — minimum guarantee)",
+                input.TicketId);
+
             return new RouterOutput(
-                RoutingAction.EscalateToManager, null, null, ConfidenceLevel.High);
+                Action: RoutingAction.EscalateToManager,
+                AssignedTo: null,
+                NotificationNote: "Emergency şüphesi — düşük güven, manuel değerlendirme gerekiyor.",
+                ConfidenceLevel: ConfidenceLevel.Medium);
+        }
 
         // Rule 2: NonActionable → archive
         if (input.AmbiguityReasons.Contains(AmbiguityReason.NonActionable))
             return new RouterOutput(
                 RoutingAction.Archive, null, null, ConfidenceLevel.High);
 
-        // Rule 3: Any ambiguity → notify resident for clarification
+        // Rule 3: Urgent severity → escalate
+        if (input.Severity == TicketSeverity.Urgent)
+            return new RouterOutput(
+                RoutingAction.EscalateToManager, null, null, ConfidenceLevel.High);
+
+        // Rule 4: Any ambiguity → notify resident for clarification
         if (input.AmbiguityReasons.Count > 0)
         {
             var note = BuildClarificationNote(input.AmbiguityReasons);
@@ -88,7 +112,7 @@ public sealed class RouterAgent : AgentBase<RouterInput, RouterOutput>
                 RoutingAction.NotifyResident, null, note, ConfidenceLevel.High);
         }
 
-        // Rule 4: High-confidence similar ticket → route clear
+        // Rule 5: High-confidence similar ticket → route clear
         if (input.SimilarTickets.Any(t => t.CosineSimilarity > 0.90f))
             return new RouterOutput(
                 RoutingAction.AssignTechnician, null, null, ConfidenceLevel.High);
