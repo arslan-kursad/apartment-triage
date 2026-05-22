@@ -1,0 +1,123 @@
+@page
+@model ApartmentTriage.Web.Pages.Tickets.IndexModel
+@{
+    ViewData["Title"] = "Ticket'lar";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Ticket Listesi</h1>
+    <span class="text-muted">Toplam: @Model.TotalCount</span>
+</div>
+
+@* ── Filter form ──────────────────────────────────────────────────────────── *@
+<form method="get" class="row g-2 mb-4">
+    <div class="col-auto">
+        <select name="FilterStatus" class="form-select form-select-sm">
+            <option value="">Tüm Statüler</option>
+            @foreach (var s in Model.AllStatuses)
+            {
+                <option value="@s" selected="@(Model.FilterStatus == s)">@s</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="FilterCategory" class="form-select form-select-sm">
+            <option value="">Tüm Kategoriler</option>
+            @foreach (var c in Model.AllCategories)
+            {
+                <option value="@c" selected="@(Model.FilterCategory == c)">@c</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="FilterIsEmergency" class="form-select form-select-sm">
+            <option value="">Acil Durum: Tümü</option>
+            <option value="true"  selected="@(Model.FilterIsEmergency == true)">Acil</option>
+            <option value="false" selected="@(Model.FilterIsEmergency == false)">Normal</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Filtrele</button>
+        <a href="/tickets" class="btn btn-sm btn-outline-secondary">Temizle</a>
+    </div>
+</form>
+
+@* ── Ticket table ─────────────────────────────────────────────────────────── *@
+@if (!Model.Tickets.Any())
+{
+    <div class="alert alert-info">Filtreyle eşleşen ticket bulunamadı.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Oluşturulma</th>
+                    <th>Kategori</th>
+                    <th>Şiddet</th>
+                    <th>Statü</th>
+                    <th>Acil</th>
+                    <th>Resident ID</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Model.Tickets)
+                {
+                    <tr>
+                        <td class="text-nowrap">@t.CreatedAt.ToString("dd MMM HH:mm")</td>
+                        <td>@t.Category</td>
+                        <td>
+                            @{
+                                var sevClass = t.Severity switch
+                                {
+                                    ApartmentTriage.Domain.Enums.TicketSeverity.Urgent => "badge bg-danger",
+                                    ApartmentTriage.Domain.Enums.TicketSeverity.High   => "badge bg-warning text-dark",
+                                    ApartmentTriage.Domain.Enums.TicketSeverity.Medium => "badge bg-info text-dark",
+                                    _                                                   => "badge bg-secondary"
+                                };
+                            }
+                            <span class="@sevClass">@t.Severity</span>
+                        </td>
+                        <td>@t.Status</td>
+                        <td>
+                            @if (t.IsEmergency)
+                            {
+                                <span class="badge bg-danger">ACİL</span>
+                            }
+                        </td>
+                        <td class="text-muted small font-monospace">@t.ResidentId.ToString()[..8]…</td>
+                        <td>
+                            <a href="/tickets/@t.Id" class="btn btn-sm btn-outline-primary">Detay</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* ── Pagination ──────────────────────────────────────────────────────── *@
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination pagination-sm">
+                <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link"
+                       href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&CurrentPage=@(Model.CurrentPage - 1)">
+                        &laquo; Önceki
+                    </a>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">@Model.CurrentPage / @Model.TotalPages</span>
+                </li>
+                <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link"
+                       href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&CurrentPage=@(Model.CurrentPage + 1)">
+                        Sonraki &raquo;
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    }
+}
