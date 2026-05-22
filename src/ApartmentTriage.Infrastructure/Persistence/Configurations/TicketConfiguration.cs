@@ -32,6 +32,15 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .IsRequired()
             .HasConversion<string>();
 
+        // RoutingAction: nullable string column — null until RouterAgent runs
+        b.Property(t => t.RoutingAction)
+            .HasConversion<string>()
+            .IsRequired(false);
+
+        b.Property(t => t.AmbiguityReasonsJson)
+            .HasMaxLength(1000)
+            .IsRequired(false);
+
         b.Property(t => t.LocationHint)
             .HasMaxLength(100);
 

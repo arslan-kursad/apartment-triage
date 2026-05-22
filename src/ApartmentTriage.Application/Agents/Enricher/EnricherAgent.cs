@@ -30,6 +30,22 @@ public sealed class EnricherAgent : AgentBase<EnricherInput, EnricherOutput>
     protected override async Task<AgentResult<EnricherOutput>> ExecuteCoreAsync(
         EnricherInput input, AgentContext context, CancellationToken cancellationToken)
     {
+        // Fix 2: ONNX undefined behavior on empty string (zero-vector or exception).
+        // Skip embedding, return empty result — Router handles Low confidence gracefully.
+        if (string.IsNullOrWhiteSpace(input.RawText))
+        {
+            Logger.LogWarning(
+                "EnricherAgent [{TicketId}]: empty RawText — skipping embedding, " +
+                "returning empty SimilarTickets",
+                input.TicketId);
+            return AgentResult<EnricherOutput>.Ok(
+                new EnricherOutput(
+                    EmbeddingVector: [],
+                    SimilarTickets: [],
+                    EnrichedContext: null,
+                    ConfidenceLevel: ConfidenceLevel.Low));
+        }
+
         float[] vector;
         try
         {

@@ -1,6 +1,7 @@
 using ApartmentTriage.Application.Agents.Enricher;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
+using ApartmentTriage.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Pgvector;
 
@@ -55,6 +56,40 @@ public sealed class TicketRepository : ITicketRepository
         return results
             .Select(r => new SimilarTicket(r.Id, r.Category, r.CosineSimilarity, r.CreatedAt))
             .ToList();
+    }
+
+    public async Task<Ticket?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => await _db.Tickets
+            .Include(t => t.SourceMessage)
+            .Include(t => t.Resident)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+    public async Task<(IReadOnlyList<Ticket> Items, int TotalCount)> GetPagedAsync(
+        TicketStatus? status,
+        TicketCategory? category,
+        bool? isEmergency,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _db.Tickets.AsQueryable();
+
+        if (status.HasValue)
+            query = query.Where(t => t.Status == status.Value);
+        if (category.HasValue)
+            query = query.Where(t => t.Category == category.Value);
+        if (isEmergency.HasValue)
+            query = query.Where(t => t.IsEmergency == isEmergency.Value);
+
+        var total = await query.CountAsync(cancellationToken);
+
+        var items = await query
+            .OrderByDescending(t => t.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, total);
     }
 
     // Projection type for SqlQueryRaw — not an entity, stays in Infrastructure.

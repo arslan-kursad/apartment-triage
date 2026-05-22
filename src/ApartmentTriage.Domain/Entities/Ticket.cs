@@ -37,6 +37,15 @@ public sealed class Ticket
     /// <summary>384-dim multilingual-e5-small embedding. Null until EnricherAgent processes the ticket.</summary>
     public float[]? EmbeddingVector { get; private set; }
 
+    // Router decision — null until RouterAgent processes the ticket
+    public RoutingAction? RoutingAction { get; private set; }
+
+    /// <summary>
+    /// JSON-serialized AmbiguityReason[] from ClassifierOutput. Null when no ambiguity.
+    /// Schema: ["missing_location","category_ambiguous",...].
+    /// </summary>
+    public string? AmbiguityReasonsJson { get; private set; }
+
     // Emergency layer
     public bool IsEmergency { get; private set; }
     public bool EmergencyConfirmedByLlm { get; private set; }
@@ -107,6 +116,17 @@ public sealed class Ticket
     public void SetEmbeddingVector(float[] vector)
     {
         EmbeddingVector = vector;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Stores the routing decision produced by RouterAgent.
+    /// Called after ticket is persisted (TicketId is known to Enricher).
+    /// </summary>
+    public void SetRoutingDecision(RoutingAction action, string? ambiguityReasonsJson = null)
+    {
+        RoutingAction = action;
+        AmbiguityReasonsJson = ambiguityReasonsJson;
         UpdatedAt = DateTime.UtcNow;
     }
 

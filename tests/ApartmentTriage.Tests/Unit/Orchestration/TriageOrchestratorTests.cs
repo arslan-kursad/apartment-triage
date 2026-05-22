@@ -1,6 +1,7 @@
 using ApartmentTriage.Application.Agents;
 using ApartmentTriage.Application.Agents.Classifier;
 using ApartmentTriage.Application.Agents.Enricher;
+using ApartmentTriage.Application.Agents.Router;
 using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
@@ -50,6 +51,34 @@ internal sealed class FakeTicketRepository : ITicketRepository
         float[] vector, Guid excludeTicketId, int topK = 5,
         CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<SimilarTicket>>([]);
+
+    public Task<Ticket?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => Task.FromResult(Saved.FirstOrDefault(t => t.Id == id));
+
+    public Task<(IReadOnlyList<Ticket> Items, int TotalCount)> GetPagedAsync(
+        TicketStatus? status, TicketCategory? category, bool? isEmergency,
+        int page, int pageSize, CancellationToken cancellationToken = default)
+        => Task.FromResult<(IReadOnlyList<Ticket>, int)>((Saved.ToList(), Saved.Count));
+}
+
+internal sealed class FakeEnricherAgent : IAgent<EnricherInput, EnricherOutput>
+{
+    public string AgentId => "fake-enricher";
+
+    public Task<AgentResult<EnricherOutput>> ExecuteAsync(
+        EnricherInput input, AgentContext context, CancellationToken cancellationToken = default)
+        => Task.FromResult(AgentResult<EnricherOutput>.Ok(
+            new EnricherOutput([], [], null, ConfidenceLevel.Low)));
+}
+
+internal sealed class FakeRouterAgent : IAgent<RouterInput, RouterOutput>
+{
+    public string AgentId => "fake-router";
+
+    public Task<AgentResult<RouterOutput>> ExecuteAsync(
+        RouterInput input, AgentContext context, CancellationToken cancellationToken = default)
+        => Task.FromResult(AgentResult<RouterOutput>.Ok(
+            new RouterOutput(RoutingAction.AssignTechnician, null, null, ConfidenceLevel.High)));
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,8 +104,13 @@ file static class Helpers
     public static TriageOrchestrator Build(
         FakeClassifierAgent haiku,
         FakeClassifierAgent? sonnet = null,
-        FakeTicketRepository? repo = null) =>
-        new(haiku, sonnet ?? new FakeClassifierAgent(),
+        FakeTicketRepository? repo = null,
+        FakeEnricherAgent? enricher = null,
+        FakeRouterAgent? router = null) =>
+        new(haiku,
+            sonnet ?? new FakeClassifierAgent(),
+            enricher ?? new FakeEnricherAgent(),
+            router ?? new FakeRouterAgent(),
             repo ?? new FakeTicketRepository(),
             NullLogger<TriageOrchestrator>.Instance);
 }

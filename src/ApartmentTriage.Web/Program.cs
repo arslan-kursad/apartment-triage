@@ -29,6 +29,10 @@ try
 
     builder.Services.AddInfrastructure(connectionString);
 
+    // ONNX embedding service — required for EnricherAgent (multilingual-e5-small).
+    // Run scripts/download-models.sh then set: dotnet user-secrets set "Embeddings:ModelPath" "<path>"
+    builder.Services.AddEmbeddings(builder.Configuration);
+
     // Anthropic API client
     var anthropicApiKey = builder.Configuration["Anthropic:ApiKey"]
         ?? throw new InvalidOperationException(

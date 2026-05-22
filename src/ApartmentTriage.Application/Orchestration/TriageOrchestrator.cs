@@ -1,6 +1,8 @@
 using System.Text.Json;
 using ApartmentTriage.Application.Agents;
 using ApartmentTriage.Application.Agents.Classifier;
+using ApartmentTriage.Application.Agents.Enricher;
+using ApartmentTriage.Application.Agents.Router;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
@@ -10,14 +12,19 @@ using Microsoft.Extensions.Logging;
 namespace ApartmentTriage.Application.Orchestration;
 
 /// <summary>
-/// Drives the full triage pipeline: Classifier → orchestrator_rule → Ticket persistence.
+/// Drives the full triage pipeline: Classifier → orchestrator_rule → Ticket persistence
+/// → Enricher (embedding + similarity) → Router (routing decision).
+///
 /// Form B escalation: CategoryConfidence == Low → re-run with Sonnet variant.
 /// taxonomy.v3.yaml § multi_issue.orchestrator_rule governs ticket-splitting logic.
+/// ADR-0009: RouterAgent low-confidence emergency minimum guarantee.
 /// </summary>
 public sealed class TriageOrchestrator : ITriageOrchestrator
 {
     private readonly IAgent<ClassifierInput, ClassifierOutput> _haikuClassifier;
     private readonly IAgent<ClassifierInput, ClassifierOutput> _sonnetClassifier;
+    private readonly IAgent<EnricherInput, EnricherOutput>    _enricher;
+    private readonly IAgent<RouterInput, RouterOutput>        _router;
     private readonly ITicketRepository _ticketRepository;
     private readonly ILogger<TriageOrchestrator> _logger;
 
@@ -28,11 +35,17 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
         IAgent<ClassifierInput, ClassifierOutput> haikuClassifier,
         [FromKeyedServices(AgentKeys.ClassifierSonnet)]
         IAgent<ClassifierInput, ClassifierOutput> sonnetClassifier,
+        [FromKeyedServices(AgentKeys.EnricherDefault)]
+        IAgent<EnricherInput, EnricherOutput> enricher,
+        [FromKeyedServices(AgentKeys.RouterHaiku)]
+        IAgent<RouterInput, RouterOutput> router,
         ITicketRepository ticketRepository,
         ILogger<TriageOrchestrator> logger)
     {
         _haikuClassifier = haikuClassifier;
         _sonnetClassifier = sonnetClassifier;
+        _enricher = enricher;
+        _router = router;
         _ticketRepository = ticketRepository;
         _logger = logger;
     }
@@ -52,7 +65,8 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
             EmergencySuspected: message.EmergencySuspected,
             MatchedPhrases: Array.AsReadOnly(message.MatchedPhrases));
 
-        // Primary classification attempt with Haiku
+        // ── Classifier ────────────────────────────────────────────────────────
+
         var result = await _haikuClassifier.ExecuteAsync(input, context, cancellationToken);
 
         bool escalated = false;
@@ -98,12 +112,81 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
 
         var tickets = ApplyOrchestratorRule(message, output, secondaryIssuesJson);
 
+        // ── Persist tickets (IDs required before Enricher similarity search) ──
+
         await _ticketRepository.AddRangeAsync(tickets, cancellationToken);
         await _ticketRepository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "TriageOrchestrator: created {Count} ticket(s) for message {MessageId} (escalated={Escalated}, ambiguity={AmbiguityCount})",
             tickets.Count, message.Id, escalated, output.AmbiguityReasons.Count);
+
+        // ── Enricher + Router (per ticket) ───────────────────────────────────
+
+        // Fix 1 null guard: IReadOnlyList contract should never produce null,
+        // but defensive coalescing prevents NullReferenceException at Rule 4/5.
+        var ambiguityReasons = output.AmbiguityReasons ?? [];
+        var ambiguityReasonsJson = ambiguityReasons.Count > 0
+            ? JsonSerializer.Serialize(ambiguityReasons)
+            : null;
+
+        foreach (var ticket in tickets)
+        {
+            // Enricher input — null guard on ClassifierOutput mapping
+            var enricherInput = new EnricherInput(
+                TicketId: ticket.Id,
+                ResidentId: ticket.ResidentId,
+                RawText: message.RawText ?? string.Empty,   // Fix 1 null guard
+                ClassifiedCategory: ticket.Category);
+
+            var enricherResult = await _enricher.ExecuteAsync(enricherInput, context, cancellationToken);
+
+            EnricherOutput? enricherOutput = null;
+            if (enricherResult.IsSuccess)
+            {
+                enricherOutput = enricherResult.Value!;
+                // Guard: empty vector (Fix 2 path, or ONNX skip) must not be stored in pgvector
+                if (enricherOutput.EmbeddingVector.Length > 0)
+                    ticket.SetEmbeddingVector(enricherOutput.EmbeddingVector);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "TriageOrchestrator: EnricherAgent failed for ticket {TicketId}: {Error}",
+                    ticket.Id, enricherResult.Error!.Message);
+            }
+
+            // Fix 1 null guard: EnricherOutput.SimilarTickets ?? []
+            var similarTickets = enricherOutput?.SimilarTickets ?? [];
+
+            var routerInput = new RouterInput(
+                TicketId: ticket.Id,
+                Category: ticket.Category,
+                Severity: ticket.Severity,
+                CategoryConfidence: ticket.CategoryConfidence,
+                IsEmergency: ticket.IsEmergency,
+                EmergencyConfidence: ticket.EmergencyConfidence,
+                SimilarTickets: similarTickets,
+                AmbiguityReasons: ambiguityReasons,
+                RawText: message.RawText ?? string.Empty,
+                ResidentId: ticket.ResidentId);
+
+            var routerResult = await _router.ExecuteAsync(routerInput, context, cancellationToken);
+
+            if (routerResult.IsSuccess)
+            {
+                ticket.SetRoutingDecision(routerResult.Value!.Action, ambiguityReasonsJson);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "TriageOrchestrator: RouterAgent failed for ticket {TicketId}: {Error}",
+                    ticket.Id, routerResult.Error!.Message);
+            }
+        }
+
+        // Persist embedding vectors + routing decisions
+        await _ticketRepository.SaveChangesAsync(cancellationToken);
 
         return TriageResult.Ok(tickets, escalated, output.AmbiguityReasons);
     }

@@ -8,5 +8,6 @@ public static class AgentKeys
     public const string ClassifierSonnet = "classifier-sonnet";
 
     // Day 9
-    public const string RouterHaiku = "router-haiku";
+    public const string RouterHaiku    = "router-haiku";
+    public const string EnricherDefault = "enricher-default";
 }
