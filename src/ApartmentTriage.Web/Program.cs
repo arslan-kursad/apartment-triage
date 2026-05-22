@@ -44,6 +44,9 @@ try
     // Application layer — triage pipeline, orchestrator, agents
     builder.Services.AddApplication();
 
+    // WhatsApp channel (Singleton keyed adapter, webhook → BoundedChannel)
+    builder.Services.AddWhatsAppChannel();
+
     // Telegram channel (Singleton keyed adapter + ITelegramBotClient)
     builder.Services.AddTelegramChannel(builder.Configuration);
 
@@ -69,6 +72,12 @@ try
     // 55s internal budget per execution (see ChannelConsumerJob.JobBudget).
     RecurringJob.AddOrUpdate<ChannelConsumerJob>(
         recurringJobId: "telegram-consumer",
+        methodCall: job => job.RunAsync(CancellationToken.None),
+        cronExpression: Cron.Minutely());
+
+    // WhatsApp consumer: same 1-minute CRON, 10s drain window (push-based, no long-poll).
+    RecurringJob.AddOrUpdate<WhatsAppConsumerJob>(
+        recurringJobId: "whatsapp-consumer",
         methodCall: job => job.RunAsync(CancellationToken.None),
         cronExpression: Cron.Minutely());
 
