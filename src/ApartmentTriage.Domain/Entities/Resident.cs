@@ -23,8 +23,8 @@ public sealed class Resident
     public DateTime CreatedAt { get; private set; }
 
     // Navigation
-    public IReadOnlyCollection<Message> Messages { get; private set; } = [];
-    public IReadOnlyCollection<Ticket> Tickets { get; private set; } = [];
+    public IReadOnlyCollection<Message> Messages { get; private set; } = new List<Message>();
+    public IReadOnlyCollection<Ticket> Tickets { get; private set; } = new List<Ticket>();
 
     private Resident() { } // EF Core
 

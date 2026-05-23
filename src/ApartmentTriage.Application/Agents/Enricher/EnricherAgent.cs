@@ -50,6 +50,18 @@ public sealed class EnricherAgent : AgentBase<EnricherInput, EnricherOutput>
         try
         {
             vector = await _embeddings.GetEmbeddingAsync(input.RawText, cancellationToken);
+            if (vector.Length == 0)
+            {
+                Logger.LogWarning(
+                    "EnricherAgent: embedding unavailable for ticket {TicketId} — skipping similarity search",
+                    input.TicketId);
+
+                return AgentResult<EnricherOutput>.Ok(new EnricherOutput(
+                    EmbeddingVector: [],
+                    SimilarTickets: [],
+                    EnrichedContext: null,
+                    ConfidenceLevel: ConfidenceLevel.Low));
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

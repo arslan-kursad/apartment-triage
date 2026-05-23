@@ -61,7 +61,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var token = configuration["TelegramBot:Token"]
+        var token = configuration["TelegramBot:Token"]?.Trim()
             ?? throw new InvalidOperationException(
                 "TelegramBot:Token not configured. " +
                 "Run: dotnet user-secrets set \"TelegramBot:Token\" \"<token>\"");
@@ -81,7 +81,8 @@ public static class DependencyInjection
 
     public static IServiceCollection AddEmbeddings(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        bool allowFallback = false)
     {
         var modelPath = configuration["Embeddings:ModelPath"]
             ?? throw new InvalidOperationException(
@@ -91,7 +92,17 @@ public static class DependencyInjection
 
         // Singleton: InferenceSession is thread-safe and expensive to initialize.
         // DI container disposes OnnxEmbeddingService (IDisposable) on app shutdown.
-        services.AddSingleton<IEmbeddingService>(_ => new OnnxEmbeddingService(modelPath));
+        services.AddSingleton<IEmbeddingService>(_ =>
+        {
+            try
+            {
+                return new OnnxEmbeddingService(modelPath);
+            }
+            catch when (allowFallback)
+            {
+                return new NoopEmbeddingService();
+            }
+        });
 
         return services;
     }

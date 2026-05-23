@@ -31,7 +31,9 @@ try
 
     // ONNX embedding service — required for EnricherAgent (multilingual-e5-small).
     // Run scripts/download-models.sh then set: dotnet user-secrets set "Embeddings:ModelPath" "<path>"
-    builder.Services.AddEmbeddings(builder.Configuration);
+    builder.Services.AddEmbeddings(
+        builder.Configuration,
+        allowFallback: builder.Environment.IsDevelopment());
 
     // Anthropic API client
     var anthropicApiKey = builder.Configuration["Anthropic:ApiKey"]
@@ -53,6 +55,11 @@ try
     // Razor Pages (dashboard UI)
     builder.Services.AddRazorPages();
 
+    // Telegram consumer: run as a simple background service instead of Hangfire recurring job.
+    // This avoids distributed lock issues in local development and keeps polling reliable.
+    builder.Services.AddTransient<ChannelConsumerJob>();
+    builder.Services.AddHostedService<TelegramConsumerHostedService>();
+
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
@@ -66,14 +73,6 @@ try
 
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
-
-    // Recurring jobs — composition root owns job scheduling, not Infrastructure.
-    // Telegram consumer: 1-minute CRON (Hangfire minimum).
-    // 55s internal budget per execution (see ChannelConsumerJob.JobBudget).
-    RecurringJob.AddOrUpdate<ChannelConsumerJob>(
-        recurringJobId: "telegram-consumer",
-        methodCall: job => job.RunAsync(CancellationToken.None),
-        cronExpression: Cron.Minutely());
 
     // WhatsApp consumer: same 1-minute CRON, 10s drain window (push-based, no long-poll).
     RecurringJob.AddOrUpdate<WhatsAppConsumerJob>(
