@@ -3,6 +3,8 @@ using ApartmentTriage.Infrastructure;
 using ApartmentTriage.Web.Endpoints;
 using ApartmentTriage.Web.Jobs;
 using Hangfire;
+using Hangfire.Common;
+using Hangfire.Storage;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -68,7 +70,59 @@ try
         app.UseDeveloperExceptionPage();
 
     app.UseHangfireDashboard("/hangfire");
+
+    // Remove stale Telegram recurring jobs from previous deployments.
+    // The app now uses a hosted service for Telegram long polling.
+    var recurringJobs = JobStorage.Current.GetConnection().GetRecurringJobs();
+    foreach (var recurringJob in recurringJobs)
+    {
+        if (recurringJob.Job?.Type == typeof(ChannelConsumerJob) &&
+            recurringJob.Job.Method.Name == nameof(ChannelConsumerJob.RunAsync))
+        {
+            RecurringJob.RemoveIfExists(recurringJob.Id);
+            Log.Information("Removed stale Hangfire recurring job '{JobId}' for ChannelConsumerJob.RunAsync", recurringJob.Id);
+        }
+    }
+
+    var monitoringApi = JobStorage.Current.GetMonitoringApi();
+    var allQueueNames = monitoringApi.Queues().Select(q => q.Name).Distinct();
+    foreach (var queueName in allQueueNames)
+    {
+        foreach (var enqueuedJob in monitoringApi.EnqueuedJobs(queueName, 0, int.MaxValue))
+        {
+            if (IsChannelConsumerJob(enqueuedJob.Value.Job))
+            {
+                BackgroundJob.Delete(enqueuedJob.Key);
+                Log.Information("Deleted stale Hangfire enqueued job '{JobId}' from queue '{Queue}'", enqueuedJob.Key, queueName);
+            }
+        }
+    }
+
+    foreach (var processingJob in monitoringApi.ProcessingJobs(0, int.MaxValue))
+    {
+        if (IsChannelConsumerJob(processingJob.Value.Job))
+        {
+            BackgroundJob.Delete(processingJob.Key);
+            Log.Information("Deleted stale Hangfire processing job '{JobId}'", processingJob.Key);
+        }
+    }
+
+    foreach (var scheduledJob in monitoringApi.ScheduledJobs(0, int.MaxValue))
+    {
+        if (IsChannelConsumerJob(scheduledJob.Value.Job))
+        {
+            BackgroundJob.Delete(scheduledJob.Key);
+            Log.Information("Deleted stale Hangfire scheduled job '{JobId}'", scheduledJob.Key);
+        }
+    }
+
     app.MapRazorPages();
+
+    static bool IsChannelConsumerJob(Job? job)
+    {
+        return job?.Type == typeof(ChannelConsumerJob) &&
+               job.Method.Name == nameof(ChannelConsumerJob.RunAsync);
+    }
     app.MapWhatsAppWebhook();
 
     // Health check endpoint
