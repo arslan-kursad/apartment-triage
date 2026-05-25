@@ -7,10 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace ApartmentTriage.Web.Jobs;
 
-/// <summary>
-/// Polls the Telegram channel once per minute, runs triage for each new message,
-/// and sends clarification replies when the orchestrator signals ambiguity (Option C).
-/// </summary>
 public sealed class ChannelConsumerJob(
     [FromKeyedServices(ChannelType.Telegram)] IMessageChannel channel,
     IResidentRepository residentRepository,
@@ -18,8 +14,7 @@ public sealed class ChannelConsumerJob(
     ITriageOrchestrator orchestrator,
     ILogger<ChannelConsumerJob> logger)
 {
-    // 55s budget per job execution: allows one 30s Telegram long-poll to complete,
-    // processes results, then starts a second poll before the next 60s trigger fires.
+    // 55s budget caps each polling iteration; BackgroundService sleeps 10s between runs.
     private static readonly TimeSpan JobBudget = TimeSpan.FromSeconds(55);
 
     public async Task RunAsync(CancellationToken hangfireCt = default)
@@ -40,6 +35,10 @@ public sealed class ChannelConsumerJob(
 
     private async Task ProcessIncomingAsync(IncomingMessage incoming, CancellationToken ct)
     {
+        logger.LogInformation(
+            "Received Telegram message {ExternalId} from {SenderId} ({TextLength} chars)",
+            incoming.ExternalId, incoming.SenderId, incoming.Text.Length);
+
         if (await messageRepository.ExistsAsync(incoming.ExternalId, channel.ChannelType, ct))
         {
             logger.LogDebug("Skipping duplicate message {ExternalId}", incoming.ExternalId);
@@ -78,17 +77,35 @@ public sealed class ChannelConsumerJob(
         message.MarkProcessed();
         await messageRepository.SaveChangesAsync(ct);
 
-        // Option C: orchestrator is channel-agnostic; caller sends clarification.
-        var clarification = ClarificationTemplates.BuildMessage(result.AmbiguityReasons);
-        if (clarification is not null)
-        {
-            logger.LogInformation(
-                "Sending clarification to {SenderId} — reasons: {Reasons}",
-                incoming.SenderId, string.Join(", ", result.AmbiguityReasons));
+        var reply = ClarificationTemplates.BuildMessage(result.AmbiguityReasons)
+            ?? ClarificationTemplates.BuildAcknowledgementMessage();
 
-            await channel.SendAsync(incoming.SenderId, clarification, ct);
-        }
+        logger.LogInformation(
+            "Sending reply to {SenderId} — replyType: {ReplyType}",
+            incoming.SenderId,
+            result.AmbiguityReasons.Count > 0 ? "clarification" : "acknowledgement");
+
+        await channel.SendAsync(incoming.SenderId, reply, ct);
     }
+
+    private static readonly string WelcomeMessage = """
+Merhaba 👋
+
+Almila Apartman'ın yapay zeka destekli yönetim sistemi artık
+Telegram üzerinden çalışıyor. Su kaçağı, elektrik arızası,
+asansör sorunu ya da herhangi bir bakım talebini buraya
+yazmanız yeterli.
+
+📌 Nasıl kullanılır?
+Sorununuzu kısa bir mesajla yazın; sistem talebinizi
+değerlendirip yöneticinize iletir.
+
+🔒 Gizlilik:
+İlettiğiniz mesajlar yalnızca bakım ve şikayet yönetimi
+amacıyla işlenmektedir.
+
+Hazır olduğunuzda yazabilirsiniz.
+""";
 
     private async Task<Resident> CreateResidentAsync(long telegramId, CancellationToken ct)
     {
@@ -99,6 +116,18 @@ public sealed class ChannelConsumerJob(
         logger.LogInformation(
             "Auto-created resident {ResidentId} for Telegram {TelegramId}",
             resident.Id, telegramId);
+
+        try
+        {
+            await channel.SendAsync(telegramId.ToString(), WelcomeMessage, ct);
+            logger.LogInformation(
+                "Sent welcome message to Telegram {TelegramId}", telegramId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to send welcome message to Telegram {TelegramId}", telegramId);
+        }
 
         return resident;
     }

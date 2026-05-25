@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src\ApartmentTriage.Application\ApartmentTriage.Application.csproj" />
     <ProjectReference Include="../../src\ApartmentTriage.Infrastructure\ApartmentTriage.Infrastructure.csproj" />
+    <ProjectReference Include="../../src\ApartmentTriage.Web\ApartmentTriage.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

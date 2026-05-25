@@ -33,9 +33,11 @@ public sealed class TelegramAdapter : IMessageChannel
                 if (upd.Message?.Text is not { } text)
                     continue;
 
+                var senderId = upd.Message.From?.Id ?? upd.Message.Chat.Id;
+
                 yield return new IncomingMessage(
                     ExternalId: upd.Message.MessageId.ToString(),
-                    SenderId: upd.Message.Chat.Id.ToString(),
+                    SenderId: senderId.ToString(),
                     Text: text,
                     ReceivedAt: DateTime.SpecifyKind(upd.Message.Date, DateTimeKind.Utc));
             }

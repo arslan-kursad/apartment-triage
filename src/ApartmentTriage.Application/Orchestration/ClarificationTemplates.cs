@@ -51,4 +51,7 @@ public static class ClarificationTemplates
         }
         return null;
     }
+
+    public static string BuildAcknowledgementMessage()
+        => "Talebinizi aldık. Sorununuzu sistemimize kaydettik; yöneticiniz en kısa sürede bilgilendirilecektir.";
 }

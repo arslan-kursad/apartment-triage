@@ -72,15 +72,15 @@ public sealed class WhatsAppConsumerJob(
         message.MarkProcessed();
         await messageRepository.SaveChangesAsync(ct);
 
-        var clarification = ClarificationTemplates.BuildMessage(result.AmbiguityReasons);
-        if (clarification is not null)
-        {
-            logger.LogInformation(
-                "Sending clarification to {SenderId} — reasons: {Reasons}",
-                incoming.SenderId, string.Join(", ", result.AmbiguityReasons));
+        var reply = ClarificationTemplates.BuildMessage(result.AmbiguityReasons)
+            ?? ClarificationTemplates.BuildAcknowledgementMessage();
 
-            await channel.SendAsync(incoming.SenderId, clarification, ct);
-        }
+        logger.LogInformation(
+            "Sending reply to {SenderId} — replyType: {ReplyType}",
+            incoming.SenderId,
+            result.AmbiguityReasons.Count > 0 ? "clarification" : "acknowledgement");
+
+        await channel.SendAsync(incoming.SenderId, reply, ct);
     }
 
     private async Task<Resident> CreateResidentAsync(string whatsAppNumber, CancellationToken ct)
