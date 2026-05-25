@@ -10,7 +10,7 @@ MODEL_FILE="$MODELS_DIR/multilingual-e5-small/model.onnx"
 MODEL_URL="https://huggingface.co/Xenova/multilingual-e5-small/resolve/main/onnx/model.onnx"
 
 # sha256 — verify after first download: sha256sum models/multilingual-e5-small/model.onnx
-EXPECTED_SHA256="FILL_AFTER_FIRST_DOWNLOAD"
+EXPECTED_SHA256="4aa845c27760e06e9a686b9d8b5d440eae4b6612cd09e5b522b716d3941f77ff"
 
 echo "=== ApartmentTriage model download ==="
 echo "Target: $MODEL_FILE"
