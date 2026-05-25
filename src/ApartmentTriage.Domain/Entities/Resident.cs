@@ -54,4 +54,13 @@ public sealed class Resident
         if (whatsAppNumber is not null) WhatsAppNumber = whatsAppNumber.Trim();
         if (telegramId.HasValue) TelegramId = telegramId;
     }
+
+    /// <summary>KVKK anonymization — irreversible. Call only from AnonymizationService.</summary>
+    public void Anonymize()
+    {
+        DisplayName = null;
+        WhatsAppNumber = "[redacted]";
+        TelegramId = null;
+        ApartmentNumber = "***";
+    }
 }

@@ -63,4 +63,12 @@ public sealed class Message
 
         ProcessedAt = DateTime.UtcNow;
     }
+
+    /// <summary>KVKK anonymization — irreversible. Call only from AnonymizationService.</summary>
+    public void Anonymize()
+    {
+        RawText = "[redacted]";
+        ExternalMessageId = "[redacted]";
+        MatchedPhrases = [];
+    }
 }

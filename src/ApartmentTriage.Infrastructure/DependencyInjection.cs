@@ -1,11 +1,13 @@
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Application.Embeddings;
 using ApartmentTriage.Application.Repositories;
+using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Infrastructure.Channels;
 using ApartmentTriage.Infrastructure.Embeddings;
 using ApartmentTriage.Infrastructure.Persistence;
 using ApartmentTriage.Infrastructure.Persistence.Repositories;
+using ApartmentTriage.Infrastructure.Services;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<ITicketRepository, TicketRepository>();
         services.AddScoped<IResidentRepository, ResidentRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
+        services.AddScoped<IAnonymizationService, AnonymizationService>();
 
         // Hangfire — PostgreSQL storage (no Redis)
         services.AddHangfire(cfg => cfg

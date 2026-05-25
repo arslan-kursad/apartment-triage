@@ -130,6 +130,17 @@ public sealed class Ticket
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>KVKK PII redaction — irreversible. Call only from AnonymizationService.</summary>
+    public void RedactPii()
+    {
+        LocationHint = null;
+        SecondaryIssuesJson = null;
+        Notes = null;
+        Context = null;
+        EmbeddingVector = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     /// <summary>
     /// Upgrades severity by one level (capped at Urgent).
     /// Used by orchestrator when effect_of_primary severity >= Medium — taxonomy rule.
