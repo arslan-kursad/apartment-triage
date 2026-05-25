@@ -3,15 +3,10 @@ using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
-using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ApartmentTriage.Web.Jobs;
 
-/// <summary>
-/// Polls the Telegram channel once per minute, runs triage for each new message,
-/// and sends clarification replies when the orchestrator signals ambiguity (Option C).
-/// </summary>
 public sealed class ChannelConsumerJob(
     [FromKeyedServices(ChannelType.Telegram)] IMessageChannel channel,
     IResidentRepository residentRepository,
@@ -19,11 +14,9 @@ public sealed class ChannelConsumerJob(
     ITriageOrchestrator orchestrator,
     ILogger<ChannelConsumerJob> logger)
 {
-    // 55s budget per job execution: allows one 30s Telegram long-poll to complete,
-    // processes results, then starts a second poll before the next 60s trigger fires.
+    // 55s budget caps each polling iteration; BackgroundService sleeps 10s between runs.
     private static readonly TimeSpan JobBudget = TimeSpan.FromSeconds(55);
 
-    [DisableConcurrentExecution(timeoutInSeconds: 60)]
     public async Task RunAsync(CancellationToken hangfireCt = default)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(hangfireCt);
@@ -43,8 +36,8 @@ public sealed class ChannelConsumerJob(
     private async Task ProcessIncomingAsync(IncomingMessage incoming, CancellationToken ct)
     {
         logger.LogInformation(
-            "Received Telegram message {ExternalId} from {SenderId}: {Text}",
-            incoming.ExternalId, incoming.SenderId, incoming.Text);
+            "Received Telegram message {ExternalId} from {SenderId} ({TextLength} chars)",
+            incoming.ExternalId, incoming.SenderId, incoming.Text.Length);
 
         if (await messageRepository.ExistsAsync(incoming.ExternalId, channel.ChannelType, ct))
         {
@@ -99,7 +92,7 @@ public sealed class ChannelConsumerJob(
 Merhaba 👋
 
 Almila Apartman'ın yapay zeka destekli yönetim sistemi artık
-WhatsApp üzerinden çalışıyor. Su kaçağı, elektrik arızası,
+Telegram üzerinden çalışıyor. Su kaçağı, elektrik arızası,
 asansör sorunu ya da herhangi bir bakım talebini buraya
 yazmanız yeterli.
 
