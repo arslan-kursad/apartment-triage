@@ -1,10 +1,12 @@
 using ApartmentTriage.Application;
 using ApartmentTriage.Infrastructure;
+using ApartmentTriage.Infrastructure.Persistence;
 using ApartmentTriage.Web.Endpoints;
 using ApartmentTriage.Web.Jobs;
 using Hangfire;
 using Hangfire.Common;
 using Hangfire.Storage;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -133,6 +135,13 @@ try
         recurringJobId: "whatsapp-consumer",
         methodCall: job => job.RunAsync(CancellationToken.None),
         cronExpression: Cron.Minutely());
+
+    // Apply pending EF Core migrations on startup. Boot fails (Fly rollback) if migration errors.
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApartmentTriageDbContext>();
+        await db.Database.MigrateAsync();
+    }
 
     app.Run();
 }
