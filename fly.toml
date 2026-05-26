@@ -1,18 +1,17 @@
-app = "apartment-triage"
+app = "hanwas-ai"
 primary_region = "fra"
-
-[build]
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  auto_stop_machines = true
   auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
 
 [[vm]]
-  memory = "512mb"
-  cpu_kind = "shared"
-  cpus = 1
+  size = "shared-cpu-1x"
+  memory = "1gb"
 
 [[checks]]
   name = "health"

@@ -31,7 +31,7 @@ fly secrets set \
   WhatsApp__AppSecret="<meta-app-secret>" \
   TelegramBot__Token="<telegram-bot-token>" \
   Embeddings__ModelPath="/app/models/multilingual-e5-small/model.onnx" \
-  --app apartment-triage
+  --app hanwas-ai
 ```
 
 > `Embeddings__ModelPath` is set to the path where `scripts/download-models.sh`
@@ -64,7 +64,7 @@ dotnet ef database update \
 ## Health check
 
 ```
-GET https://apartment-triage.fly.dev/health
+GET https://hanwas-ai.fly.dev/health
 → { "status": "healthy", "timestamp": "..." }
 ```
 
