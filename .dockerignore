@@ -1,6 +1,7 @@
 docs/
 evals/
 journal/
+models/
 *.md
 .git/
 .gitignore

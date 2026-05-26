@@ -1,18 +1,20 @@
-# ── Build stage ──────────────────────────────────────────────────────────────
+# ── Build stage ────────────────────────
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY . .
-RUN dotnet publish src/ApartmentTriage.Web/ApartmentTriage.Web.csproj \
-    -c Release -o /app
+RUN dotnet restore \
+    src/ApartmentTriage.Web/ApartmentTriage.Web.csproj
+RUN dotnet publish \
+    src/ApartmentTriage.Web/ApartmentTriage.Web.csproj \
+    -c Release -o /app/publish \
+    /p:UseAppHost=false
 
-# ── Runtime stage ─────────────────────────────────────────────────────────────
+# ── Runtime stage ───────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app .
+COPY --from=build /app/publish .
 
-# ONNX model download — ADR-0008 Strategy A (bake into image at build time).
-# scripts/ directory is preserved so download-models.sh resolves MODELS_DIR
-# to /app/models (dirname of scripts/ → /app → models/ sibling).
+# ONNX model download (ADR-0008 Strategy A)
 COPY scripts/ scripts/
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
