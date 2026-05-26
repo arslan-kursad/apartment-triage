@@ -1,0 +1,6 @@
+docs/
+evals/
+journal/
+*.md
+.git/
+.gitignore
