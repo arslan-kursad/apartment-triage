@@ -199,6 +199,131 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
         return TriageResult.Ok(tickets, escalated, output.AmbiguityReasons, replyText);
     }
 
+    public async Task<TriageResult> ReclassifyTicketAsync(
+        Ticket ticket,
+        string combinedText,
+        string preferredLanguage = "tr",
+        CancellationToken cancellationToken = default)
+    {
+        var context = new AgentContext(
+            CorrelationId: Guid.NewGuid(),
+            MessageId: ticket.SourceMessageId,
+            ResidentId: ticket.ResidentId,
+            ReceivedAt: new DateTimeOffset(ticket.CreatedAt, TimeSpan.Zero));
+
+        var sourceMsg = ticket.SourceMessage;
+        var input = new ClassifierInput(
+            ResidentId: ticket.ResidentId,
+            RawText: combinedText,
+            ChannelType: sourceMsg?.ChannelType ?? ChannelType.Telegram,
+            EmergencySuspected: sourceMsg?.EmergencySuspected ?? ticket.IsEmergency,
+            MatchedPhrases: Array.AsReadOnly(sourceMsg?.MatchedPhrases ?? []),
+            ImageData: null,        // clarification responses are text-only
+            ImageMimeType: null);
+
+        // ── Classifier ────────────────────────────────────────────────────────
+        var classifyResult = await _haikuClassifier.ExecuteAsync(input, context, cancellationToken);
+        if (!classifyResult.IsSuccess)
+            return TriageResult.Fail(classifyResult.Error!);
+
+        var output = classifyResult.Value!;
+        bool escalated = false;
+
+        // Form B: low confidence → escalate to Sonnet
+        if (output.CategoryConfidence == ConfidenceLevel.Low)
+        {
+            _logger.LogInformation(
+                "TriageOrchestrator.ReclassifyTicketAsync: Form B escalation for ticket {TicketId}",
+                ticket.Id);
+            var escResult = await _sonnetClassifier.ExecuteAsync(input, context, cancellationToken);
+            if (escResult.IsSuccess)
+            {
+                output = escResult.Value!;
+                escalated = true;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "TriageOrchestrator.ReclassifyTicketAsync: Sonnet escalation failed for ticket {TicketId}, using Haiku result",
+                    ticket.Id);
+            }
+        }
+
+        // Apply new classification to the existing ticket
+        ticket.UpdateClassification(
+            category: output.Category,
+            severity: output.Severity,
+            categoryConfidence: output.CategoryConfidence,
+            isEmergency: output.IsEmergency,
+            emergencyConfirmedByLlm: output.IsEmergency,
+            emergencyConfidence: output.EmergencyConfidence);
+
+        // ── Enricher ──────────────────────────────────────────────────────────
+        var enricherInput = new EnricherInput(
+            TicketId: ticket.Id,
+            ResidentId: ticket.ResidentId,
+            RawText: combinedText,
+            ClassifiedCategory: ticket.Category);
+
+        var enricherResult = await _enricher.ExecuteAsync(enricherInput, context, cancellationToken);
+        IReadOnlyList<SimilarTicket> similarTickets;
+
+        if (enricherResult.IsSuccess)
+        {
+            var enricherOutput = enricherResult.Value!;
+            if (enricherOutput.EmbeddingVector.Length > 0)
+                ticket.SetEmbeddingVector(enricherOutput.EmbeddingVector);
+            similarTickets = enricherOutput.SimilarTickets ?? [];
+        }
+        else
+        {
+            _logger.LogWarning(
+                "TriageOrchestrator.ReclassifyTicketAsync: EnricherAgent failed for ticket {TicketId}: {Error}",
+                ticket.Id, enricherResult.Error!.Message);
+            similarTickets = [];
+        }
+
+        // ── Router ────────────────────────────────────────────────────────────
+        var ambiguityReasons = output.AmbiguityReasons ?? [];
+        var ambiguityReasonsJson = ambiguityReasons.Count > 0
+            ? JsonSerializer.Serialize(ambiguityReasons)
+            : null;
+
+        var routerInput = new RouterInput(
+            TicketId: ticket.Id,
+            Category: ticket.Category,
+            Severity: ticket.Severity,
+            CategoryConfidence: ticket.CategoryConfidence,
+            IsEmergency: ticket.IsEmergency,
+            EmergencyConfidence: ticket.EmergencyConfidence,
+            SimilarTickets: similarTickets,
+            AmbiguityReasons: ambiguityReasons,
+            RawText: combinedText,
+            ResidentId: ticket.ResidentId);
+
+        var routerResult = await _router.ExecuteAsync(routerInput, context, cancellationToken);
+        if (routerResult.IsSuccess)
+        {
+            ticket.SetRoutingDecision(routerResult.Value!.Action, ambiguityReasonsJson);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "TriageOrchestrator.ReclassifyTicketAsync: RouterAgent failed for ticket {TicketId}: {Error}",
+                ticket.Id, routerResult.Error!.Message);
+        }
+
+        await _ticketRepository.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "TriageOrchestrator.ReclassifyTicketAsync: ticket {TicketId} reclassified → " +
+            "Category={Category}, Severity={Severity}, IsEmergency={IsEmergency} (escalated={Escalated})",
+            ticket.Id, ticket.Category, ticket.Severity, ticket.IsEmergency, escalated);
+
+        var replyText = BuildReplyText([ticket], ambiguityReasons, preferredLanguage);
+        return TriageResult.Ok([ticket], escalated, ambiguityReasons, replyText);
+    }
+
     // Implements taxonomy.v3.yaml § multi_issue.orchestrator_rule
     // swapOrigins: secondaries that were the original primary before a cause_of_primary swap.
     // The effect_of_primary severity upgrade is NOT applied to swap-origin secondaries —

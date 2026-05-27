@@ -130,6 +130,27 @@ public sealed class Ticket
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Updates classifier-produced fields when a clarification-triggered re-triage produces
+    /// a new result. Called only by TriageOrchestrator.ReclassifyTicketAsync.
+    /// </summary>
+    public void UpdateClassification(
+        TicketCategory category,
+        TicketSeverity severity,
+        ConfidenceLevel categoryConfidence,
+        bool isEmergency,
+        bool emergencyConfirmedByLlm,
+        ConfidenceLevel emergencyConfidence)
+    {
+        Category = category;
+        Severity = severity;
+        CategoryConfidence = categoryConfidence;
+        IsEmergency = isEmergency;
+        EmergencyConfirmedByLlm = emergencyConfirmedByLlm;
+        EmergencyConfidence = emergencyConfidence;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     /// <summary>KVKK PII redaction — irreversible. Call only from AnonymizationService.</summary>
     public void RedactPii()
     {

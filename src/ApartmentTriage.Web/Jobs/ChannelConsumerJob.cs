@@ -126,17 +126,24 @@ public sealed class ChannelConsumerJob(
         var ticket = await ticketRepository.GetByIdAsync(pendingTicketId, ct);
         if (ticket is not null)
         {
+            // Append clarification text to ticket context
             var updatedContext = string.IsNullOrEmpty(ticket.Context)
                 ? incoming.Text
                 : $"{ticket.Context}; {incoming.Text}";
             ticket.SetContext(updatedContext);
 
-            // Remove MissingLocation from ambiguity reasons — resident just provided location/context.
+            // Deserialize ambiguity reasons; check before mutating.
             // AmbiguityReasonsJson is serialized as integer array (default System.Text.Json enum behavior).
-            if (ticket.AmbiguityReasonsJson is not null && ticket.RoutingAction.HasValue)
+            var reasons = ticket.AmbiguityReasonsJson is not null
+                ? JsonSerializer.Deserialize<List<AmbiguityReason>>(ticket.AmbiguityReasonsJson) ?? []
+                : new List<AmbiguityReason>();
+
+            var hasCategoryAmbiguous = reasons.Contains(AmbiguityReason.CategoryAmbiguous);
+
+            // Remove MissingLocation — resident just provided location/context.
+            reasons.Remove(AmbiguityReason.MissingLocation);
+            if (ticket.RoutingAction.HasValue)
             {
-                var reasons = JsonSerializer.Deserialize<List<AmbiguityReason>>(ticket.AmbiguityReasonsJson) ?? [];
-                reasons.Remove(AmbiguityReason.MissingLocation);
                 ticket.SetRoutingDecision(
                     ticket.RoutingAction.Value,
                     reasons.Count > 0 ? JsonSerializer.Serialize(reasons) : null);
@@ -144,12 +151,44 @@ public sealed class ChannelConsumerJob(
 
             await ticketRepository.SaveChangesAsync(ct);
 
-            var reply = ReplyTemplates.BuildTicketReply(ticket, resident.PreferredLanguage);
-            await channel.SendAsync(incoming.SenderId, reply, ct);
+            string reply;
 
-            logger.LogInformation(
-                "Clarification response processed for ticket {TicketId} from {SenderId}",
-                pendingTicketId, incoming.SenderId);
+            if (hasCategoryAmbiguous)
+            {
+                // CategoryAmbiguous present → full pipeline re-triage on this ticket.
+                // combinedText = original raw text + clarification text.
+                var originalText = ticket.SourceMessage?.RawText ?? string.Empty;
+                var combinedText = string.IsNullOrEmpty(originalText)
+                    ? incoming.Text
+                    : $"{originalText} {incoming.Text}";
+
+                var reTriageResult = await orchestrator.ReclassifyTicketAsync(
+                    ticket, combinedText, resident.PreferredLanguage, ct);
+
+                if (reTriageResult.IsSuccess && reTriageResult.ReplyText is not null)
+                {
+                    reply = reTriageResult.ReplyText;
+                    logger.LogInformation(
+                        "Re-triage complete for ticket {TicketId}: Category={Category}, Severity={Severity}",
+                        pendingTicketId, ticket.Category, ticket.Severity);
+                }
+                else
+                {
+                    reply = ReplyTemplates.BuildTicketReply(ticket, resident.PreferredLanguage);
+                    logger.LogWarning(
+                        "Re-triage failed or produced no reply for ticket {TicketId}: {Error}",
+                        pendingTicketId, reTriageResult.Error?.Message);
+                }
+            }
+            else
+            {
+                reply = ReplyTemplates.BuildTicketReply(ticket, resident.PreferredLanguage);
+                logger.LogInformation(
+                    "Clarification response processed for ticket {TicketId} from {SenderId}",
+                    pendingTicketId, incoming.SenderId);
+            }
+
+            await channel.SendAsync(incoming.SenderId, reply, ct);
         }
         else
         {

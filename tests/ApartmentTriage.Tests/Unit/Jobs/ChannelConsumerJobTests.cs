@@ -207,4 +207,15 @@ internal sealed class FakeTriageOrchestrator : ITriageOrchestrator
             replyText: preferredLanguage == "en"
                 ? "✅ Your request has been received and recorded."
                 : "✅ Talebinizi aldık. Sorununuzu sistemimize kaydettik; yöneticiniz en kısa sürede bilgilendirilecektir."));
+
+    public Task<TriageResult> ReclassifyTicketAsync(
+        Ticket ticket,
+        string combinedText,
+        string preferredLanguage = "tr",
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(TriageResult.Ok(
+            new List<Ticket> { ticket },
+            replyText: preferredLanguage == "en"
+                ? "✅ Your issue has been re-classified and recorded."
+                : "✅ Talebiniz yeniden sınıflandırıldı ve kaydedildi."));
 }
