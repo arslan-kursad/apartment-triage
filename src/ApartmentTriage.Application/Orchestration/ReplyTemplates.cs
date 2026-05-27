@@ -99,6 +99,7 @@ public static class ReplyTemplates
 
     private static string GetActionTr(RoutingAction? action) => action switch
     {
+        RoutingAction.NotifyResident    => "📬 Yöneticinize bildirildi.",
         RoutingAction.TriggerEmergency  => "🚨 ACİL DURUM — Yöneticiniz derhal bilgilendiriliyor.",
         RoutingAction.EscalateToManager => "👤 İnsan onayına iletildi — yöneticiniz en kısa sürede dönecek.",
         RoutingAction.AssignTechnician  => "🔧 Teknik ekibe atandı — en kısa sürede ilgilenilecek.",
@@ -109,6 +110,7 @@ public static class ReplyTemplates
 
     private static string GetActionEn(RoutingAction? action) => action switch
     {
+        RoutingAction.NotifyResident    => "📬 Your building manager has been notified.",
         RoutingAction.TriggerEmergency  => "🚨 EMERGENCY — Your building manager is being notified immediately.",
         RoutingAction.EscalateToManager => "👤 Escalated for human review — your manager will follow up shortly.",
         RoutingAction.AssignTechnician  => "🔧 Assigned to maintenance team — will be attended to shortly.",

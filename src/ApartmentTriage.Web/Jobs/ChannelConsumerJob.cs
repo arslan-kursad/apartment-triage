@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
@@ -126,6 +127,17 @@ public sealed class ChannelConsumerJob(
                 ? incoming.Text
                 : $"{ticket.Context}; {incoming.Text}";
             ticket.SetContext(updatedContext);
+
+            // Remove MissingLocation from ambiguity reasons — resident just provided location.
+            if (ticket.AmbiguityReasonsJson is not null && ticket.RoutingAction.HasValue)
+            {
+                var reasons = JsonSerializer.Deserialize<List<string>>(ticket.AmbiguityReasonsJson) ?? [];
+                reasons.Remove("missing_location");
+                ticket.SetRoutingDecision(
+                    ticket.RoutingAction.Value,
+                    reasons.Count > 0 ? JsonSerializer.Serialize(reasons) : null);
+            }
+
             await ticketRepository.SaveChangesAsync(ct);
 
             var reply = ReplyTemplates.BuildTicketReply(ticket, resident.PreferredLanguage);
