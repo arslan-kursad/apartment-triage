@@ -55,7 +55,7 @@ echo "Configure: Embeddings:ModelPath=$E5_FILE"
 WHISPER_FILE="$MODELS_DIR/whisper/whisper-base.bin"
 WHISPER_URL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"
 # sha256 — fill after first download: sha256sum models/whisper/whisper-base.bin
-WHISPER_SHA256="FILL_AFTER_FIRST_DOWNLOAD"
+WHISPER_SHA256="60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe"
 
 echo ""
 echo "=== [2/2] whisper-base (ggml) ==="
