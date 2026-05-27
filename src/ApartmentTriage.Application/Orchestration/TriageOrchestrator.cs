@@ -50,7 +50,10 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
         _logger = logger;
     }
 
-    public async Task<TriageResult> ProcessAsync(Message message, CancellationToken cancellationToken = default)
+    public async Task<TriageResult> ProcessAsync(
+        Message message,
+        string preferredLanguage = "tr",
+        CancellationToken cancellationToken = default)
     {
         var context = new AgentContext(
             CorrelationId: Guid.NewGuid(),
@@ -97,7 +100,7 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
             }
         }
 
-        // Announcement → no ticket
+        // Announcement → no ticket, no reply
         if (output.Category == TicketCategory.Announcement)
         {
             _logger.LogInformation(
@@ -188,7 +191,8 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
         // Persist embedding vectors + routing decisions
         await _ticketRepository.SaveChangesAsync(cancellationToken);
 
-        return TriageResult.Ok(tickets, escalated, output.AmbiguityReasons);
+        var replyText = BuildReplyText(tickets, ambiguityReasons, preferredLanguage);
+        return TriageResult.Ok(tickets, escalated, output.AmbiguityReasons, replyText);
     }
 
     // Implements taxonomy.v3.yaml § multi_issue.orchestrator_rule
@@ -346,6 +350,20 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
         };
 
         return (swapped, originalPrimaryAsEffect);
+    }
+
+    private static string? BuildReplyText(
+        List<Ticket> tickets,
+        IReadOnlyList<AmbiguityReason> ambiguityReasons,
+        string lang)
+    {
+        if (ambiguityReasons.Count > 0)
+            return ClarificationTemplates.BuildMessage(ambiguityReasons, lang);
+
+        if (tickets.Count > 0)
+            return ReplyTemplates.BuildTicketReply(tickets[0], lang);
+
+        return null;
     }
 
     private static Ticket CreatePrimaryTicket(Message message, ClassifierOutput output, string? secondaryIssuesJson)

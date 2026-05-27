@@ -59,7 +59,7 @@ public sealed class WhatsAppConsumerJob(
         await messageRepository.AddAsync(message, ct);
         await messageRepository.SaveChangesAsync(ct);
 
-        var result = await orchestrator.ProcessAsync(message, ct);
+        var result = await orchestrator.ProcessAsync(message, resident.PreferredLanguage, ct);
 
         if (!result.IsSuccess)
         {
@@ -72,15 +72,14 @@ public sealed class WhatsAppConsumerJob(
         message.MarkProcessed();
         await messageRepository.SaveChangesAsync(ct);
 
-        var reply = ClarificationTemplates.BuildMessage(result.AmbiguityReasons)
-            ?? ClarificationTemplates.BuildAcknowledgementMessage();
+        if (result.ReplyText is not null)
+        {
+            logger.LogInformation(
+                "Sending reply to {SenderId} (lang={Language})",
+                incoming.SenderId, resident.PreferredLanguage);
 
-        logger.LogInformation(
-            "Sending reply to {SenderId} — replyType: {ReplyType}",
-            incoming.SenderId,
-            result.AmbiguityReasons.Count > 0 ? "clarification" : "acknowledgement");
-
-        await channel.SendAsync(incoming.SenderId, reply, ct);
+            await channel.SendAsync(incoming.SenderId, result.ReplyText, ct);
+        }
     }
 
     private async Task<Resident> CreateResidentAsync(string whatsAppNumber, CancellationToken ct)

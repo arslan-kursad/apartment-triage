@@ -147,6 +147,13 @@ internal sealed class FakeMessageRepository : IMessageRepository
 
 internal sealed class FakeTriageOrchestrator : ITriageOrchestrator
 {
-    public Task<TriageResult> ProcessAsync(Message message, CancellationToken cancellationToken = default)
-        => Task.FromResult(TriageResult.Ok(new List<Ticket>()));
+    public Task<TriageResult> ProcessAsync(
+        Message message,
+        string preferredLanguage = "tr",
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(TriageResult.Ok(
+            new List<Ticket>(),
+            replyText: preferredLanguage == "en"
+                ? "✅ Your request has been received and recorded."
+                : "✅ Talebinizi aldık. Sorununuzu sistemimize kaydettik; yöneticiniz en kısa sürede bilgilendirilecektir."));
 }

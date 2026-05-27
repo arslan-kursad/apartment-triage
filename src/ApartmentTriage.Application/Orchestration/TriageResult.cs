@@ -17,15 +17,23 @@ public sealed class TriageResult
     /// </summary>
     public IReadOnlyList<AmbiguityReason> AmbiguityReasons { get; }
 
+    /// <summary>
+    /// Ready-to-send reply text built by TriageOrchestrator. Null when no reply should be sent
+    /// (e.g. pipeline error handled upstream, or Announcement category).
+    /// </summary>
+    public string? ReplyText { get; }
+
     private TriageResult(
         IReadOnlyList<Ticket> tickets,
         bool escalated,
-        IReadOnlyList<AmbiguityReason> ambiguityReasons)
+        IReadOnlyList<AmbiguityReason> ambiguityReasons,
+        string? replyText)
     {
         IsSuccess = true;
         Tickets = tickets;
         EscalatedToSonnet = escalated;
         AmbiguityReasons = ambiguityReasons;
+        ReplyText = replyText;
     }
 
     private TriageResult(AgentError error)
@@ -39,8 +47,9 @@ public sealed class TriageResult
     public static TriageResult Ok(
         IReadOnlyList<Ticket> tickets,
         bool escalated = false,
-        IReadOnlyList<AmbiguityReason>? ambiguityReasons = null)
-        => new(tickets, escalated, ambiguityReasons ?? []);
+        IReadOnlyList<AmbiguityReason>? ambiguityReasons = null,
+        string? replyText = null)
+        => new(tickets, escalated, ambiguityReasons ?? [], replyText);
 
     public static TriageResult Fail(AgentError error) => new(error);
 }
