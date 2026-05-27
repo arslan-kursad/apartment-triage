@@ -82,6 +82,17 @@ public static class DependencyInjection
         return services;
     }
 
+    public static IServiceCollection AddWhisper(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<WhisperOptions>(configuration.GetSection(WhisperOptions.SectionName));
+        // Singleton: WhisperFactory loads the model once (~142 MB, expensive).
+        // IDisposable — DI container disposes on app shutdown.
+        services.AddSingleton<ITranscriptionService, WhisperTranscriptionService>();
+        return services;
+    }
+
     public static IServiceCollection AddEmbeddings(
         this IServiceCollection services,
         IConfiguration configuration,
