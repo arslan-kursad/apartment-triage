@@ -75,6 +75,27 @@ public class ChannelConsumerJobTests
     }
 }
 
+public class ClarificationTemplatesTests
+{
+    [Theory]
+    [InlineData("tr", "🤔 Talebinizi aldık.")]
+    [InlineData("en", "🤔 Got your request.")]
+    public void BuildMessage_ReturnsEmojiWrapper_ForBothLanguages(string lang, string expectedPrefix)
+    {
+        var reasons = new[] { AmbiguityReason.MissingLocation };
+        var result = ClarificationTemplates.BuildMessage(reasons, lang);
+        result.Should().NotBeNull();
+        result!.Should().StartWith(expectedPrefix);
+    }
+
+    [Fact]
+    public void BuildMessage_ReturnsNull_WhenNonActionableOnly()
+    {
+        var reasons = new[] { AmbiguityReason.NonActionable };
+        ClarificationTemplates.BuildMessage(reasons, "tr").Should().BeNull();
+    }
+}
+
 internal sealed class FakeTelegramChannel : IMessageChannel
 {
     private readonly List<(string RecipientId, string Text)> _sentMessages;
