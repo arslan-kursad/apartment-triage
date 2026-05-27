@@ -13,8 +13,6 @@ using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
 namespace ApartmentTriage.Infrastructure;
@@ -80,21 +78,6 @@ public static class DependencyInjection
         });
 
         services.AddKeyedSingleton<IMessageChannel, TelegramAdapter>(ChannelType.Telegram);
-
-        return services;
-    }
-
-    public static IServiceCollection AddWhisper(
-        this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.Configure<WhisperOptions>(configuration.GetSection(WhisperOptions.SectionName));
-
-        // TEMPORARY DISABLE (2026-05-27): WhisperTranscriptionService causes ggml_abort / SIGABRT
-        // on Fly.io — likely model format incompatibility with Whisper.net.Runtime 1.9.0.
-        // Root cause under investigation. Voice messages will return empty transcript (resident notified).
-        // TODO: re-enable when model compatibility is resolved.
-        services.AddSingleton<ITranscriptionService, NoopTranscriptionService>();
 
         return services;
     }

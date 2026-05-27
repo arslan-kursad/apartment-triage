@@ -57,10 +57,6 @@ try
     // Telegram channel (Singleton keyed adapter + ITelegramBotClient)
     builder.Services.AddTelegramChannel(builder.Configuration);
 
-    // Whisper transcription (Singleton — model loaded once, ~142 MB)
-    // Run scripts/download-models.sh to download whisper-base.bin before first use.
-    builder.Services.AddWhisper(builder.Configuration);
-
     // Razor Pages (dashboard UI)
     builder.Services.AddRazorPages();
 

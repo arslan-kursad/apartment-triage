@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using ApartmentTriage.Application.Channels;
-using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
@@ -11,15 +10,11 @@ namespace ApartmentTriage.Infrastructure.Channels;
 public sealed class TelegramAdapter : IMessageChannel
 {
     private readonly ITelegramBotClient _bot;
-    private readonly ITranscriptionService _transcription;
     private readonly ILogger<TelegramAdapter> _logger;
     private int _offset;
 
     // Max download size for images (Telegram compresses photos to JPEG; ~10 MB upper bound).
     private const int MaxImageBytes = 10 * 1024 * 1024;
-
-    // Voice duration limit — reject messages longer than this.
-    private const int MaxVoiceSeconds = 60;
 
     // Accepted image MIME types (Anthropic vision + common formats).
     private static readonly HashSet<string> AllowedImageMimeTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -29,11 +24,9 @@ public sealed class TelegramAdapter : IMessageChannel
 
     public TelegramAdapter(
         ITelegramBotClient bot,
-        ITranscriptionService transcription,
         ILogger<TelegramAdapter> logger)
     {
         _bot = bot;
-        _transcription = transcription;
         _logger = logger;
     }
 
@@ -139,19 +132,14 @@ public sealed class TelegramAdapter : IMessageChannel
                     continue;
                 }
 
-                // Voice message
-                if (msg.Voice is { } voice)
+                // Voice message — not supported (demo scope)
+                if (msg.Voice is not null)
                 {
-                    var voiceResult = await TryTranscribeVoiceAsync(voice, senderId, lang, cancellationToken);
-                    if (voiceResult is null)
-                        continue;
-
-                    yield return new IncomingMessage(
-                        ExternalId: msg.MessageId.ToString(),
-                        SenderId: senderId.ToString(),
-                        Text: voiceResult,
-                        ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
-                        LanguageCode: languageCode);
+                    await _bot.SendMessage(senderId,
+                        lang == "tr"
+                            ? "⚠️ Ses mesajları şu an desteklenmiyor. Lütfen sorununuzu yazarak bildirin."
+                            : "⚠️ Voice messages are not supported. Please describe your issue in text.",
+                        cancellationToken: cancellationToken);
                     continue;
                 }
 
@@ -212,66 +200,6 @@ public sealed class TelegramAdapter : IMessageChannel
         }
     }
 
-    /// <summary>
-    /// Downloads and transcribes a voice message.
-    /// Returns null (and notifies the user) if duration exceeds MaxVoiceSeconds or transcription fails.
-    /// </summary>
-    private async Task<string?> TryTranscribeVoiceAsync(
-        Telegram.Bot.Types.Voice voice,
-        long senderId,
-        string lang,
-        CancellationToken ct)
-    {
-        if (voice.Duration > MaxVoiceSeconds)
-        {
-            _logger.LogWarning(
-                "Voice too long ({Duration}s) from {SenderId} — rejecting", voice.Duration, senderId);
-            await _bot.SendMessage(senderId,
-                lang == "tr"
-                    ? $"⚠️ Ses mesajı en fazla {MaxVoiceSeconds} saniye olabilir."
-                    : $"⚠️ Voice messages must be under {MaxVoiceSeconds} seconds.",
-                cancellationToken: ct);
-            return null;
-        }
-
-        try
-        {
-            var file = await _bot.GetFile(voice.FileId, ct);
-            using var ms = new MemoryStream();
-            await _bot.DownloadFile(file.FilePath!, ms, ct);
-            ms.Position = 0;
-
-            var transcript = await _transcription.TranscribeAsync(ms, lang, ct);
-
-            if (string.IsNullOrWhiteSpace(transcript))
-            {
-                _logger.LogWarning("Empty transcript from {SenderId}", senderId);
-                await _bot.SendMessage(senderId,
-                    lang == "tr"
-                        ? "⚠️ Ses mesajında konuşma algılanamadı. Lütfen tekrar deneyin."
-                        : "⚠️ No speech detected in your voice message. Please try again.",
-                    cancellationToken: ct);
-                return null;
-            }
-
-            _logger.LogInformation(
-                "Voice transcribed for {SenderId} ({Duration}s → {Chars} chars)",
-                senderId, voice.Duration, transcript.Length);
-
-            return $"[Ses] {transcript}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to transcribe voice from {SenderId}", senderId);
-            await _bot.SendMessage(senderId,
-                lang == "tr"
-                    ? "⚠️ Ses mesajı işlenemedi. Lütfen tekrar deneyin."
-                    : "⚠️ Could not process your voice message. Please try again.",
-                cancellationToken: ct);
-            return null;
-        }
-    }
-
     private const string TrWelcome = """
         👋 Merhaba! Ben Hanwas AI.
         Apartmanınızdaki arıza ve bakım taleplerinizi buraya yazmanız yeterli — sistemimiz talebinizi otomatik olarak değerlendirip yöneticinize iletecek.
@@ -281,7 +209,6 @@ public sealed class TelegramAdapter : IMessageChannel
         · Ortak alan sorunları
         · Acil durumlar
         · 📷 Fotoğraf: mesaj başına 1 görsel, maks. ~10 MB (JPEG/PNG/WebP/GIF)
-        · 🎙️ Ses kaydı: maks. 60 saniye
 
         🔒 Mesajlarınız yalnızca bakım yönetimi amacıyla işlenmektedir. (KVKK md. 6698)
 
@@ -297,7 +224,6 @@ public sealed class TelegramAdapter : IMessageChannel
         · Common area problems
         · Emergencies
         · 📷 Photo: 1 image per message, max ~10 MB (JPEG/PNG/WebP/GIF)
-        · 🎙️ Voice message: max 60 seconds
 
         🔒 Messages are processed solely for maintenance management. (KVKK §6698)
 

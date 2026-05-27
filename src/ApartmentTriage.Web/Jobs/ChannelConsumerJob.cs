@@ -170,10 +170,7 @@ public sealed class ChannelConsumerJob(
         · Water leaks, electrical faults, elevator issues
         · Common area problems
         · Emergencies
-        · 📷 Photo: 1 image per message, max ~10 MB
-        · 🎙️ Voice message: max 60 seconds
-
-        ⚠️ Limits: 1 photo per message · Max ~10 MB · Voice max 60 s
+        · 📷 Photo: 1 image per message, max ~10 MB (JPEG/PNG/WebP/GIF)
 
         🔒 Messages are processed solely for maintenance management. (KVKK §6698)
 
@@ -186,10 +183,7 @@ public sealed class ChannelConsumerJob(
         · Su kaçağı, elektrik arızası, asansör
         · Ortak alan sorunları
         · Acil durumlar
-        · 📷 Fotoğraf: mesaj başına 1 görsel, maks. ~10 MB
-        · 🎙️ Ses kaydı: maks. 60 saniye
-
-        ⚠️ Sınırlar: 1 fotoğraf / mesaj · Maks. ~10 MB · Ses maks. 60 sn
+        · 📷 Fotoğraf: mesaj başına 1 görsel, maks. ~10 MB (JPEG/PNG/WebP/GIF)
 
         🔒 Mesajlarınız yalnızca bakım yönetimi amacıyla işlenmektedir. (KVKK md. 6698)
 
