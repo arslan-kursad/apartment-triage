@@ -13,6 +13,8 @@ using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
 namespace ApartmentTriage.Infrastructure;
@@ -87,9 +89,29 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.Configure<WhisperOptions>(configuration.GetSection(WhisperOptions.SectionName));
+
         // Singleton: WhisperFactory loads the model once (~142 MB, expensive).
         // IDisposable — DI container disposes on app shutdown.
-        services.AddSingleton<ITranscriptionService, WhisperTranscriptionService>();
+        // Graceful fallback: if the native runtime library is missing (Whisper.net.Runtime not
+        // installed) we fall back to NoopTranscriptionService so the rest of the pipeline
+        // (text + image) keeps working. Voice messages return empty transcript → caller notifies resident.
+        services.AddSingleton<ITranscriptionService>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<WhisperOptions>>();
+            var logger  = sp.GetRequiredService<ILogger<WhisperTranscriptionService>>();
+            try
+            {
+                return new WhisperTranscriptionService(options, logger);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "WhisperTranscriptionService failed to initialize — voice transcription disabled. " +
+                    "Ensure Whisper.net.Runtime NuGet is installed and the native library is present.");
+                return new NoopTranscriptionService();
+            }
+        });
+
         return services;
     }
 
