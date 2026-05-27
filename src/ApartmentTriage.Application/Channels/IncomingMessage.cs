@@ -13,5 +13,8 @@ public sealed record IncomingMessage(
 
     string Text,
 
-    DateTimeOffset ReceivedAt
+    DateTimeOffset ReceivedAt,
+
+    /// <summary>BCP-47 language code from the channel (e.g. "tr", "en"). Null when not available.</summary>
+    string? LanguageCode = null
 );

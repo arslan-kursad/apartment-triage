@@ -51,8 +51,9 @@ public sealed class ChannelConsumerJob(
             return;
         }
 
+        var preferredLanguage = DetectLanguage(incoming.LanguageCode, incoming.Text);
         var resident = await residentRepository.FindByTelegramIdAsync(telegramId, ct)
-            ?? await CreateResidentAsync(telegramId, ct);
+            ?? await CreateResidentAsync(telegramId, preferredLanguage, ct);
 
         var message = Message.Create(
             residentId: resident.Id,
@@ -88,38 +89,52 @@ public sealed class ChannelConsumerJob(
         await channel.SendAsync(incoming.SenderId, reply, ct);
     }
 
-    private static readonly string WelcomeMessage = """
-Merhaba 👋
+    private static string GetWelcomeMessage(string lang) => lang == "en" ? """
+        👋 Hello! I'm Hanwas AI.
+        Just describe your maintenance issue — our system will assess and route it to your building manager automatically.
 
-Almila Apartman'ın yapay zeka destekli yönetim sistemi artık
-Telegram üzerinden çalışıyor. Su kaçağı, elektrik arızası,
-asansör sorunu ya da herhangi bir bakım talebini buraya
-yazmanız yeterli.
+        📌 You can report:
+        · Water leaks, electrical faults, elevator issues
+        · Common area problems
+        · Emergencies
 
-📌 Nasıl kullanılır?
-Sorununuzu kısa bir mesajla yazın; sistem talebinizi
-değerlendirip yöneticinize iletir.
+        🔒 Messages are processed solely for maintenance management. (KVKK §6698)
 
-🔒 Gizlilik:
-İlettiğiniz mesajlar yalnızca bakım ve şikayet yönetimi
-amacıyla işlenmektedir.
+        Please describe your issue 👇
+        """ : """
+        👋 Merhaba! Ben Hanwas AI.
+        Apartmanınızdaki arıza ve bakım taleplerinizi buraya yazmanız yeterli — sistemimiz talebinizi otomatik olarak değerlendirip yöneticinize iletecek.
 
-Hazır olduğunuzda yazabilirsiniz.
-""";
+        📌 Bildirebilecekleriniz:
+        · Su kaçağı, elektrik arızası, asansör
+        · Ortak alan sorunları
+        · Acil durumlar
 
-    private async Task<Resident> CreateResidentAsync(long telegramId, CancellationToken ct)
+        🔒 Mesajlarınız yalnızca bakım yönetimi amacıyla işlenmektedir. (KVKK md. 6698)
+
+        Talebinizi yazabilirsiniz 👇
+        """;
+
+    private static string DetectLanguage(string? languageCode, string text)
     {
-        var resident = Resident.Create(telegramId: telegramId);
+        if (languageCode == "tr") return "tr";
+        if (text.Any(c => "çğıöşüÇĞİÖŞÜ".Contains(c))) return "tr";
+        return "en";
+    }
+
+    private async Task<Resident> CreateResidentAsync(long telegramId, string preferredLanguage, CancellationToken ct)
+    {
+        var resident = Resident.Create(telegramId: telegramId, preferredLanguage: preferredLanguage);
         await residentRepository.AddAsync(resident, ct);
         await residentRepository.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "Auto-created resident {ResidentId} for Telegram {TelegramId}",
-            resident.Id, telegramId);
+            "Auto-created resident {ResidentId} for Telegram {TelegramId} (lang={Language})",
+            resident.Id, telegramId, preferredLanguage);
 
         try
         {
-            await channel.SendAsync(telegramId.ToString(), WelcomeMessage, ct);
+            await channel.SendAsync(telegramId.ToString(), GetWelcomeMessage(preferredLanguage), ct);
             logger.LogInformation(
                 "Sent welcome message to Telegram {TelegramId}", telegramId);
         }

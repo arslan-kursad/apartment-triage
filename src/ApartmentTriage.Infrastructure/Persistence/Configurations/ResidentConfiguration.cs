@@ -19,6 +19,11 @@ internal sealed class ResidentConfiguration : IEntityTypeConfiguration<Resident>
         b.Property(r => r.WhatsAppNumber)
             .HasMaxLength(20);
 
+        b.Property(r => r.PreferredLanguage)
+            .HasMaxLength(5)
+            .HasDefaultValue("tr")
+            .IsRequired();
+
         b.Property(r => r.CreatedAt)
             .IsRequired();
 

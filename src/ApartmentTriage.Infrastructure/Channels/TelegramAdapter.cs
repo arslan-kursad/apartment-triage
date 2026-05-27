@@ -34,15 +34,53 @@ public sealed class TelegramAdapter : IMessageChannel
                     continue;
 
                 var senderId = upd.Message.From?.Id ?? upd.Message.Chat.Id;
+                var languageCode = upd.Message.From?.LanguageCode;
+
+                if (text == "/start")
+                {
+                    var lang = languageCode == "tr" ? "tr" : "en";
+                    await _bot.SendMessage(senderId, lang == "tr" ? TrWelcome : EnWelcome,
+                        cancellationToken: cancellationToken);
+                    continue;
+                }
 
                 yield return new IncomingMessage(
                     ExternalId: upd.Message.MessageId.ToString(),
                     SenderId: senderId.ToString(),
                     Text: text,
-                    ReceivedAt: DateTime.SpecifyKind(upd.Message.Date, DateTimeKind.Utc));
+                    ReceivedAt: DateTime.SpecifyKind(upd.Message.Date, DateTimeKind.Utc),
+                    LanguageCode: languageCode);
             }
         }
     }
+
+    private const string TrWelcome = """
+        👋 Merhaba! Ben Hanwas AI.
+        Apartmanınızdaki arıza ve bakım taleplerinizi buraya yazmanız yeterli — sistemimiz talebinizi otomatik olarak değerlendirip yöneticinize iletecek.
+
+        📌 Bildirebilecekleriniz:
+        · Su kaçağı, elektrik arızası, asansör
+        · Ortak alan sorunları
+        · Acil durumlar
+
+        🔒 Mesajlarınız yalnızca bakım yönetimi amacıyla işlenmektedir. (KVKK md. 6698)
+
+        Talebinizi yazabilirsiniz 👇
+        """;
+
+    private const string EnWelcome = """
+        👋 Hello! I'm Hanwas AI.
+        Just describe your maintenance issue — our system will assess and route it to your building manager automatically.
+
+        📌 You can report:
+        · Water leaks, electrical faults, elevator issues
+        · Common area problems
+        · Emergencies
+
+        🔒 Messages are processed solely for maintenance management. (KVKK §6698)
+
+        Please describe your issue 👇
+        """;
 
     public Task SendAsync(string recipientId, string text, CancellationToken cancellationToken = default)
         => _bot.SendMessage(long.Parse(recipientId), text, cancellationToken: cancellationToken);

@@ -37,10 +37,10 @@ public class ChannelConsumerJobTests
 
         sentMessages.Should().HaveCount(2);
         sentMessages[0].RecipientId.Should().Be("8013067042");
-        sentMessages[0].Text.Should().Contain("Almila Apartman'ın yapay zeka destekli yönetim sistemi artık");
-        sentMessages[0].Text.Should().Contain("Hazır olduğunuzda yazabilirsiniz.");
+        sentMessages[0].Text.Should().Contain("Hanwas AI");
+        sentMessages[0].Text.Should().Contain("Talebinizi yazabilirsiniz");
         sentMessages[1].RecipientId.Should().Be("8013067042");
-        sentMessages[1].Text.Should().Contain("Talebinizi aldık. Sorununuzu sistemimize kaydettik;");
+        sentMessages[1].Text.Should().Contain("Talebinizi aldık.");
 
         residentRepository.AddedResidents.Should().ContainSingle(r => r.TelegramId == 8013067042);
         messageRepository.AddedMessages.Should().ContainSingle();
@@ -68,7 +68,7 @@ public class ChannelConsumerJobTests
 
         sentMessages.Should().ContainSingle();
         sentMessages[0].RecipientId.Should().Be("8013067042");
-        sentMessages[0].Text.Should().Contain("Talebinizi aldık. Sorununuzu sistemimize kaydettik;");
+        sentMessages[0].Text.Should().Contain("Talebinizi aldık.");
 
         residentRepository.AddedResidents.Should().BeEmpty();
         messageRepository.AddedMessages.Should().ContainSingle();

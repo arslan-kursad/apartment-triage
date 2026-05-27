@@ -20,6 +20,9 @@ public sealed class Resident
     /// <summary>Telegram user ID (long).</summary>
     public long? TelegramId { get; private set; }
 
+    /// <summary>"tr" or "en". Detected from channel language_code or message content on first contact.</summary>
+    public string PreferredLanguage { get; private set; } = "tr";
+
     public DateTime CreatedAt { get; private set; }
 
     // Navigation
@@ -32,7 +35,8 @@ public sealed class Resident
         string? apartmentNumber = null,
         string? displayName = null,
         string? whatsAppNumber = null,
-        long? telegramId = null)
+        long? telegramId = null,
+        string preferredLanguage = "tr")
     {
         return new Resident
         {
@@ -41,8 +45,15 @@ public sealed class Resident
             DisplayName = displayName?.Trim(),
             WhatsAppNumber = whatsAppNumber?.Trim(),
             TelegramId = telegramId,
+            PreferredLanguage = preferredLanguage is "tr" or "en" ? preferredLanguage : "tr",
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    public void SetPreferredLanguage(string language)
+    {
+        if (language is "tr" or "en")
+            PreferredLanguage = language;
     }
 
     public void UpdateContactInfo(
