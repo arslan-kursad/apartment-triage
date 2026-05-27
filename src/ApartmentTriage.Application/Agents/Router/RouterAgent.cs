@@ -95,9 +95,24 @@ public sealed class RouterAgent : AgentBase<RouterInput, RouterOutput>
         }
 
         // Rule 2: NonActionable → archive
+        // Guard: EmergencyConfidence=High blocks Archive — second defense line against
+        // inconsistent classifier output (e.g. NonActionable set alongside high emergency signal).
         if (input.AmbiguityReasons.Contains(AmbiguityReason.NonActionable))
+        {
+            if (input.EmergencyConfidence == ConfidenceLevel.High)
+            {
+                Logger.LogWarning(
+                    "RouterAgent [{TicketId}] Layer 2 → EscalateToManager " +
+                    "(EmergencyConfidence=High overrides NonActionable→Archive)",
+                    input.TicketId);
+                return new RouterOutput(
+                    RoutingAction.EscalateToManager, null,
+                    "EmergencyConfidence=High ile NonActionable çelişkisi — güvenli yönlendirme.",
+                    ConfidenceLevel.High);
+            }
             return new RouterOutput(
                 RoutingAction.Archive, null, null, ConfidenceLevel.High);
+        }
 
         // Rule 3: Urgent severity → escalate
         if (input.Severity == TicketSeverity.Urgent)
