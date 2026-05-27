@@ -203,7 +203,7 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
 
         CATEGORIES (use exact snake_case value):
         plumbing         — indoor water supply, drainage, leaks, clogs (internal plumbing only)
-        electrical       — wiring, outlets, breakers, lighting circuits
+        electrical       — wiring, outlets, breakers, lighting circuits, electrical panels, exposed cables
         gas              — natural gas, combi boiler gas side, gas odor/leak
         heating_cooling  — boiler heat side, radiators, AC, climate equipment
         elevator         — elevator malfunction, stuck, door issues
@@ -216,6 +216,13 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
         security         — locks, cameras, suspicious activity, break-ins
         announcement     — informational message (utility outage notice, building announcement) — NOT a ticket
         other            — none of the above (use sparingly, target <5% of traffic)
+
+        ELECTRICAL CLASSIFICATION — Turkish signals that always map to category=electrical:
+        açık kablo / kablolar dışarıda / açık tel / bare wire → category=electrical, minimum severity=high
+        sigorta panosu / elektrik panosu / anahtar kutusu / breaker box → category=electrical
+        kıvılcım / spark → category=electrical, severity=urgent, is_emergency=true
+        elektrik tesisatı / wiring / devre / circuit → category=electrical
+        When a combi boiler (kombi) has an electrical fault (panel, wiring, cables), use category=electrical.
 
         SEVERITY values: low, medium, high, urgent
         Upgrade signals (push toward higher severity): flood, fire, smoke, stuck, sparks, "şu an", "acil", "hemen", all-caps, 3+ exclamations
@@ -238,6 +245,29 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
 
         AMBIGUITY REASONS (include if clarification would change the ticket):
         missing_location, missing_severity, category_ambiguous, language_unclear, needs_visual, non_actionable
+
+        CONSTRAINT — non_actionable:
+        non_actionable is only appropriate when the message genuinely cannot be acted upon
+        (e.g. "bir şey var" with no identifiable issue type whatsoever).
+        NEVER use non_actionable when the message describes:
+        - Exposed cables, open wires, bare wire (açık kablo, kablolar dışarıda, açık tel)
+        - Electrical panel or breaker box (sigorta panosu, elektrik panosu, anahtar kutusu)
+        - Sparks or burning smell from electrical source (kıvılcım)
+        These messages are always actionable — omit non_actionable from ambiguity_reasons.
+
+        EXAMPLES — correct classification for electrical scenarios:
+
+        Input: "kombinin kabloları açıkta tehlikeli görünüyor"
+        {"category":"electrical","severity":"high","category_confidence":"high","is_emergency":false,"emergency_confidence":"medium","location_hint":null,"secondary_issues":[],"ambiguity_reasons":[],"rationale":"Exposed boiler cables are an actionable electrical hazard; inspection required within 24h."}
+
+        Input: "sigorta kabloları dışarıda 2 haftadır bu şekilde riskli"
+        {"category":"electrical","severity":"high","category_confidence":"high","is_emergency":false,"emergency_confidence":"medium","location_hint":null,"secondary_issues":[],"ambiguity_reasons":[],"rationale":"Panel cables exposed for 2 weeks — ongoing safety risk, high severity, technician needed."}
+
+        Input: "elektrik panosunda açık tel var, çocuklar var evde"
+        {"category":"electrical","severity":"urgent","category_confidence":"high","is_emergency":true,"emergency_confidence":"high","location_hint":null,"secondary_issues":[],"ambiguity_reasons":[],"rationale":"Exposed panel wires with children present — immediate life threat, emergency response required."}
+
+        Input: "anahtar kutusundan kıvılcım çıkıyor"
+        {"category":"electrical","severity":"urgent","category_confidence":"high","is_emergency":true,"emergency_confidence":"high","location_hint":null,"secondary_issues":[],"ambiguity_reasons":[],"rationale":"Sparks from switch box indicate active electrical fault — fire risk, immediate emergency."}
 
         OUTPUT FORMAT (JSON only):
         {
