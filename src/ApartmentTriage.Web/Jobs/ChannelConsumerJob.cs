@@ -68,7 +68,9 @@ public sealed class ChannelConsumerJob(
             channelType: channel.ChannelType,
             externalMessageId: incoming.ExternalId,
             rawText: incoming.Text,
-            receivedAt: incoming.ReceivedAt.UtcDateTime);
+            receivedAt: incoming.ReceivedAt.UtcDateTime,
+            imageData: incoming.ImageData,
+            imageMimeType: incoming.ImageMimeType);
 
         await messageRepository.AddAsync(message, ct);
         await messageRepository.SaveChangesAsync(ct);

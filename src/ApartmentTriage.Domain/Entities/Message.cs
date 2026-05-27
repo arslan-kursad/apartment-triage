@@ -17,6 +17,12 @@ public sealed class Message
 
     public string RawText { get; private set; } = string.Empty;
 
+    /// <summary>Optional image attached to the message (JPEG/PNG/WebP/GIF). Stored as bytea.</summary>
+    public byte[]? ImageData { get; private set; }
+
+    /// <summary>MIME type of ImageData (e.g. "image/jpeg"). Null when no image.</summary>
+    public string? ImageMimeType { get; private set; }
+
     /// <summary>Layer 1 soft signal: phrase set matched at least one pattern.</summary>
     public bool EmergencySuspected { get; private set; }
 
@@ -38,7 +44,9 @@ public sealed class Message
         string rawText,
         DateTime receivedAt,
         bool emergencySuspected = false,
-        string[]? matchedPhrases = null)
+        string[]? matchedPhrases = null,
+        byte[]? imageData = null,
+        string? imageMimeType = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(externalMessageId);
         ArgumentException.ThrowIfNullOrWhiteSpace(rawText);
@@ -52,7 +60,9 @@ public sealed class Message
             RawText = rawText,
             ReceivedAt = receivedAt,
             EmergencySuspected = emergencySuspected,
-            MatchedPhrases = matchedPhrases ?? []
+            MatchedPhrases = matchedPhrases ?? [],
+            ImageData = imageData,
+            ImageMimeType = imageMimeType
         };
     }
 
@@ -70,5 +80,7 @@ public sealed class Message
         RawText = "[redacted]";
         ExternalMessageId = "[redacted]";
         MatchedPhrases = [];
+        ImageData = null;
+        ImageMimeType = null;
     }
 }
