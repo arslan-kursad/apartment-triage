@@ -11,6 +11,7 @@ public sealed class ChannelConsumerJob(
     [FromKeyedServices(ChannelType.Telegram)] IMessageChannel channel,
     IResidentRepository residentRepository,
     IMessageRepository messageRepository,
+    ITicketRepository ticketRepository,
     ITriageOrchestrator orchestrator,
     ILogger<ChannelConsumerJob> logger)
 {
@@ -55,6 +56,12 @@ public sealed class ChannelConsumerJob(
         var resident = await residentRepository.FindByTelegramIdAsync(telegramId, ct)
             ?? await CreateResidentAsync(telegramId, preferredLanguage, ct);
 
+        if (resident.PendingClarificationTicketId.HasValue)
+        {
+            await HandleClarificationResponseAsync(incoming, resident, ct);
+            return;
+        }
+
         var message = Message.Create(
             residentId: resident.Id,
             channelType: channel.ChannelType,
@@ -85,7 +92,61 @@ public sealed class ChannelConsumerJob(
                 incoming.SenderId, resident.PreferredLanguage);
 
             await channel.SendAsync(incoming.SenderId, result.ReplyText, ct);
+
+            if (result.AmbiguityReasons.Count > 0 && result.Tickets.Count > 0)
+            {
+                resident.SetPendingClarification(result.Tickets[0].Id);
+                await residentRepository.SaveChangesAsync(ct);
+                logger.LogInformation(
+                    "PendingClarificationTicketId={TicketId} set for resident {ResidentId}",
+                    result.Tickets[0].Id, resident.Id);
+            }
         }
+    }
+
+    private async Task HandleClarificationResponseAsync(
+        IncomingMessage incoming, Resident resident, CancellationToken ct)
+    {
+        var pendingTicketId = resident.PendingClarificationTicketId!.Value;
+
+        // Save the clarification response as a message for idempotency across restarts.
+        var message = Message.Create(
+            residentId: resident.Id,
+            channelType: channel.ChannelType,
+            externalMessageId: incoming.ExternalId,
+            rawText: incoming.Text,
+            receivedAt: incoming.ReceivedAt.UtcDateTime);
+        await messageRepository.AddAsync(message, ct);
+        await messageRepository.SaveChangesAsync(ct);
+
+        var ticket = await ticketRepository.GetByIdAsync(pendingTicketId, ct);
+        if (ticket is not null)
+        {
+            var updatedContext = string.IsNullOrEmpty(ticket.Context)
+                ? incoming.Text
+                : $"{ticket.Context}; {incoming.Text}";
+            ticket.SetContext(updatedContext);
+            await ticketRepository.SaveChangesAsync(ct);
+
+            var reply = ReplyTemplates.BuildTicketReply(ticket, resident.PreferredLanguage);
+            await channel.SendAsync(incoming.SenderId, reply, ct);
+
+            logger.LogInformation(
+                "Clarification response processed for ticket {TicketId} from {SenderId}",
+                pendingTicketId, incoming.SenderId);
+        }
+        else
+        {
+            logger.LogWarning(
+                "PendingClarificationTicketId {TicketId} not found for resident {ResidentId}",
+                pendingTicketId, resident.Id);
+        }
+
+        resident.SetPendingClarification(null);
+        await residentRepository.SaveChangesAsync(ct);
+
+        message.MarkProcessed();
+        await messageRepository.SaveChangesAsync(ct);
     }
 
     private static string GetWelcomeMessage(string lang) => lang == "en" ? """

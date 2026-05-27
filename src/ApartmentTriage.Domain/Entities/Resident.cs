@@ -23,6 +23,13 @@ public sealed class Resident
     /// <summary>"tr" or "en". Detected from channel language_code or message content on first contact.</summary>
     public string PreferredLanguage { get; private set; } = "tr";
 
+    /// <summary>
+    /// Set when a clarification question is sent to the resident. The next incoming message
+    /// is treated as the clarification response and updates this ticket instead of creating a new one.
+    /// Cleared after the response is processed.
+    /// </summary>
+    public Guid? PendingClarificationTicketId { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
 
     // Navigation
@@ -55,6 +62,9 @@ public sealed class Resident
         if (language is "tr" or "en")
             PreferredLanguage = language;
     }
+
+    public void SetPendingClarification(Guid? ticketId)
+        => PendingClarificationTicketId = ticketId;
 
     public void UpdateContactInfo(
         string? displayName = null,

@@ -24,6 +24,9 @@ internal sealed class ResidentConfiguration : IEntityTypeConfiguration<Resident>
             .HasDefaultValue("tr")
             .IsRequired();
 
+        b.Property(r => r.PendingClarificationTicketId)
+            .IsRequired(false);
+
         b.Property(r => r.CreatedAt)
             .IsRequired();
 

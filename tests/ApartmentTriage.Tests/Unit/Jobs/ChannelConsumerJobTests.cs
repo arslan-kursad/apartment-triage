@@ -29,6 +29,7 @@ public class ChannelConsumerJobTests
             channel,
             residentRepository,
             messageRepository,
+            new FakeTicketRepository(),
             orchestrator,
             NullLogger<ChannelConsumerJob>.Instance);
 
@@ -60,6 +61,7 @@ public class ChannelConsumerJobTests
             channel,
             residentRepository,
             messageRepository,
+            new FakeTicketRepository(),
             orchestrator,
             NullLogger<ChannelConsumerJob>.Instance);
 
@@ -164,6 +166,32 @@ internal sealed class FakeMessageRepository : IMessageRepository
         => Task.FromResult(false);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
+
+internal sealed class FakeTicketRepository : ITicketRepository
+{
+    public Task<Ticket?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        => Task.FromResult<Ticket?>(null);
+
+    public Task AddAsync(Ticket ticket, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task AddRangeAsync(IEnumerable<Ticket> tickets, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task<IReadOnlyList<ApartmentTriage.Application.Agents.Enricher.SimilarTicket>> FindSimilarAsync(
+        float[] vector, Guid excludeTicketId, int topK = 5, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlyList<ApartmentTriage.Application.Agents.Enricher.SimilarTicket>>(Array.Empty<ApartmentTriage.Application.Agents.Enricher.SimilarTicket>());
+
+    public Task<(IReadOnlyList<Ticket> Items, int TotalCount)> GetPagedAsync(
+        ApartmentTriage.Domain.Enums.TicketStatus? status,
+        ApartmentTriage.Domain.Enums.TicketCategory? category,
+        bool? isEmergency, int page, int pageSize,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<(IReadOnlyList<Ticket>, int)>((Array.Empty<Ticket>(), 0));
 }
 
 internal sealed class FakeTriageOrchestrator : ITriageOrchestrator
