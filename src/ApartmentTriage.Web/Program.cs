@@ -63,6 +63,7 @@ try
     // Telegram consumer: run as a simple background service instead of Hangfire recurring job.
     // This avoids distributed lock issues in local development and keeps polling reliable.
     builder.Services.AddTransient<ChannelConsumerJob>();
+    builder.Services.AddTransient<WhatsAppConsumerJob>();
     builder.Services.AddHostedService<TelegramConsumerHostedService>();
 
     var app = builder.Build();
