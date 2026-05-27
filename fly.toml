@@ -13,6 +13,7 @@ primary_region = "fra"
   cpu_kind = "shared"
   cpus = 1
   memory = "2gb"
+  count = 1
 
 [[checks]]
   name = "health"
