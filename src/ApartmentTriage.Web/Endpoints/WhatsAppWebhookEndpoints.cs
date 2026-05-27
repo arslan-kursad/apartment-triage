@@ -40,7 +40,7 @@ public static class WhatsAppWebhookEndpoints
         {
             logger.LogWarning("WhatsApp webhook verification failed — mode={Mode} tokenMatch={Match}",
                 mode, verifyToken == expectedToken);
-            return Results.Forbid();
+            return Results.StatusCode(403);
         }
 
         logger.LogInformation("WhatsApp webhook verified successfully");
