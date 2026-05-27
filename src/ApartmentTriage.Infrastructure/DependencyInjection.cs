@@ -90,27 +90,11 @@ public static class DependencyInjection
     {
         services.Configure<WhisperOptions>(configuration.GetSection(WhisperOptions.SectionName));
 
-        // Singleton: WhisperFactory loads the model once (~142 MB, expensive).
-        // IDisposable — DI container disposes on app shutdown.
-        // Graceful fallback: if the native runtime library is missing (Whisper.net.Runtime not
-        // installed) we fall back to NoopTranscriptionService so the rest of the pipeline
-        // (text + image) keeps working. Voice messages return empty transcript → caller notifies resident.
-        services.AddSingleton<ITranscriptionService>(sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<WhisperOptions>>();
-            var logger  = sp.GetRequiredService<ILogger<WhisperTranscriptionService>>();
-            try
-            {
-                return new WhisperTranscriptionService(options, logger);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "WhisperTranscriptionService failed to initialize — voice transcription disabled. " +
-                    "Ensure Whisper.net.Runtime NuGet is installed and the native library is present.");
-                return new NoopTranscriptionService();
-            }
-        });
+        // TEMPORARY DISABLE (2026-05-27): WhisperTranscriptionService causes ggml_abort / SIGABRT
+        // on Fly.io — likely model format incompatibility with Whisper.net.Runtime 1.9.0.
+        // Root cause under investigation. Voice messages will return empty transcript (resident notified).
+        // TODO: re-enable when model compatibility is resolved.
+        services.AddSingleton<ITranscriptionService, NoopTranscriptionService>();
 
         return services;
     }
