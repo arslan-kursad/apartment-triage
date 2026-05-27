@@ -7,4 +7,8 @@ public sealed record AnthropicRequest(
     int MaxTokens = 1024,
     bool CacheSystemPrompt = true);
 
-public sealed record AnthropicMessage(string Role, string Content);
+public sealed record AnthropicMessage(
+    string Role,
+    string Content,
+    byte[]? ImageData = null,
+    string? ImageMimeType = null);

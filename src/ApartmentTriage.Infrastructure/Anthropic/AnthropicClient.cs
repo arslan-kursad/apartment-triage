@@ -76,8 +76,35 @@ public sealed class AnthropicClient : IAnthropicClient
         {
             model = request.Model,
             system = systemContent,
-            messages = request.Messages.Select(m => new { role = m.Role, content = m.Content }),
+            messages = request.Messages.Select(BuildMessageBody),
             max_tokens = request.MaxTokens
+        };
+    }
+
+    // Emits a plain string content for text-only messages;
+    // a content-block array when an image is attached (Anthropic vision format).
+    private static object BuildMessageBody(AnthropicMessage m)
+    {
+        if (m.ImageData is null)
+            return new { role = m.Role, content = (object)m.Content };
+
+        return new
+        {
+            role = m.Role,
+            content = new object[]
+            {
+                new
+                {
+                    type = "image",
+                    source = new
+                    {
+                        type = "base64",
+                        media_type = m.ImageMimeType ?? "image/jpeg",
+                        data = Convert.ToBase64String(m.ImageData)
+                    }
+                },
+                new { type = "text", text = m.Content }
+            }
         };
     }
 

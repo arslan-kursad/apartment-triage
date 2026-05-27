@@ -16,5 +16,11 @@ public sealed record IncomingMessage(
     DateTimeOffset ReceivedAt,
 
     /// <summary>BCP-47 language code from the channel (e.g. "tr", "en"). Null when not available.</summary>
-    string? LanguageCode = null
+    string? LanguageCode = null,
+
+    /// <summary>Raw image bytes downloaded from the channel CDN. Null when message has no photo.</summary>
+    byte[]? ImageData = null,
+
+    /// <summary>MIME type of the image, e.g. "image/jpeg". Null when ImageData is null.</summary>
+    string? ImageMimeType = null
 );

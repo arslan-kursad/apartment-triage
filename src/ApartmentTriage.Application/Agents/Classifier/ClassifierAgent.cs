@@ -42,7 +42,7 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
         var request = new AnthropicRequest(
             Model: _model,
             SystemPrompt: SystemPrompt,
-            Messages: [new AnthropicMessage("user", userMessage)],
+            Messages: [new AnthropicMessage("user", userMessage, input.ImageData, input.ImageMimeType)],
             MaxTokens: 512,
             CacheSystemPrompt: true);
 
@@ -133,8 +133,11 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
             ? string.Join(", ", input.MatchedPhrases.Select(p => $"\"{p}\""))
             : "none";
 
+        var hasImage = input.ImageData is not null;
+
         return $"""
             Channel: {input.ChannelType}
+            Has image: {(hasImage ? "YES" : "NO")}
             Emergency suspected (phrase match): {(input.EmergencySuspected ? "YES" : "NO")}
             Matched phrases: {phrases}
 

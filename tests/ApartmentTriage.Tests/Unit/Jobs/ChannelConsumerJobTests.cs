@@ -199,6 +199,8 @@ internal sealed class FakeTriageOrchestrator : ITriageOrchestrator
     public Task<TriageResult> ProcessAsync(
         Message message,
         string preferredLanguage = "tr",
+        byte[]? imageData = null,
+        string? imageMimeType = null,
         CancellationToken cancellationToken = default)
         => Task.FromResult(TriageResult.Ok(
             new List<Ticket>(),

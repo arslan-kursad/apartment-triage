@@ -73,7 +73,8 @@ public sealed class ChannelConsumerJob(
         await messageRepository.AddAsync(message, ct);
         await messageRepository.SaveChangesAsync(ct);
 
-        var result = await orchestrator.ProcessAsync(message, resident.PreferredLanguage, ct);
+        var result = await orchestrator.ProcessAsync(
+            message, resident.PreferredLanguage, incoming.ImageData, incoming.ImageMimeType, ct);
 
         if (!result.IsSuccess)
         {
@@ -169,6 +170,9 @@ public sealed class ChannelConsumerJob(
         · Water leaks, electrical faults, elevator issues
         · Common area problems
         · Emergencies
+        · 📷 Send a photo (1 image per message) to help us assess the issue faster.
+
+        ⚠️ Limits: 1 photo per message · Max file size ~10 MB
 
         🔒 Messages are processed solely for maintenance management. (KVKK §6698)
 
@@ -181,6 +185,9 @@ public sealed class ChannelConsumerJob(
         · Su kaçağı, elektrik arızası, asansör
         · Ortak alan sorunları
         · Acil durumlar
+        · 📷 Fotoğraf göndererek sorunu daha hızlı değerlendirmemize yardımcı olabilirsiniz (mesaj başına 1 görsel).
+
+        ⚠️ Sınırlar: Mesaj başına 1 fotoğraf · Maksimum dosya boyutu ~10 MB
 
         🔒 Mesajlarınız yalnızca bakım yönetimi amacıyla işlenmektedir. (KVKK md. 6698)
 

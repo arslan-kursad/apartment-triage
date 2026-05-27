@@ -59,7 +59,8 @@ public sealed class WhatsAppConsumerJob(
         await messageRepository.AddAsync(message, ct);
         await messageRepository.SaveChangesAsync(ct);
 
-        var result = await orchestrator.ProcessAsync(message, resident.PreferredLanguage, ct);
+        var result = await orchestrator.ProcessAsync(
+            message, resident.PreferredLanguage, cancellationToken: ct);
 
         if (!result.IsSuccess)
         {

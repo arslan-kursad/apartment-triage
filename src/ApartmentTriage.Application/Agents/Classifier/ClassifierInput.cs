@@ -7,4 +7,6 @@ public sealed record ClassifierInput(
     string RawText,
     ChannelType ChannelType,
     bool EmergencySuspected,
-    IReadOnlyList<string> MatchedPhrases);
+    IReadOnlyList<string> MatchedPhrases,
+    byte[]? ImageData = null,
+    string? ImageMimeType = null);

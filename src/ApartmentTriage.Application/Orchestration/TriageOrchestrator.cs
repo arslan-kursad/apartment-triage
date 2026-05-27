@@ -53,6 +53,8 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
     public async Task<TriageResult> ProcessAsync(
         Message message,
         string preferredLanguage = "tr",
+        byte[]? imageData = null,
+        string? imageMimeType = null,
         CancellationToken cancellationToken = default)
     {
         var context = new AgentContext(
@@ -66,7 +68,9 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
             RawText: message.RawText,
             ChannelType: message.ChannelType,
             EmergencySuspected: message.EmergencySuspected,
-            MatchedPhrases: Array.AsReadOnly(message.MatchedPhrases));
+            MatchedPhrases: Array.AsReadOnly(message.MatchedPhrases),
+            ImageData: imageData,
+            ImageMimeType: imageMimeType);
 
         // ── Classifier ────────────────────────────────────────────────────────
 
