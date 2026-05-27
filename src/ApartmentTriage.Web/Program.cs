@@ -5,6 +5,7 @@ using ApartmentTriage.Web.Endpoints;
 using ApartmentTriage.Web.Jobs;
 using Hangfire;
 using Hangfire.Common;
+using Hangfire.Dashboard;
 using Hangfire.Storage;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -71,7 +72,10 @@ try
     if (app.Environment.IsDevelopment())
         app.UseDeveloperExceptionPage();
 
-    app.UseHangfireDashboard("/hangfire");
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = Array.Empty<IDashboardAuthorizationFilter>()
+    });
 
     // Remove stale Telegram recurring jobs from previous deployments.
     // The app now uses a hosted service for Telegram long polling.
