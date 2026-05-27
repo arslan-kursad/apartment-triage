@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -5,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Domain.Enums;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace ApartmentTriage.Infrastructure.Channels;
@@ -18,10 +20,22 @@ public sealed class WhatsAppAdapter : IMessageChannel
 {
     private readonly Channel<IncomingMessage> _queue;
     private readonly ILogger<WhatsAppAdapter> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly string _phoneNumberId;
+    private readonly string _accessToken;
 
-    public WhatsAppAdapter(ILogger<WhatsAppAdapter> logger)
+    public WhatsAppAdapter(
+        ILogger<WhatsAppAdapter> logger,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration)
     {
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
+        _phoneNumberId = configuration["WhatsApp:PhoneNumberId"]
+            ?? throw new InvalidOperationException("WhatsApp:PhoneNumberId not configured.");
+        _accessToken = configuration["WhatsApp:AccessToken"]
+            ?? throw new InvalidOperationException("WhatsApp:AccessToken not configured.");
+
         // Bounded to prevent unbounded memory growth under load.
         _queue = Channel.CreateBounded<IncomingMessage>(new BoundedChannelOptions(1000)
         {
@@ -55,12 +69,42 @@ public sealed class WhatsAppAdapter : IMessageChannel
 
     public async Task SendAsync(string recipientId, string text, CancellationToken cancellationToken = default)
     {
-        // TODO Day 10: implement via WhatsApp Cloud API POST /messages
-        // Requires: WhatsApp:PhoneNumberId + WhatsApp:AccessToken from configuration
-        _logger.LogWarning(
-            "WhatsApp SendAsync not yet implemented — would send to {RecipientId}: {Text}",
-            recipientId, text);
-        await Task.CompletedTask;
+        var client = _httpClientFactory.CreateClient("whatsapp");
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
+
+        var url = $"https://graph.facebook.com/v17.0/{_phoneNumberId}/messages";
+
+        var payload = new
+        {
+            messaging_product = "whatsapp",
+            to = recipientId,
+            type = "text",
+            text = new { body = text }
+        };
+
+        try
+        {
+            var response = await client.PostAsJsonAsync(url, payload, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError(
+                    "WhatsApp API error sending to {RecipientId}: {StatusCode} — {Body}",
+                    recipientId, (int)response.StatusCode, body);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "WhatsApp message sent to {RecipientId}", recipientId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "WhatsApp SendAsync exception for {RecipientId}", recipientId);
+        }
     }
 
     /// <summary>Verifies X-Hub-Signature-256 header against HMAC-SHA256(appSecret, body).</summary>

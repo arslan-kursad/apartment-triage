@@ -50,6 +50,8 @@ public static class DependencyInjection
 
     public static IServiceCollection AddWhatsAppChannel(this IServiceCollection services)
     {
+        services.AddHttpClient("whatsapp");
+
         // Single instance registered under two keys:
         //   IMessageChannel (ChannelType.WhatsApp) — consumed by ChannelConsumerJob
         //   WhatsAppAdapter (ChannelType.WhatsApp)  — consumed by webhook endpoint (TryEnqueue)
