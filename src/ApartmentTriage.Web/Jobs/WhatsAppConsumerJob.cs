@@ -20,7 +20,7 @@ public sealed class WhatsAppConsumerJob(
 {
     // 10s drain window: long enough to clear backlog accumulated between minute ticks,
     // short enough not to stall the Hangfire worker thread.
-    private static readonly TimeSpan JobBudget = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan JobBudget = TimeSpan.FromSeconds(55);
 
     public async Task RunAsync(CancellationToken hangfireCt = default)
     {
