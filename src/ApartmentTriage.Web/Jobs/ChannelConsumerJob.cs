@@ -131,11 +131,12 @@ public sealed class ChannelConsumerJob(
                 : $"{ticket.Context}; {incoming.Text}";
             ticket.SetContext(updatedContext);
 
-            // Remove MissingLocation from ambiguity reasons — resident just provided location.
+            // Remove MissingLocation from ambiguity reasons — resident just provided location/context.
+            // AmbiguityReasonsJson is serialized as integer array (default System.Text.Json enum behavior).
             if (ticket.AmbiguityReasonsJson is not null && ticket.RoutingAction.HasValue)
             {
-                var reasons = JsonSerializer.Deserialize<List<string>>(ticket.AmbiguityReasonsJson) ?? [];
-                reasons.Remove("missing_location");
+                var reasons = JsonSerializer.Deserialize<List<AmbiguityReason>>(ticket.AmbiguityReasonsJson) ?? [];
+                reasons.Remove(AmbiguityReason.MissingLocation);
                 ticket.SetRoutingDecision(
                     ticket.RoutingAction.Value,
                     reasons.Count > 0 ? JsonSerializer.Serialize(reasons) : null);
