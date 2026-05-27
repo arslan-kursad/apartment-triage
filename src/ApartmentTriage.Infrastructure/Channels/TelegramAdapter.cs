@@ -15,11 +15,17 @@ public sealed class TelegramAdapter : IMessageChannel
     private readonly ILogger<TelegramAdapter> _logger;
     private int _offset;
 
-    // Telegram compresses photos to JPEG; reject anything larger than 10 MB after download.
+    // Max download size for images (Telegram compresses photos to JPEG; ~10 MB upper bound).
     private const int MaxImageBytes = 10 * 1024 * 1024;
 
     // Voice duration limit — reject messages longer than this.
     private const int MaxVoiceSeconds = 60;
+
+    // Accepted image MIME types (Anthropic vision + common formats).
+    private static readonly HashSet<string> AllowedImageMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/png", "image/webp", "image/gif"
+    };
 
     public TelegramAdapter(
         ITelegramBotClient bot,
@@ -64,25 +70,72 @@ public sealed class TelegramAdapter : IMessageChannel
                     continue;
                 }
 
-                // Photo message
+                // Photo message (Telegram-compressed JPEG)
                 if (msg.Photo is { Length: > 0 } photos)
                 {
-                    var imageResult = await TryDownloadPhotoAsync(photos, senderId, lang, cancellationToken);
+                    var largest = photos[^1];
+                    var imageResult = await TryDownloadFileAsync(
+                        largest.FileId, "image/jpeg", senderId, lang, cancellationToken);
                     if (imageResult is null)
-                        continue; // validation failed, user already notified
+                        continue;
 
-                    var (imageData, imageMimeType) = imageResult.Value;
                     var caption = msg.Caption ?? (lang == "tr" ? "[Görsel mesaj]" : "[Image message]");
-
                     yield return new IncomingMessage(
                         ExternalId: msg.MessageId.ToString(),
                         SenderId: senderId.ToString(),
                         Text: caption,
                         ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
                         LanguageCode: languageCode,
-                        ImageData: imageData,
-                        ImageMimeType: imageMimeType);
+                        ImageData: imageResult.Value.Data,
+                        ImageMimeType: imageResult.Value.MimeType);
+                    continue;
+                }
 
+                // Document message — images sent "as file", PDFs, DOCX, etc.
+                if (msg.Document is { } doc)
+                {
+                    var mime = doc.MimeType ?? string.Empty;
+
+                    if (AllowedImageMimeTypes.Contains(mime))
+                    {
+                        // Image document — process like a photo
+                        var docResult = await TryDownloadFileAsync(
+                            doc.FileId, mime, senderId, lang, cancellationToken);
+                        if (docResult is null)
+                            continue;
+
+                        var caption = msg.Caption ?? (lang == "tr" ? "[Görsel mesaj]" : "[Image message]");
+                        yield return new IncomingMessage(
+                            ExternalId: msg.MessageId.ToString(),
+                            SenderId: senderId.ToString(),
+                            Text: caption,
+                            ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
+                            LanguageCode: languageCode,
+                            ImageData: docResult.Value.Data,
+                            ImageMimeType: docResult.Value.MimeType);
+                    }
+                    else if (mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Unsupported image format (e.g. image/bmp, image/tiff)
+                        _logger.LogWarning(
+                            "Unsupported image MIME type '{Mime}' from {SenderId}", mime, senderId);
+                        await _bot.SendMessage(senderId,
+                            lang == "tr"
+                                ? "⚠️ Yalnızca JPEG, PNG, WebP veya GIF görseller kabul edilmektedir."
+                                : "⚠️ Only JPEG, PNG, WebP or GIF images are accepted.",
+                            cancellationToken: cancellationToken);
+                    }
+                    else
+                    {
+                        // Non-image document (PDF, DOCX, etc.)
+                        _logger.LogInformation(
+                            "Document type '{Mime}' from {SenderId} — rejected (not image)", mime, senderId);
+                        await _bot.SendMessage(senderId,
+                            lang == "tr"
+                                ? "⚠️ Belge göndermek için yöneticinizle iletişime geçin."
+                                : "⚠️ For documents, please contact your building manager.",
+                            cancellationToken: cancellationToken);
+                    }
                     continue;
                 }
 
@@ -91,7 +144,7 @@ public sealed class TelegramAdapter : IMessageChannel
                 {
                     var voiceResult = await TryTranscribeVoiceAsync(voice, senderId, lang, cancellationToken);
                     if (voiceResult is null)
-                        continue; // validation failed or transcription error, user already notified
+                        continue;
 
                     yield return new IncomingMessage(
                         ExternalId: msg.MessageId.ToString(),
@@ -99,7 +152,6 @@ public sealed class TelegramAdapter : IMessageChannel
                         Text: voiceResult,
                         ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
                         LanguageCode: languageCode);
-
                     continue;
                 }
 
@@ -118,27 +170,24 @@ public sealed class TelegramAdapter : IMessageChannel
     }
 
     /// <summary>
-    /// Downloads the highest-resolution photo from Telegram CDN.
-    /// Returns null (and notifies the user) if the file exceeds MaxImageBytes.
+    /// Downloads a file from the Telegram CDN by fileId.
+    /// Returns null (and notifies the user) on size violation or download failure.
     /// </summary>
-    private async Task<(byte[] Data, string MimeType)?> TryDownloadPhotoAsync(
-        Telegram.Bot.Types.PhotoSize[] photos,
+    private async Task<(byte[] Data, string MimeType)?> TryDownloadFileAsync(
+        string fileId,
+        string mimeType,
         long senderId,
         string lang,
         CancellationToken ct)
     {
-        var largest = photos[^1]; // last = highest resolution
-
         try
         {
-            var file = await _bot.GetFile(largest.FileId, ct);
+            var file = await _bot.GetFile(fileId, ct);
 
             if (file.FileSize is > MaxImageBytes)
             {
                 _logger.LogWarning(
-                    "Image too large ({Size} bytes) from {SenderId} — rejecting",
-                    file.FileSize, senderId);
-
+                    "File too large ({Size} bytes) from {SenderId} — rejecting", file.FileSize, senderId);
                 await _bot.SendMessage(senderId,
                     lang == "tr"
                         ? "⚠️ Görsel çok büyük. Lütfen 10 MB'tan küçük bir fotoğraf gönderin."
@@ -149,11 +198,11 @@ public sealed class TelegramAdapter : IMessageChannel
 
             using var ms = new MemoryStream();
             await _bot.DownloadFile(file.FilePath!, ms, ct);
-            return (ms.ToArray(), "image/jpeg");
+            return (ms.ToArray(), mimeType);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to download photo from {SenderId}", senderId);
+            _logger.LogWarning(ex, "Failed to download file from {SenderId}", senderId);
             await _bot.SendMessage(senderId,
                 lang == "tr"
                     ? "⚠️ Görsel indirilemedi. Lütfen tekrar deneyin."
@@ -176,9 +225,7 @@ public sealed class TelegramAdapter : IMessageChannel
         if (voice.Duration > MaxVoiceSeconds)
         {
             _logger.LogWarning(
-                "Voice message too long ({Duration}s) from {SenderId} — rejecting",
-                voice.Duration, senderId);
-
+                "Voice too long ({Duration}s) from {SenderId} — rejecting", voice.Duration, senderId);
             await _bot.SendMessage(senderId,
                 lang == "tr"
                     ? $"⚠️ Ses mesajı en fazla {MaxVoiceSeconds} saniye olabilir."
@@ -190,7 +237,6 @@ public sealed class TelegramAdapter : IMessageChannel
         try
         {
             var file = await _bot.GetFile(voice.FileId, ct);
-
             using var ms = new MemoryStream();
             await _bot.DownloadFile(file.FilePath!, ms, ct);
             ms.Position = 0;
@@ -234,7 +280,7 @@ public sealed class TelegramAdapter : IMessageChannel
         · Su kaçağı, elektrik arızası, asansör
         · Ortak alan sorunları
         · Acil durumlar
-        · 📷 Fotoğraf: mesaj başına 1 görsel, maks. ~10 MB
+        · 📷 Fotoğraf: mesaj başına 1 görsel, maks. ~10 MB (JPEG/PNG/WebP/GIF)
         · 🎙️ Ses kaydı: maks. 60 saniye
 
         🔒 Mesajlarınız yalnızca bakım yönetimi amacıyla işlenmektedir. (KVKK md. 6698)
@@ -250,7 +296,7 @@ public sealed class TelegramAdapter : IMessageChannel
         · Water leaks, electrical faults, elevator issues
         · Common area problems
         · Emergencies
-        · 📷 Photo: 1 image per message, max ~10 MB
+        · 📷 Photo: 1 image per message, max ~10 MB (JPEG/PNG/WebP/GIF)
         · 🎙️ Voice message: max 60 seconds
 
         🔒 Messages are processed solely for maintenance management. (KVKK §6698)
