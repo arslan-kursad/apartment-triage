@@ -22,6 +22,6 @@ RUN apt-get update \
     && chmod +x scripts/download-models.sh \
     && ./scripts/download-models.sh
 
-ENV ASPNETCORE_HTTP_PORTS=8080
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "ApartmentTriage.Web.dll"]
