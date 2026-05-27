@@ -10,8 +10,9 @@ primary_region = "fra"
   processes = ["app"]
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "2gb"
 
 [[checks]]
   name = "health"
