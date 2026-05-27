@@ -107,6 +107,101 @@ public sealed class SmokeTests(ITestOutputHelper output)
             "IsEmergency=true → TriggerEmergency (High/Med) veya EscalateToManager (Low — ADR-0009 minimum guarantee)");
     }
 
+    // ── Smoke: ec-0032 ────────────────────────────────────────────────────────
+
+    [Fact, Trait("Category", "Smoke")]
+    public async Task Ec0032_ExposedBoilerCables_ShouldClassifyElectrical()
+    {
+        var (classifier, router) = BuildAgents();
+
+        var classifierInput = new ClassifierInput(
+            ResidentId: Guid.NewGuid(),
+            RawText: "kombinin kabloları açıkta",
+            ChannelType: ChannelType.Telegram,
+            EmergencySuspected: false,
+            MatchedPhrases: []);
+
+        var ctx = MakeContext();
+        var classifyResult = await classifier.ExecuteAsync(classifierInput, ctx);
+
+        classifyResult.IsSuccess.Should().BeTrue("Classifier API call başarısız");
+        var co = classifyResult.Value!;
+
+        output.WriteLine($"[ec-0032] Category={co.Category} Severity={co.Severity} " +
+                         $"IsEmergency={co.IsEmergency} Confidence={co.CategoryConfidence} " +
+                         $"Ambiguity=[{string.Join(",", co.AmbiguityReasons)}]");
+
+        co.Category.Should().Be(TicketCategory.Electrical,
+            "Classifier v2: 'kombi kabloları açıkta' → few-shot örneği electrical'a işaret ediyor");
+
+        co.Severity.Should().BeOneOf(
+            [TicketSeverity.High, TicketSeverity.Urgent],
+            "Açık kablo minimum severity=high gerektirir");
+
+        co.AmbiguityReasons.Should().NotContain(AmbiguityReason.NonActionable,
+            "Açık kablo her zaman actionable — NonActionable OLMAMALI");
+
+        // Router: no Archive
+        var routerInput = BuildRouterInput(co, classifierInput.RawText);
+        var routeResult = await router.ExecuteAsync(routerInput, ctx);
+
+        routeResult.IsSuccess.Should().BeTrue("Router API call başarısız");
+        var ro = routeResult.Value!;
+
+        output.WriteLine($"[ec-0032] RoutingAction={ro.Action}");
+
+        ro.Action.Should().NotBe(RoutingAction.Archive,
+            "Electrical/High ticket Archive edilmemeli");
+    }
+
+    // ── Smoke: ec-0033 ────────────────────────────────────────────────────────
+
+    [Fact, Trait("Category", "Smoke")]
+    public async Task Ec0033_ExposedPanelCables_ShouldNotArchive()
+    {
+        var (classifier, router) = BuildAgents();
+
+        var classifierInput = new ClassifierInput(
+            ResidentId: Guid.NewGuid(),
+            RawText: "sigorta kabloları dışarıda 2 haftadır riskli",
+            ChannelType: ChannelType.Telegram,
+            EmergencySuspected: false,
+            MatchedPhrases: []);
+
+        var ctx = MakeContext();
+        var classifyResult = await classifier.ExecuteAsync(classifierInput, ctx);
+
+        classifyResult.IsSuccess.Should().BeTrue("Classifier API call başarısız");
+        var co = classifyResult.Value!;
+
+        output.WriteLine($"[ec-0033] Category={co.Category} Severity={co.Severity} " +
+                         $"IsEmergency={co.IsEmergency} EmergencyConf={co.EmergencyConfidence} " +
+                         $"Ambiguity=[{string.Join(",", co.AmbiguityReasons)}]");
+
+        co.Category.Should().Be(TicketCategory.Electrical,
+            "Classifier v2: 'sigorta kabloları dışarıda' → electrical");
+
+        co.Severity.Should().BeOneOf(
+            [TicketSeverity.High, TicketSeverity.Urgent],
+            "2 haftalık açık kablo minimum severity=high");
+
+        co.AmbiguityReasons.Should().NotContain(AmbiguityReason.NonActionable,
+            "Sigorta kablosu dışarıda actionable bir sorundur");
+
+        // Router: no Archive (Classifier fix + RouterAgent guard birlikte test ediliyor)
+        var routerInput = BuildRouterInput(co, classifierInput.RawText);
+        var routeResult = await router.ExecuteAsync(routerInput, ctx);
+
+        routeResult.IsSuccess.Should().BeTrue("Router API call başarısız");
+        var ro = routeResult.Value!;
+
+        output.WriteLine($"[ec-0033] RoutingAction={ro.Action}");
+
+        ro.Action.Should().NotBe(RoutingAction.Archive,
+            "RouterAgent guard: EmergencyConfidence=High olsa bile NonActionable→Archive engellenmeli; " +
+            "Classifier fix ile zaten NonActionable gelmemeli");
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static (ClassifierAgent Classifier, RouterAgent Router) BuildAgents()
