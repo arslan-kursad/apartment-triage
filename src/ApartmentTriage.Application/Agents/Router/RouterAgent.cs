@@ -114,10 +114,15 @@ public sealed class RouterAgent : AgentBase<RouterInput, RouterOutput>
                 RoutingAction.Archive, null, null, ConfidenceLevel.High);
         }
 
-        // Rule 3: Urgent severity → escalate
+        // Rule 3: Urgent severity → escalate; surface missing location so manager can follow up
         if (input.Severity == TicketSeverity.Urgent)
+        {
+            string? note = input.AmbiguityReasons.Contains(AmbiguityReason.MissingLocation)
+                ? "Not: Konum bilgisi eksik — sakinle iletişime geçin. / Note: Location unknown — contact the resident."
+                : null;
             return new RouterOutput(
-                RoutingAction.EscalateToManager, null, null, ConfidenceLevel.High);
+                RoutingAction.EscalateToManager, null, note, ConfidenceLevel.High);
+        }
 
         // Rule 4: Any ambiguity → notify resident for clarification
         if (input.AmbiguityReasons.Count > 0)
@@ -235,8 +240,9 @@ public sealed class RouterAgent : AgentBase<RouterInput, RouterOutput>
             AmbiguityReason.MissingSeverity  => "sorunun aciliyeti belirsiz",
             AmbiguityReason.CategoryAmbiguous => "sorun türü netleştirilmeli",
             AmbiguityReason.LanguageUnclear  => "mesaj anlaşılamadı, lütfen tekrar yaz",
-            AmbiguityReason.NeedsVisual      => "fotoğraf veya video gerekli",
-            _                                => null
+            AmbiguityReason.NeedsVisual        => "fotoğraf veya video gerekli",
+            AmbiguityReason.InsufficientDetail => "mesaj içeriği yetersiz, daha fazla bilgi verin",
+            _                                  => null
         }).Where(p => p is not null);
 
         return string.Join("; ", parts);

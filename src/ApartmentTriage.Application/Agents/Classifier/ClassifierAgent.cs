@@ -244,7 +244,7 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
         - cause_of_primary: secondary IS the root cause; primary is the symptom
 
         AMBIGUITY REASONS (include if clarification would change the ticket):
-        missing_location, missing_severity, category_ambiguous, language_unclear, needs_visual, non_actionable
+        missing_location, missing_severity, category_ambiguous, language_unclear, needs_visual, non_actionable, insufficient_detail
 
         CONSTRAINT — non_actionable:
         non_actionable is only appropriate when the message genuinely cannot be acted upon
@@ -254,6 +254,22 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
         - Electrical panel or breaker box (sigorta panosu, elektrik panosu, anahtar kutusu)
         - Sparks or burning smell from electrical source (kıvılcım)
         These messages are always actionable — omit non_actionable from ambiguity_reasons.
+
+        CONSTRAINT — image placeholder (v3):
+        If the raw message text is "[Görsel mesaj]", "[Image message]", or any similar placeholder with no other descriptive text:
+        set category_confidence=low, add insufficient_detail to ambiguity_reasons, set severity=low.
+
+        CONSTRAINT — severity consistency (v3):
+        If missing_severity is in ambiguity_reasons, severity MUST be "medium".
+        The combination missing_severity + severity="high" or "urgent" is a contradiction — never output both.
+
+        CONSTRAINT — location-only messages (v3):
+        If the message contains only a location or address reference with no complaint, problem, or issue described
+        (e.g. "C-blok 1. Kat Daire 2", "5. kat", "daire 7"), add non_actionable to ambiguity_reasons.
+
+        CONSTRAINT — hedge word confidence cap (v3):
+        When the message contains uncertainty markers — Turkish: "galiba", "sanki", "gibi görünüyor", "belki", "herhalde";
+        English: "maybe", "probably", "seems like", "I think", "possibly" — category_confidence must be "medium" at most, never "high".
 
         EXAMPLES — correct classification for electrical scenarios:
 
