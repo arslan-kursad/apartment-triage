@@ -17,6 +17,7 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
         PropertyNameCaseInsensitive = true,
         Converters =
         {
+            new LenientAmbiguityReasonListConverter(),
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
         }
     };
@@ -105,9 +106,24 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
             return AgentResult<ClassifierOutput>.Fail(new AgentError(
                 AgentErrorKind.Semantic, validationError));
 
+        // Severity consistency constraint v3: MissingSeverity + High/Urgent is a contradiction.
+        // Electrical and Emergency categories are exempt — explicit hazard signals override ambiguity.
+        var ambiguityReasons = dto.AmbiguityReasons ?? [];
+        var severity = dto.Severity!.Value;
+        if (ambiguityReasons.Contains(AmbiguityReason.MissingSeverity)
+            && severity is TicketSeverity.High or TicketSeverity.Urgent
+            && dto.Category is not TicketCategory.Electrical
+            && !dto.IsEmergency)
+        {
+            Logger.LogWarning(
+                "Classifier: MissingSeverity + {Severity} constraint violation — overriding to Medium",
+                severity);
+            severity = TicketSeverity.Medium;
+        }
+
         var output = new ClassifierOutput(
             Category: dto.Category!.Value,
-            Severity: dto.Severity!.Value,
+            Severity: severity,
             CategoryConfidence: dto.CategoryConfidence!.Value,
             IsEmergency: dto.IsEmergency,
             EmergencyConfidence: dto.EmergencyConfidence!.Value,
@@ -121,7 +137,7 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
                     s.CausalRelation!.Value))
                 .ToList()
                 ?? [],
-            AmbiguityReasons: dto.AmbiguityReasons ?? [],
+            AmbiguityReasons: ambiguityReasons,
             Rationale: dto.Rationale);
 
         return AgentResult<ClassifierOutput>.Ok(output);
@@ -195,6 +211,35 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
         public CausalRelation? CausalRelation { get; set; }
     }
 
+    // Tolerant converter for AmbiguityReason arrays: silently skips unknown values
+    // instead of throwing JsonException when the LLM hallucinates an unlisted enum value.
+    private sealed class LenientAmbiguityReasonListConverter : JsonConverter<List<AmbiguityReason>>
+    {
+        public override List<AmbiguityReason> Read(
+            ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            var result = new List<AmbiguityReason>();
+            if (reader.TokenType != JsonTokenType.StartArray) return result;
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+            {
+                if (reader.TokenType != JsonTokenType.String) continue;
+                var raw = reader.GetString();
+                if (string.IsNullOrEmpty(raw)) continue;
+                var pascal = string.Concat(
+                    raw.Split('_').Select(w => w.Length > 0
+                        ? char.ToUpperInvariant(w[0]) + w[1..]
+                        : string.Empty));
+                if (Enum.TryParse<AmbiguityReason>(pascal, ignoreCase: true, out var reason))
+                    result.Add(reason);
+            }
+            return result;
+        }
+
+        public override void Write(
+            Utf8JsonWriter writer, List<AmbiguityReason> value, JsonSerializerOptions options)
+            => throw new NotSupportedException("Write not used for LLM output deserialization");
+    }
+
     // ─── System prompt ────────────────────────────────────────────────────────
 
     private const string SystemPrompt = """
@@ -244,7 +289,7 @@ public sealed class ClassifierAgent : AgentBase<ClassifierInput, ClassifierOutpu
         - cause_of_primary: secondary IS the root cause; primary is the symptom
 
         AMBIGUITY REASONS (include if clarification would change the ticket):
-        missing_location, missing_severity, category_ambiguous, language_unclear, needs_visual, non_actionable, insufficient_detail
+        missing_location, missing_severity, category_ambiguous, language_unclear, needs_visual, non_actionable, insufficient_detail, unclear_urgency, multiple_categories
 
         CONSTRAINT — non_actionable:
         non_actionable is only appropriate when the message genuinely cannot be acted upon
