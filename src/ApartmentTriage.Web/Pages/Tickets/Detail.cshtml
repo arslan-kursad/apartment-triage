@@ -1,182 +1,263 @@
 @page "/tickets/{id:guid}"
 @model ApartmentTriage.Web.Pages.Tickets.DetailModel
+@using ApartmentTriage.Domain.Enums
+@using ApartmentTriage.Web.Helpers
 @{
-    ViewData["Title"] = $"Ticket {Model.Ticket!.Id.ToString()[..8]}";
     var t = Model.Ticket!;
+    ViewData["Title"]       = "Ticket " + t.Id.ToString()[..8];
+    ViewData["PageTitleTR"] = "Ticket Detayı";
+    ViewData["PageTitleEN"] = "Ticket Detail";
+
+    var chColor = (t.SourceMessage?.ChannelType ?? ChannelType.Mock) switch
+    {
+        ChannelType.WhatsApp => "#25D366",
+        ChannelType.Telegram => "#229ED9",
+        _                    => "#9CA3AF"
+    };
+    var sevColor = t.Severity switch
+    {
+        TicketSeverity.Urgent => "bg-red-100 text-red-700",
+        TicketSeverity.High   => "bg-orange-100 text-orange-700",
+        TicketSeverity.Medium => "bg-blue-100 text-blue-700",
+        _                     => "bg-gray-100 text-gray-600"
+    };
+    var statusColor = t.Status switch
+    {
+        TicketStatus.Open     => "bg-green-50 text-green-700 border border-green-200",
+        TicketStatus.Resolved => "bg-gray-50 text-gray-600 border border-gray-200",
+        _                     => "bg-yellow-50 text-yellow-700 border border-yellow-200"
+    };
+    var routeColor = t.RoutingAction switch
+    {
+        RoutingAction.TriggerEmergency  => "bg-red-100 text-red-700",
+        RoutingAction.EscalateToManager => "bg-orange-100 text-orange-700",
+        RoutingAction.AssignTechnician  => "bg-blue-100 text-blue-700",
+        RoutingAction.NotifyResident    => "bg-purple-100 text-purple-700",
+        _                               => "bg-gray-100 text-gray-600"
+    };
 }
 
-<div class="mb-3">
-    <a href="/tickets" class="btn btn-sm btn-outline-secondary">&larr; Listeye Dön</a>
+<div class="mb-4">
+    <a href="/tickets" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        <span class="lang-tr">Listeye Dön</span>
+        <span class="lang-en">Back to List</span>
+    </a>
 </div>
 
-<h1 class="h4 mb-4">
-    Ticket Detayı
-    @if (t.IsEmergency)
-    {
-        <span class="badge bg-danger ms-2">ACİL</span>
-    }
-</h1>
+@if (t.IsEmergency)
+{
+    <div class="mb-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+        <svg class="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span class="text-sm font-semibold text-red-700">
+            <span class="lang-tr">ACİL DURUM — Acil müdahale gerektirir.</span>
+            <span class="lang-en">EMERGENCY — Requires immediate action.</span>
+        </span>
+    </div>
+}
 
-<div class="row g-4">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-    @* ── Kaynak Mesaj ────────────────────────────────────────────────────────── *@
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header fw-semibold">Kaynak Mesaj</div>
-            <div class="card-body">
-                @if (t.SourceMessage is not null)
+    @* Source message — full width *@
+    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200">
+        <div class="px-5 py-4 border-b border-gray-100 font-semibold text-sm text-gray-900">
+            <span class="lang-tr">Kaynak Mesaj</span>
+            <span class="lang-en">Source Message</span>
+        </div>
+        <div class="p-5">
+            @if (t.SourceMessage is not null)
+            {
+                <div class="flex items-center gap-2 mb-3 text-sm text-gray-500">
+                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: @chColor"></span>
+                    <strong>@t.SourceMessage.ChannelType</strong>
+                    <span class="text-gray-300">·</span>
+                    <span class="lang-tr">Alındı:</span><span class="lang-en">Received:</span>
+                    <strong>@IstanbulTime.Format(t.SourceMessage.ReceivedAt) IST</strong>
+                </div>
+                <blockquote class="bg-gray-50 rounded-lg p-4 text-sm font-mono text-gray-800 border-l-4 border-blue-200 whitespace-pre-wrap break-words">@t.SourceMessage.RawText</blockquote>
+                @if (t.SourceMessage.ImageData != null)
                 {
-                    <p class="mb-1">
-                        <span class="text-muted">Kanal:</span>
-                        <strong>@t.SourceMessage.ChannelType</strong>
-                        &nbsp;|&nbsp;
-                        <span class="text-muted">Alındı:</span>
-                        <strong>@t.SourceMessage.ReceivedAt.ToString("dd MMM yyyy HH:mm:ss") UTC</strong>
-                    </p>
-                    <blockquote class="blockquote mt-2 mb-0 p-3 bg-light rounded font-monospace" style="font-size:.9rem">
-                        @t.SourceMessage.RawText
-                    </blockquote>
-                    @if (t.SourceMessage.ImageData != null)
-                    {
-                        var base64 = Convert.ToBase64String(t.SourceMessage.ImageData);
-                        var mime   = t.SourceMessage.ImageMimeType ?? "image/jpeg";
-                        <div class="mt-3">
-                            <p class="text-muted small mb-1">Ekteki Görsel</p>
-                            <img src="data:@mime;base64,@base64"
-                                 class="img-fluid rounded"
-                                 style="max-width:480px" />
-                        </div>
-                    }
+                    var b64  = Convert.ToBase64String(t.SourceMessage.ImageData);
+                    var mime = t.SourceMessage.ImageMimeType ?? "image/jpeg";
+                    <div class="mt-4">
+                        <p class="text-xs text-gray-400 mb-2">
+                            <span class="lang-tr">Ekteki Görsel</span>
+                            <span class="lang-en">Attached Image</span>
+                        </p>
+                        <img src="data:@mime;base64,@b64" class="rounded-lg border border-gray-200 max-w-xs" alt="attachment" />
+                    </div>
                 }
-                else
-                {
-                    <span class="text-muted">Mesaj verisi yüklenemedi.</span>
-                }
-            </div>
+            }
+            else
+            {
+                <p class="text-sm text-gray-400">
+                    <span class="lang-tr">Mesaj verisi yüklenemedi.</span>
+                    <span class="lang-en">Message data unavailable.</span>
+                </p>
+            }
         </div>
     </div>
 
-    @* ── Temel Alanlar ───────────────────────────────────────────────────────── *@
-    <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Ticket Bilgileri</div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-5">ID</dt>
-                    <dd class="col-sm-7 font-monospace small">@t.Id</dd>
-
-                    <dt class="col-sm-5">Resident ID</dt>
-                    <dd class="col-sm-7 font-monospace small">@t.ResidentId</dd>
-
-                    <dt class="col-sm-5">Statü</dt>
-                    <dd class="col-sm-7"><span class="badge bg-secondary">@t.Status</span></dd>
-
-                    <dt class="col-sm-5">Oluşturulma</dt>
-                    <dd class="col-sm-7">@t.CreatedAt.ToString("dd MMM yyyy HH:mm:ss") UTC</dd>
-
-                    <dt class="col-sm-5">Güncellenme</dt>
-                    <dd class="col-sm-7">@t.UpdatedAt.ToString("dd MMM yyyy HH:mm:ss") UTC</dd>
-
-                    @if (t.LocationHint is not null)
-                    {
-                        <dt class="col-sm-5">Konum</dt>
-                        <dd class="col-sm-7">@t.LocationHint</dd>
-                    }
-
-                    @if (t.Context is not null)
-                    {
-                        <dt class="col-sm-5">Bağlam</dt>
-                        <dd class="col-sm-7 small">@t.Context</dd>
-                    }
-
-                    @if (t.Notes is not null)
-                    {
-                        <dt class="col-sm-5">Notlar</dt>
-                        <dd class="col-sm-7 small">@t.Notes</dd>
-                    }
-                </dl>
-            </div>
+    @* Ticket info *@
+    <div class="bg-white rounded-xl border border-gray-200">
+        <div class="px-5 py-4 border-b border-gray-100 font-semibold text-sm text-gray-900">
+            <span class="lang-tr">Ticket Bilgileri</span>
+            <span class="lang-en">Ticket Info</span>
         </div>
+        <dl class="divide-y divide-gray-50 text-xs">
+            <div class="px-5 py-3 flex justify-between gap-4">
+                <dt class="text-gray-500">ID</dt>
+                <dd class="font-mono text-gray-700 truncate">@t.Id</dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between gap-4">
+                <dt class="text-gray-500">Resident ID</dt>
+                <dd class="font-mono text-gray-700 truncate">@t.ResidentId</dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between items-center gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Statü</span>
+                    <span class="lang-en">Status</span>
+                </dt>
+                <dd><span class="px-2 py-0.5 rounded-full text-xs font-medium @statusColor">@t.Status</span></dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Oluşturulma</span>
+                    <span class="lang-en">Created</span>
+                </dt>
+                <dd class="text-gray-700">@IstanbulTime.Format(t.CreatedAt) IST</dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Güncellenme</span>
+                    <span class="lang-en">Updated</span>
+                </dt>
+                <dd class="text-gray-700">@IstanbulTime.Format(t.UpdatedAt) IST</dd>
+            </div>
+            @if (t.LocationHint is not null)
+            {
+                <div class="px-5 py-3 flex justify-between gap-4">
+                    <dt class="text-gray-500">
+                        <span class="lang-tr">Konum</span>
+                        <span class="lang-en">Location</span>
+                    </dt>
+                    <dd class="text-gray-700">@t.LocationHint</dd>
+                </div>
+            }
+            @if (t.Context is not null)
+            {
+                <div class="px-5 py-3 flex justify-between gap-4">
+                    <dt class="text-gray-500">
+                        <span class="lang-tr">Bağlam</span>
+                        <span class="lang-en">Context</span>
+                    </dt>
+                    <dd class="text-gray-700 break-words">@t.Context</dd>
+                </div>
+            }
+            @if (t.Notes is not null)
+            {
+                <div class="px-5 py-3 flex justify-between gap-4">
+                    <dt class="text-gray-500">
+                        <span class="lang-tr">Notlar</span>
+                        <span class="lang-en">Notes</span>
+                    </dt>
+                    <dd class="text-gray-700 break-words">@t.Notes</dd>
+                </div>
+            }
+        </dl>
     </div>
 
-    @* ── Agent Kararları ─────────────────────────────────────────────────────── *@
-    <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header fw-semibold">Agent Kararları (DB)</div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-5">Kategori</dt>
-                    <dd class="col-sm-7">
-                        <span class="badge bg-primary">@t.Category</span>
-                    </dd>
-
-                    <dt class="col-sm-5">Şiddet</dt>
-                    <dd class="col-sm-7">
-                        @{
-                            var sevClass = t.Severity switch
-                            {
-                                ApartmentTriage.Domain.Enums.TicketSeverity.Urgent => "badge bg-danger",
-                                ApartmentTriage.Domain.Enums.TicketSeverity.High   => "badge bg-warning text-dark",
-                                ApartmentTriage.Domain.Enums.TicketSeverity.Medium => "badge bg-info text-dark",
-                                _                                                   => "badge bg-secondary"
-                            };
-                        }
-                        <span class="@sevClass">@t.Severity</span>
-                    </dd>
-
-                    <dt class="col-sm-5">Kategori Güven</dt>
-                    <dd class="col-sm-7">@t.CategoryConfidence</dd>
-
-                    <dt class="col-sm-5">Acil Durum</dt>
-                    <dd class="col-sm-7">
-                        @if (t.IsEmergency)
-                        {
-                            <span class="badge bg-danger">EVET</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success">Hayır</span>
-                        }
-                    </dd>
-
-                    <dt class="col-sm-5">Acil Güven</dt>
-                    <dd class="col-sm-7">@t.EmergencyConfidence</dd>
-
-                    <dt class="col-sm-5">Yönlendirme</dt>
-                    <dd class="col-sm-7">
-                        @if (t.RoutingAction.HasValue)
-                        {
-                            var routeClass = t.RoutingAction.Value switch
-                            {
-                                ApartmentTriage.Domain.Enums.RoutingAction.TriggerEmergency   => "badge bg-danger",
-                                ApartmentTriage.Domain.Enums.RoutingAction.EscalateToManager  => "badge bg-warning text-dark",
-                                ApartmentTriage.Domain.Enums.RoutingAction.AssignTechnician   => "badge bg-primary",
-                                ApartmentTriage.Domain.Enums.RoutingAction.NotifyResident     => "badge bg-info text-dark",
-                                ApartmentTriage.Domain.Enums.RoutingAction.Defer              => "badge bg-secondary",
-                                ApartmentTriage.Domain.Enums.RoutingAction.Archive            => "badge bg-dark",
-                                _                                                              => "badge bg-secondary"
-                            };
-                            <span class="@routeClass">@t.RoutingAction.Value</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted small">Henüz yönlendirilmedi</span>
-                        }
-                    </dd>
-
-                    @if (Model.AmbiguityReasons.Any())
-                    {
-                        <dt class="col-sm-5">Belirsizlik</dt>
-                        <dd class="col-sm-7">
-                            @foreach (var r in Model.AmbiguityReasons)
-                            {
-                                <span class="badge bg-warning text-dark me-1">@r</span>
-                            }
-                        </dd>
-                    }
-                </dl>
-            </div>
+    @* Agent decisions *@
+    <div class="bg-white rounded-xl border border-gray-200">
+        <div class="px-5 py-4 border-b border-gray-100 font-semibold text-sm text-gray-900">
+            <span class="lang-tr">Agent Kararları</span>
+            <span class="lang-en">Agent Decisions</span>
         </div>
+        <dl class="divide-y divide-gray-50 text-xs">
+            <div class="px-5 py-3 flex justify-between items-center gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Kategori</span>
+                    <span class="lang-en">Category</span>
+                </dt>
+                <dd><span class="px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">@t.Category</span></dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between items-center gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Şiddet</span>
+                    <span class="lang-en">Severity</span>
+                </dt>
+                <dd><span class="px-2 py-0.5 rounded-full font-medium @sevColor">@t.Severity</span></dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Kategori Güven</span>
+                    <span class="lang-en">Category Confidence</span>
+                </dt>
+                <dd class="font-medium text-gray-900">@t.CategoryConfidence</dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between items-center gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Acil Durum</span>
+                    <span class="lang-en">Emergency</span>
+                </dt>
+                <dd>
+                    @if (t.IsEmergency)
+                    {
+                        <span class="px-2 py-0.5 rounded-full font-bold bg-red-600 text-white">EVET / YES</span>
+                    }
+                    else
+                    {
+                        <span class="px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600">Hayır / No</span>
+                    }
+                </dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Acil Güven</span>
+                    <span class="lang-en">Emergency Confidence</span>
+                </dt>
+                <dd class="font-medium text-gray-900">@t.EmergencyConfidence</dd>
+            </div>
+            <div class="px-5 py-3 flex justify-between items-center gap-4">
+                <dt class="text-gray-500">
+                    <span class="lang-tr">Yönlendirme</span>
+                    <span class="lang-en">Routing</span>
+                </dt>
+                <dd>
+                    @if (t.RoutingAction.HasValue)
+                    {
+                        <span class="px-2 py-0.5 rounded-full font-medium @routeColor">@t.RoutingAction.Value</span>
+                    }
+                    else
+                    {
+                        <span class="italic text-gray-400">
+                            <span class="lang-tr">Henüz yönlendirilmedi</span>
+                            <span class="lang-en">Not routed yet</span>
+                        </span>
+                    }
+                </dd>
+            </div>
+            @if (Model.AmbiguityReasons.Any())
+            {
+                <div class="px-5 py-3">
+                    <dt class="text-gray-500 mb-2">
+                        <span class="lang-tr">Belirsizlik</span>
+                        <span class="lang-en">Ambiguity</span>
+                    </dt>
+                    <dd class="flex flex-wrap gap-1 mt-1">
+                        @foreach (var r in Model.AmbiguityReasons)
+                        {
+                            <span class="px-2 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700">@r</span>
+                        }
+                    </dd>
+                </div>
+            }
+        </dl>
     </div>
 
 </div>

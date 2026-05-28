@@ -84,6 +84,8 @@ public sealed class TicketRepository : ITicketRepository
         var total = await query.CountAsync(cancellationToken);
 
         var items = await query
+            .Include(t => t.SourceMessage)
+            .Include(t => t.Resident)
             .OrderByDescending(t => t.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

@@ -1,123 +1,179 @@
 @page
 @model ApartmentTriage.Web.Pages.Tickets.IndexModel
+@using ApartmentTriage.Domain.Enums
+@using ApartmentTriage.Web.Helpers
 @{
-    ViewData["Title"] = "Ticket'lar";
+    ViewData["Title"]       = "Ticket'lar";
+    ViewData["PageTitleTR"] = "Ticket'lar";
+    ViewData["PageTitleEN"] = "Tickets";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Ticket Listesi</h1>
-    <span class="text-muted">Toplam: @Model.TotalCount</span>
+@* ── Header + filter ──────────────────────────────────────────────────────────── *@
+<div class="flex items-center justify-between mb-4">
+    <div>
+        <p class="text-sm text-gray-500">
+            <span class="lang-tr">Toplam:</span>
+            <span class="lang-en">Total:</span>
+            <span class="font-semibold text-gray-900">@Model.TotalCount</span>
+        </p>
+    </div>
 </div>
 
-@* ── Filter form ──────────────────────────────────────────────────────────── *@
-<form method="get" class="row g-2 mb-4">
-    <div class="col-auto">
-        <select name="FilterStatus" class="form-select form-select-sm">
-            <option value="">Tüm Statüler</option>
-            @foreach (var s in Model.AllStatuses)
-            {
-                <option value="@s" selected="@(Model.FilterStatus == s)">@s</option>
-            }
-        </select>
-    </div>
-    <div class="col-auto">
-        <select name="FilterCategory" class="form-select form-select-sm">
-            <option value="">Tüm Kategoriler</option>
-            @foreach (var c in Model.AllCategories)
-            {
-                <option value="@c" selected="@(Model.FilterCategory == c)">@c</option>
-            }
-        </select>
-    </div>
-    <div class="col-auto">
-        <select name="FilterIsEmergency" class="form-select form-select-sm">
-            <option value="">Acil Durum: Tümü</option>
-            <option value="true"  selected="@(Model.FilterIsEmergency == true)">Acil</option>
-            <option value="false" selected="@(Model.FilterIsEmergency == false)">Normal</option>
-        </select>
-    </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-sm btn-primary">Filtrele</button>
-        <a href="/tickets" class="btn btn-sm btn-outline-secondary">Temizle</a>
-    </div>
+<form method="get" class="flex flex-wrap gap-2 mb-4">
+    <select name="FilterStatus" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">
+            <span class="lang-tr">Tüm Statüler</span>
+            <span class="lang-en">All Statuses</span>
+        </option>
+        @foreach (var s in Model.AllStatuses)
+        {
+            <option value="@s" selected="@(Model.FilterStatus == s)">@s</option>
+        }
+    </select>
+
+    <select name="FilterCategory" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">
+            <span class="lang-tr">Tüm Kategoriler</span>
+            <span class="lang-en">All Categories</span>
+        </option>
+        @foreach (var c in Model.AllCategories)
+        {
+            <option value="@c" selected="@(Model.FilterCategory == c)">@c</option>
+        }
+    </select>
+
+    <select name="FilterIsEmergency" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">
+            <span class="lang-tr">Acil Durum: Tümü</span>
+            <span class="lang-en">Emergency: All</span>
+        </option>
+        <option value="true"  selected="@(Model.FilterIsEmergency == true)">
+            <span class="lang-tr">Acil</span>
+            <span class="lang-en">Emergency</span>
+        </option>
+        <option value="false" selected="@(Model.FilterIsEmergency == false)">
+            <span class="lang-tr">Normal</span>
+            <span class="lang-en">Normal</span>
+        </option>
+    </select>
+
+    <button type="submit" class="text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+        <span class="lang-tr">Filtrele</span>
+        <span class="lang-en">Filter</span>
+    </button>
+    <a href="/tickets" class="text-sm px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+        <span class="lang-tr">Temizle</span>
+        <span class="lang-en">Clear</span>
+    </a>
 </form>
 
-@* ── Ticket table ─────────────────────────────────────────────────────────── *@
+@* ── Ticket list ───────────────────────────────────────────────────────────────── *@
 @if (!Model.Tickets.Any())
 {
-    <div class="alert alert-info">Filtreyle eşleşen ticket bulunamadı.</div>
+    <div class="bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <p class="text-gray-400 text-sm">
+            <span class="lang-tr">Filtreyle eşleşen ticket bulunamadı.</span>
+            <span class="lang-en">No tickets match the filter.</span>
+        </p>
+    </div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-sm table-hover align-middle">
-            <thead class="table-dark">
-                <tr>
-                    <th>Oluşturulma</th>
-                    <th>Kategori</th>
-                    <th>Şiddet</th>
-                    <th>Statü</th>
-                    <th>Acil</th>
-                    <th>Resident ID</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var t in Model.Tickets)
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <ul class="divide-y divide-gray-100">
+            @foreach (var t in Model.Tickets)
+            {
+                var channelColor = (t.SourceMessage?.ChannelType ?? ChannelType.Mock) switch
                 {
-                    <tr>
-                        <td class="text-nowrap">@t.CreatedAt.ToString("dd MMM HH:mm")</td>
-                        <td>@t.Category</td>
-                        <td>
-                            @{
-                                var sevClass = t.Severity switch
-                                {
-                                    ApartmentTriage.Domain.Enums.TicketSeverity.Urgent => "badge bg-danger",
-                                    ApartmentTriage.Domain.Enums.TicketSeverity.High   => "badge bg-warning text-dark",
-                                    ApartmentTriage.Domain.Enums.TicketSeverity.Medium => "badge bg-info text-dark",
-                                    _                                                   => "badge bg-secondary"
-                                };
-                            }
-                            <span class="@sevClass">@t.Severity</span>
-                        </td>
-                        <td>@t.Status</td>
-                        <td>
-                            @if (t.IsEmergency)
-                            {
-                                <span class="badge bg-danger">ACİL</span>
-                            }
-                        </td>
-                        <td class="text-muted small font-monospace">@t.ResidentId.ToString()[..8]…</td>
-                        <td>
-                            <a href="/tickets/@t.Id" class="btn btn-sm btn-outline-primary">Detay</a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                    ChannelType.WhatsApp => "#25D366",
+                    ChannelType.Telegram => "#229ED9",
+                    _                    => "#9CA3AF"
+                };
+                var channelLabel = (t.SourceMessage?.ChannelType ?? ChannelType.Mock) switch
+                {
+                    ChannelType.WhatsApp => "WhatsApp",
+                    ChannelType.Telegram => "Telegram",
+                    _                    => "Mock"
+                };
+                var sevColor = t.Severity switch
+                {
+                    TicketSeverity.Urgent => "bg-red-100 text-red-700",
+                    TicketSeverity.High   => "bg-orange-100 text-orange-700",
+                    TicketSeverity.Medium => "bg-blue-100 text-blue-700",
+                    _                     => "bg-gray-100 text-gray-600"
+                };
+                var statusColor = t.Status switch
+                {
+                    TicketStatus.Open     => "bg-green-50 text-green-700 border-green-200",
+                    TicketStatus.Resolved => "bg-gray-50 text-gray-600 border-gray-200",
+                    _                     => "bg-yellow-50 text-yellow-700 border-yellow-200"
+                };
+                var preview = t.SourceMessage?.RawText is { Length: > 0 } raw
+                    ? (raw.Length > 60 ? raw[..60] + "…" : raw)
+                    : "—";
+                var sender = t.Resident?.DisplayName
+                    ?? t.Resident?.ApartmentNumber
+                    ?? t.ResidentId.ToString()[..8] + "…";
+
+                <li class="px-5 py-4 hover:bg-gray-50 transition-colors">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex items-start gap-3 min-w-0">
+                            @* Channel dot *@
+                            <span class="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0"
+                                  title="@channelLabel"
+                                  style="background-color: @channelColor"></span>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-medium text-sm text-gray-900">@t.Category</span>
+                                    @if (t.IsEmergency)
+                                    {
+                                        <span class="px-1.5 py-0.5 rounded text-xs font-bold bg-red-600 text-white">
+                                            <span class="lang-tr">ACİL</span>
+                                            <span class="lang-en">EMRG</span>
+                                        </span>
+                                    }
+                                    <span class="px-2 py-0.5 rounded-full text-xs font-medium border @statusColor">@t.Status</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-0.5 truncate">@preview</p>
+                                <p class="text-xs text-gray-400 mt-0.5">@sender</p>
+                            </div>
+                        </div>
+                        <div class="shrink-0 flex flex-col items-end gap-1.5">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium @sevColor">@t.Severity</span>
+                            <span class="text-xs text-gray-400">@IstanbulTime.Format(t.CreatedAt)</span>
+                            <a href="/tickets/@t.Id"
+                               class="text-xs text-blue-600 hover:underline font-medium">
+                                <span class="lang-tr">Detay →</span>
+                                <span class="lang-en">Detail →</span>
+                            </a>
+                        </div>
+                    </div>
+                </li>
+            }
+        </ul>
     </div>
 
-    @* ── Pagination ──────────────────────────────────────────────────────── *@
+    @* Pagination *@
     @if (Model.TotalPages > 1)
     {
-        <nav>
-            <ul class="pagination pagination-sm">
-                <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
-                    <a class="page-link"
-                       href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&CurrentPage=@(Model.CurrentPage - 1)">
-                        &laquo; Önceki
-                    </a>
-                </li>
-                <li class="page-item disabled">
-                    <span class="page-link">@Model.CurrentPage / @Model.TotalPages</span>
-                </li>
-                <li class="page-item @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
-                    <a class="page-link"
-                       href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&CurrentPage=@(Model.CurrentPage + 1)">
-                        Sonraki &raquo;
-                    </a>
-                </li>
-            </ul>
-        </nav>
+        <div class="flex items-center justify-center gap-2 mt-4">
+            @if (Model.CurrentPage > 1)
+            {
+                <a href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&CurrentPage=@(Model.CurrentPage - 1)"
+                   class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+                    <span class="lang-tr">← Önceki</span>
+                    <span class="lang-en">← Previous</span>
+                </a>
+            }
+            <span class="px-3 py-1.5 text-sm text-gray-500">@Model.CurrentPage / @Model.TotalPages</span>
+            @if (Model.CurrentPage < Model.TotalPages)
+            {
+                <a href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&CurrentPage=@(Model.CurrentPage + 1)"
+                   class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
+                    <span class="lang-tr">Sonraki →</span>
+                    <span class="lang-en">Next →</span>
+                </a>
+            }
+        </div>
     }
 }
