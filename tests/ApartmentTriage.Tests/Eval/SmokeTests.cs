@@ -202,6 +202,171 @@ public sealed class SmokeTests(ITestOutputHelper output)
             "Classifier fix ile zaten NonActionable gelmemeli");
     }
 
+    // ── Smoke: ec-0034 ────────────────────────────────────────────────────────
+
+    [Fact, Trait("Category", "Smoke")]
+    public async Task Ec0034_UrgentWaterLeak_MissingLocation_RouterNoteIncludesLocation()
+    {
+        var (classifier, router) = BuildAgents();
+
+        var classifierInput = new ClassifierInput(
+            ResidentId: Guid.NewGuid(),
+            RawText: "3. katta su sızıntısı var",
+            ChannelType: ChannelType.WhatsApp,
+            EmergencySuspected: false,
+            MatchedPhrases: []);
+
+        var ctx = MakeContext();
+        var classifyResult = await classifier.ExecuteAsync(classifierInput, ctx);
+
+        classifyResult.IsSuccess.Should().BeTrue("Classifier API call başarısız");
+        var co = classifyResult.Value!;
+
+        output.WriteLine($"[ec-0034] Category={co.Category} Severity={co.Severity} " +
+                         $"Ambiguity=[{string.Join(",", co.AmbiguityReasons)}]");
+
+        var routerInput = BuildRouterInput(co, classifierInput.RawText);
+        var routeResult = await router.ExecuteAsync(routerInput, ctx);
+
+        routeResult.IsSuccess.Should().BeTrue("Router API call başarısız");
+        var ro = routeResult.Value!;
+
+        output.WriteLine($"[ec-0034] RoutingAction={ro.Action} Note={ro.NotificationNote}");
+
+        ro.Action.Should().Be(RoutingAction.EscalateToManager,
+            "Su sızıntısı Urgent → EscalateToManager");
+
+        if (co.AmbiguityReasons.Contains(AmbiguityReason.MissingLocation))
+        {
+            ro.NotificationNote.Should().NotBeNullOrEmpty(
+                "Urgent + MissingLocation → Rule 3 note konum bilgisini içermeli");
+        }
+    }
+
+    // ── Smoke: ec-0035 ────────────────────────────────────────────────────────
+
+    [Fact, Trait("Category", "Smoke")]
+    public async Task Ec0035_ImagePlaceholder_ShouldNotProduceHighConfidenceCategory()
+    {
+        var (classifier, _) = BuildAgents();
+
+        var classifierInput = new ClassifierInput(
+            ResidentId: Guid.NewGuid(),
+            RawText: "[Görsel mesaj]",
+            ChannelType: ChannelType.WhatsApp,
+            EmergencySuspected: false,
+            MatchedPhrases: []);
+
+        var ctx = MakeContext();
+        var classifyResult = await classifier.ExecuteAsync(classifierInput, ctx);
+
+        classifyResult.IsSuccess.Should().BeTrue("Classifier API call başarısız");
+        var co = classifyResult.Value!;
+
+        output.WriteLine($"[ec-0035] Category={co.Category} Confidence={co.CategoryConfidence} " +
+                         $"Severity={co.Severity} Ambiguity=[{string.Join(",", co.AmbiguityReasons)}]");
+
+        co.CategoryConfidence.Should().NotBe(ConfidenceLevel.High,
+            "Image placeholder '[Görsel mesaj]' — içerik yok, high confidence üretilemez");
+
+        co.AmbiguityReasons.Should().Contain(AmbiguityReason.InsufficientDetail,
+            "Görsel placeholder için InsufficientDetail ambiguity_reason bekleniyor");
+    }
+
+    // ── Smoke: ec-0036 ────────────────────────────────────────────────────────
+
+    [Fact, Trait("Category", "Smoke")]
+    public async Task Ec0036_LocationOnlyMessage_ShouldProduceNonActionable()
+    {
+        var (classifier, router) = BuildAgents();
+
+        var classifierInput = new ClassifierInput(
+            ResidentId: Guid.NewGuid(),
+            RawText: "C-blok 1. Kat Daire 2",
+            ChannelType: ChannelType.WhatsApp,
+            EmergencySuspected: false,
+            MatchedPhrases: []);
+
+        var ctx = MakeContext();
+        var classifyResult = await classifier.ExecuteAsync(classifierInput, ctx);
+
+        classifyResult.IsSuccess.Should().BeTrue("Classifier API call başarısız");
+        var co = classifyResult.Value!;
+
+        output.WriteLine($"[ec-0036] Category={co.Category} Confidence={co.CategoryConfidence} " +
+                         $"Severity={co.Severity} Ambiguity=[{string.Join(",", co.AmbiguityReasons)}]");
+
+        co.AmbiguityReasons.Should().Contain(AmbiguityReason.NonActionable,
+            "Konum-only mesaj şikayet içermiyor — NonActionable bekleniyor");
+
+        var routerInput = BuildRouterInput(co, classifierInput.RawText);
+        var routeResult = await router.ExecuteAsync(routerInput, ctx);
+
+        routeResult.IsSuccess.Should().BeTrue("Router API call başarısız");
+        var ro = routeResult.Value!;
+
+        output.WriteLine($"[ec-0036] RoutingAction={ro.Action}");
+
+        ro.Action.Should().Be(RoutingAction.Archive,
+            "NonActionable mesaj → Archive edilmeli, sakin bilgilendirilmemeli");
+    }
+
+    // ── Smoke: ec-0037 ────────────────────────────────────────────────────────
+
+    [Fact, Trait("Category", "Smoke")]
+    public async Task Ec0037_MissingSeverity_ShouldNotCoexistWithHighOrUrgent()
+    {
+        var (classifier, _) = BuildAgents();
+
+        var classifierInput = new ClassifierInput(
+            ResidentId: Guid.NewGuid(),
+            RawText: "Sular akmıyor",
+            ChannelType: ChannelType.WhatsApp,
+            EmergencySuspected: false,
+            MatchedPhrases: []);
+
+        var ctx = MakeContext();
+        var classifyResult = await classifier.ExecuteAsync(classifierInput, ctx);
+
+        classifyResult.IsSuccess.Should().BeTrue("Classifier API call başarısız");
+        var co = classifyResult.Value!;
+
+        output.WriteLine($"[ec-0037] Severity={co.Severity} Ambiguity=[{string.Join(",", co.AmbiguityReasons)}]");
+
+        if (co.AmbiguityReasons.Contains(AmbiguityReason.MissingSeverity))
+        {
+            co.Severity.Should().Be(TicketSeverity.Medium,
+                "MissingSeverity + High/Urgent çelişki — MissingSeverity varsa severity=medium zorunlu");
+        }
+    }
+
+    // ── Smoke: ec-0038 ────────────────────────────────────────────────────────
+
+    [Fact, Trait("Category", "Smoke")]
+    public async Task Ec0038_HedgeWords_ShouldCapCategoryConfidenceAtMedium()
+    {
+        var (classifier, _) = BuildAgents();
+
+        var classifierInput = new ClassifierInput(
+            ResidentId: Guid.NewGuid(),
+            RawText: "Duvarlarda şişme var. Galiba rutubetden dolayı.",
+            ChannelType: ChannelType.WhatsApp,
+            EmergencySuspected: false,
+            MatchedPhrases: []);
+
+        var ctx = MakeContext();
+        var classifyResult = await classifier.ExecuteAsync(classifierInput, ctx);
+
+        classifyResult.IsSuccess.Should().BeTrue("Classifier API call başarısız");
+        var co = classifyResult.Value!;
+
+        output.WriteLine($"[ec-0038] Category={co.Category} Confidence={co.CategoryConfidence} " +
+                         $"Ambiguity=[{string.Join(",", co.AmbiguityReasons)}]");
+
+        co.CategoryConfidence.Should().NotBe(ConfidenceLevel.High,
+            "'Galiba' belirsizlik işareti — hedge word constraint: category_confidence max medium");
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static (ClassifierAgent Classifier, RouterAgent Router) BuildAgents()

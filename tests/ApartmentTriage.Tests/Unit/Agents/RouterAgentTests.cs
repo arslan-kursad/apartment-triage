@@ -244,4 +244,35 @@ public class RouterAgent_Layer3_LlmTests
         result.Value!.Action.Should().Be(RoutingAction.AssignTechnician);
         result.Value.ConfidenceLevel.Should().Be(ConfidenceLevel.Low);
     }
+
+    // ── ec-0034 — Urgent + MissingLocation → EscalateToManager with location note ─
+
+    [Fact]
+    public async Task Ec0034_Rule3_Urgent_WithMissingLocation_IncludesLocationNote()
+    {
+        var input = RouterHelpers.Build(
+            severity: TicketSeverity.Urgent,
+            ambiguity: [AmbiguityReason.MissingLocation]);
+        var result = await RouterHelpers.Agent().ExecuteAsync(input, RouterHelpers.Ctx());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Action.Should().Be(RoutingAction.EscalateToManager,
+            "Urgent → Rule 3 fires regardless of missing location");
+        result.Value.NotificationNote.Should().NotBeNullOrEmpty(
+            "Manager must be informed that location is unknown so they can follow up");
+    }
+
+    [Fact]
+    public async Task Ec0034_Rule3_Urgent_WithoutMissingLocation_HasNullNote()
+    {
+        var input = RouterHelpers.Build(
+            severity: TicketSeverity.Urgent,
+            ambiguity: []);
+        var result = await RouterHelpers.Agent().ExecuteAsync(input, RouterHelpers.Ctx());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Action.Should().Be(RoutingAction.EscalateToManager);
+        result.Value.NotificationNote.Should().BeNull(
+            "No location ambiguity — note should not be added unnecessarily");
+    }
 }
