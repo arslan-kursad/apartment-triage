@@ -54,6 +54,9 @@ public sealed class TelegramAdapter : IMessageChannel
                 var senderId = msg.From?.Id ?? msg.Chat.Id;
                 var languageCode = msg.From?.LanguageCode;
                 var lang = languageCode == "tr" ? "tr" : "en";
+                var senderName = string.IsNullOrWhiteSpace(msg.From?.FirstName)
+                    ? null
+                    : $"{msg.From.FirstName} {msg.From.LastName}".Trim();
 
                 // /start — send welcome and stop
                 if (msg.Text == "/start")
@@ -80,7 +83,8 @@ public sealed class TelegramAdapter : IMessageChannel
                         ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
                         LanguageCode: languageCode,
                         ImageData: imageResult.Value.Data,
-                        ImageMimeType: imageResult.Value.MimeType);
+                        ImageMimeType: imageResult.Value.MimeType,
+                        SenderName: senderName);
                     continue;
                 }
 
@@ -105,7 +109,8 @@ public sealed class TelegramAdapter : IMessageChannel
                             ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
                             LanguageCode: languageCode,
                             ImageData: docResult.Value.Data,
-                            ImageMimeType: docResult.Value.MimeType);
+                            ImageMimeType: docResult.Value.MimeType,
+                            SenderName: senderName);
                     }
                     else if (mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
                     {
@@ -152,7 +157,8 @@ public sealed class TelegramAdapter : IMessageChannel
                     SenderId: senderId.ToString(),
                     Text: text,
                     ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
-                    LanguageCode: languageCode);
+                    LanguageCode: languageCode,
+                    SenderName: senderName);
             }
         }
     }

@@ -57,6 +57,9 @@ public sealed class ChannelConsumerJob(
         var resident = await residentRepository.FindByTelegramIdAsync(telegramId, ct)
             ?? await CreateResidentAsync(telegramId, preferredLanguage, ct);
 
+        if (incoming.SenderName is not null && resident.DisplayName is null)
+            resident.UpdateContactInfo(displayName: incoming.SenderName);
+
         if (resident.PendingClarificationTicketId.HasValue)
         {
             await HandleClarificationResponseAsync(incoming, resident, ct);

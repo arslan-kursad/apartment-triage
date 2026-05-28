@@ -73,7 +73,8 @@ public sealed class IndexModel : PageModel
                     Confidence:    sel.CategoryConfidence,
                     LocationHint:  sel.LocationHint,
                     RoutingAction: sel.RoutingAction,
-                    DraftReply:    draftReply
+                    DraftReply:    draftReply,
+                    Status:        sel.Status
                 );
             }
         }
@@ -135,5 +136,6 @@ public sealed class IndexModel : PageModel
         ConfidenceLevel Confidence,
         string? LocationHint,
         RoutingAction? RoutingAction,
-        string DraftReply);
+        string DraftReply,
+        TicketStatus Status);
 }

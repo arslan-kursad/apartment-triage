@@ -49,6 +49,9 @@ public sealed class WhatsAppConsumerJob(
         var resident = await residentRepository.FindByWhatsAppNumberAsync(incoming.SenderId, ct)
             ?? await CreateResidentAsync(incoming.SenderId, ct);
 
+        if (incoming.SenderName is not null && resident.DisplayName is null)
+            resident.UpdateContactInfo(displayName: incoming.SenderName);
+
         var message = Message.Create(
             residentId: resident.Id,
             channelType: channel.ChannelType,

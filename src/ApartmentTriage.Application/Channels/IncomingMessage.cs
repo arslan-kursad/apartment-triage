@@ -22,5 +22,8 @@ public sealed record IncomingMessage(
     byte[]? ImageData = null,
 
     /// <summary>MIME type of the image, e.g. "image/jpeg". Null when ImageData is null.</summary>
-    string? ImageMimeType = null
+    string? ImageMimeType = null,
+
+    /// <summary>Human-readable sender name from channel profile (Telegram first+last, WhatsApp contact profile). Null when unavailable.</summary>
+    string? SenderName = null
 );

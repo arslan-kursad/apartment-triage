@@ -143,6 +143,17 @@ public sealed class WhatsAppAdapter : IMessageChannel
                 if (!value.TryGetProperty("messages", out var messages))
                     continue;
 
+                // Extract sender display name from contacts[0].profile.name if present.
+                string? senderName = null;
+                if (value.TryGetProperty("contacts", out var contacts) &&
+                    contacts.GetArrayLength() > 0 &&
+                    contacts[0].TryGetProperty("profile", out var profile) &&
+                    profile.TryGetProperty("name", out var nameEl))
+                {
+                    var n = nameEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(n)) senderName = n;
+                }
+
                 foreach (var msg in messages.EnumerateArray())
                 {
                     // Only process text messages for now
@@ -165,7 +176,8 @@ public sealed class WhatsAppAdapter : IMessageChannel
                         ExternalId: idEl.GetString()!,
                         SenderId: fromEl.GetString()!,
                         Text: bodyEl.GetString()!,
-                        ReceivedAt: DateTimeOffset.FromUnixTimeSeconds(timestampSeconds));
+                        ReceivedAt: DateTimeOffset.FromUnixTimeSeconds(timestampSeconds),
+                        SenderName: senderName);
                 }
             }
         }

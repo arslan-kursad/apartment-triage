@@ -229,6 +229,15 @@
             </div>
 
             @* Draft reply section *@
+            @{
+                var isOpen = d.Status == TicketStatus.Open;
+                var sendableRouting = d.RoutingAction is
+                    RoutingAction.EscalateToManager or
+                    RoutingAction.AssignTechnician or
+                    RoutingAction.NotifyResident;
+                var showSend = isOpen && sendableRouting && !string.IsNullOrEmpty(d.DraftReply);
+                var sendDisabledWa = showSend && d.Channel == ChannelType.WhatsApp;
+            }
             <div class="flex-1 flex flex-col p-3 overflow-hidden">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                     <span class="lang-tr">Taslak Yanıt</span>
@@ -239,12 +248,28 @@
                           placeholder="@(/* bilingual placeholder via JS */ "")"
                 >@d.DraftReply</textarea>
 
-                <button id="send-btn"
-                        onclick="sendReply('@d.TicketId')"
-                        class="mt-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
-                    <span class="lang-tr">Onayla & Gönder ✓</span>
-                    <span class="lang-en">Approve & Send ✓</span>
-                </button>
+                @if (showSend)
+                {
+                    if (sendDisabledWa)
+                    {
+                        <button id="send-btn"
+                                disabled
+                                title="WhatsApp yanıtları otomatik gönderilir"
+                                class="mt-2 w-full py-2 bg-gray-300 text-gray-500 text-xs font-semibold rounded-lg cursor-not-allowed opacity-60">
+                            <span class="lang-tr">Gönder (WhatsApp)</span>
+                            <span class="lang-en">Send (WhatsApp)</span>
+                        </button>
+                    }
+                    else
+                    {
+                        <button id="send-btn"
+                                onclick="sendReply('@d.TicketId')"
+                                class="mt-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+                            <span class="lang-tr">Onayla & Gönder ✓</span>
+                            <span class="lang-en">Approve & Send ✓</span>
+                        </button>
+                    }
+                }
             </div>
         </aside>
     }
