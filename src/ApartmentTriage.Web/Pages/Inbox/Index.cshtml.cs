@@ -31,15 +31,18 @@ public sealed class IndexModel : PageModel
             .Take(30)
             .ToListAsync(ct);
 
-        Items = tickets.Select(t => new InboxItem(
-            TicketId:    t.Id,
-            Resident:    ResidentLabel(t.Resident, t.ResidentId),
-            Initials:    Initials(t.Resident),
-            Preview:     TruncatePreview(t.SourceMessage?.RawText),
-            Channel:     t.SourceMessage?.ChannelType ?? ChannelType.Mock,
-            IsEmergency: t.IsEmergency,
-            TimeIst:     IstanbulTime.Format(t.CreatedAt)
-        )).ToList();
+        Items = tickets.Select(t =>
+        {
+            var ch = t.SourceMessage?.ChannelType ?? ChannelType.Mock;
+            return new InboxItem(
+                TicketId:    t.Id,
+                Resident:    ResidentLabel(t.Resident, ch),
+                Initials:    Initials(t.Resident),
+                Preview:     TruncatePreview(t.SourceMessage?.RawText),
+                Channel:     ch,
+                IsEmergency: t.IsEmergency,
+                TimeIst:     IstanbulTime.Format(t.CreatedAt));
+        }).ToList();
 
         // Determine selected ticket
         var selectedId = TicketId ?? tickets.FirstOrDefault()?.Id;
@@ -56,11 +59,12 @@ public sealed class IndexModel : PageModel
                 var lang = Request.Cookies["atriage_lang"] ?? "tr";
                 var draftReply = ReplyTemplates.BuildTicketReply(sel, lang);
 
+                var selChannel = sel.SourceMessage?.ChannelType ?? ChannelType.Mock;
                 Detail = new TicketDetail(
                     TicketId:      sel.Id,
-                    Resident:      ResidentLabel(sel.Resident, sel.ResidentId),
+                    Resident:      ResidentLabel(sel.Resident, selChannel),
                     Initials:      Initials(sel.Resident),
-                    Channel:       sel.SourceMessage?.ChannelType ?? ChannelType.Mock,
+                    Channel:       selChannel,
                     RawText:       sel.SourceMessage?.RawText ?? "—",
                     ReceivedAt:    IstanbulTime.Format(sel.SourceMessage?.ReceivedAt ?? sel.CreatedAt),
                     Category:      sel.Category,
@@ -75,8 +79,12 @@ public sealed class IndexModel : PageModel
         }
     }
 
-    private static string ResidentLabel(Resident? r, Guid id)
-        => r?.DisplayName ?? r?.ApartmentNumber ?? id.ToString()[..8] + "…";
+    private static string ResidentLabel(Resident? r, ChannelType channel)
+    {
+        if (r?.DisplayName is { Length: > 0 } name) return name;
+        if (r?.ApartmentNumber is { Length: > 0 } apt) return apt;
+        return channel == ChannelType.WhatsApp ? "WA Sakin" : "TG Sakin";
+    }
 
     private static string Initials(Resident? r)
     {
