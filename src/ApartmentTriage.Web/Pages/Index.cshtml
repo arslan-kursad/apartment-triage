@@ -140,18 +140,6 @@
             <ul class="divide-y divide-gray-50">
                 @foreach (var item in Model.RecentTickets)
                 {
-                    var channelDot = item.Channel switch
-                    {
-                        ChannelType.WhatsApp => "#25D366",
-                        ChannelType.Telegram => "#229ED9",
-                        _                    => "#9CA3AF"
-                    };
-                    var channelLabel = item.Channel switch
-                    {
-                        ChannelType.WhatsApp => "WA",
-                        ChannelType.Telegram => "TG",
-                        _                    => "—"
-                    };
                     var sevColor = item.Severity switch
                     {
                         TicketSeverity.Urgent => "bg-red-100 text-red-700",
@@ -163,10 +151,21 @@
                     <li class="px-5 py-3 hover:bg-gray-50 transition-colors">
                         <div class="flex items-start justify-between gap-3">
                             <div class="flex items-start gap-2 min-w-0">
-                                @* Channel dot *@
-                                <span title="@item.Channel"
-                                      class="mt-1 w-2 h-2 rounded-full shrink-0"
-                                      style="background-color: @channelDot"></span>
+                                @* Channel icon *@
+                                <span class="mt-0.5 shrink-0 w-4 text-center">
+                                    @if (item.Channel == ChannelType.WhatsApp)
+                                    {
+                                        <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:13px"></i>
+                                    }
+                                    else if (item.Channel == ChannelType.Telegram)
+                                    {
+                                        <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:13px"></i>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-block w-2 h-2 rounded-full bg-gray-400 mt-1"></span>
+                                    }
+                                </span>
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <span class="text-xs font-medium text-gray-700">@item.Category</span>
@@ -471,41 +470,55 @@
     });
 
     // ── FinOps ─────────────────────────────────────────────────────────────────
-    fetchJSON('/api/eval/summary', function(data) {
-        var panel = document.getElementById('finops-panel');
-        if (!panel) return;
-        var lang = localStorage.getItem('atriage_lang') || 'tr';
+    fetchJSON('/api/eval/summary', function(evalData) {
+        fetchJSON('/api/stats', function(statsData) {
+            var panel = document.getElementById('finops-panel');
+            if (!panel) return;
+            var lang = localStorage.getItem('atriage_lang') || 'tr';
 
-        function card(label, value, note) {
-            return '<div><p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">' + label + '</p>' +
-                   '<p class="text-xl font-bold text-gray-900">' + value + '</p>' +
-                   (note ? '<p class="text-xs text-gray-400 mt-1">' + note + '</p>' : '') + '</div>';
-        }
+            function card(label, value, note) {
+                return '<div><p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">' + label + '</p>' +
+                       '<p class="text-xl font-bold text-gray-900">' + value + '</p>' +
+                       (note ? '<p class="text-xs text-gray-400 mt-1">' + note + '</p>' : '') + '</div>';
+            }
 
-        var ratio = lang === 'tr' ? 'N/A — migration bekleniyor' : 'N/A — migration pending';
-        var evalCost = data.evalCostEstimateUsd != null
-            ? '$' + parseFloat(data.evalCostEstimateUsd).toFixed(3)
-            : '—';
-        var totalCost = data.totalApiCostUsd || '$0.00';
+            var haiku  = statsData.haikuCount  || 0;
+            var sonnet = statsData.sonnetCount  || 0;
+            var total  = haiku + sonnet;
+            var ratioValue, ratioNote;
+            if (total === 0) {
+                ratioValue = '—';
+                ratioNote  = lang === 'tr' ? 'Henüz ticket yok' : 'No tickets yet';
+            } else {
+                var haikuPct  = Math.round(haiku  / total * 100);
+                var sonnetPct = 100 - haikuPct;
+                ratioValue = 'Haiku ' + haikuPct + '% · Sonnet ' + sonnetPct + '%';
+                ratioNote  = haiku + ' Haiku · ' + sonnet + ' Sonnet · ' + total + (lang === 'tr' ? ' toplam' : ' total');
+            }
 
-        var html = '';
-        html += card(
-            lang === 'tr' ? 'Haiku / Sonnet Oranı' : 'Haiku / Sonnet Ratio',
-            ratio,
-            lang === 'tr' ? 'ADR-0012 §Açık Sorunlar' : 'ADR-0012 §Open Issues'
-        );
-        html += card(
-            lang === 'tr' ? 'Eval Maliyet Tahmini' : 'Eval Cost Estimate',
-            evalCost,
-            lang === 'tr' ? 'Eval bazlı tahmin' : 'Eval-based estimate'
-        );
-        html += card(
-            lang === 'tr' ? 'Toplam API Maliyeti' : 'Total API Cost',
-            totalCost,
-            lang === 'tr' ? 'Anthropic Console · manuel güncellenir' : 'Anthropic Console · updated manually'
-        );
+            var evalCost = evalData.evalCostEstimateUsd != null
+                ? '$' + parseFloat(evalData.evalCostEstimateUsd).toFixed(3)
+                : '—';
+            var totalCost = evalData.totalApiCostUsd || '$0.00';
 
-        panel.innerHTML = html;
+            var html = '';
+            html += card(
+                lang === 'tr' ? 'Haiku / Sonnet Oranı' : 'Haiku / Sonnet Ratio',
+                ratioValue, ratioNote
+            );
+            html += card(
+                lang === 'tr' ? 'Eval Maliyet Tahmini' : 'Eval Cost Estimate',
+                evalCost,
+                lang === 'tr' ? 'Eval bazlı tahmin' : 'Eval-based estimate'
+            );
+            html += card(
+                lang === 'tr' ? 'Toplam API Maliyeti' : 'Total API Cost',
+                totalCost,
+                lang === 'tr' ? 'Anthropic Console · manuel güncellenir' : 'Anthropic Console · updated manually'
+            );
+
+            panel.innerHTML = html;
+        });
     });
 
 })();

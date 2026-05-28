@@ -57,9 +57,7 @@ public sealed class IndexModel : PageModel
             IsEmergency: t.IsEmergency,
             Channel:   t.SourceMessage?.ChannelType ?? ChannelType.Mock,
             Preview:   TruncatePreview(t.SourceMessage?.RawText),
-            Resident:  t.Resident?.DisplayName
-                       ?? t.Resident?.ApartmentNumber
-                       ?? t.ResidentId.ToString()[..8] + "…",
+            Resident:  t.Resident?.ApartmentNumber ?? "—",
             TimeIst:   IstanbulTime.Format(t.CreatedAt)
         )).ToList();
     }
