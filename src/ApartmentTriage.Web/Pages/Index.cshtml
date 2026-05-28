@@ -1,0 +1,513 @@
+@page
+@model ApartmentTriage.Web.Pages.IndexModel
+@using ApartmentTriage.Domain.Enums
+@{
+    ViewData["Title"]       = "Genel Bakış";
+    ViewData["PageTitleTR"] = "Genel Bakış";
+    ViewData["PageTitleEN"] = "Overview";
+}
+
+@* ── KPI Grid ─────────────────────────────────────────────────────────────────── *@
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+    @* Total tickets *@
+    <div class="bg-white rounded-xl border border-gray-200 p-5 flex items-start justify-between">
+        <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Toplam Ticket</span>
+                <span class="lang-en">Total Tickets</span>
+            </p>
+            <p class="text-3xl font-bold text-gray-900">@Model.TotalTickets</p>
+        </div>
+        <span class="p-2 bg-blue-50 rounded-lg">
+            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+        </span>
+    </div>
+
+    @* Emergency *@
+    <div class="bg-white rounded-xl border border-red-200 p-5 flex items-start justify-between">
+        <div>
+            <p class="text-xs font-medium text-red-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Acil Durum</span>
+                <span class="lang-en">Emergency</span>
+            </p>
+            <p class="text-3xl font-bold text-red-600">@Model.EmergencyCount</p>
+            @if (Model.TotalTickets > 0)
+            {
+                var pct = Math.Round((double)Model.EmergencyCount / Model.TotalTickets * 100, 1);
+                <p class="text-xs text-red-400 mt-1">%@pct
+                    <span class="lang-tr"> oran</span>
+                    <span class="lang-en"> rate</span>
+                </p>
+            }
+        </div>
+        <span class="p-2 bg-red-50 rounded-lg">
+            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        </span>
+    </div>
+
+    @* Avg AI confidence *@
+    <div class="bg-white rounded-xl border border-gray-200 p-5 flex items-start justify-between">
+        <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Ort. AI Güven</span>
+                <span class="lang-en">Avg. AI Confidence</span>
+            </p>
+            <p class="text-3xl font-bold text-gray-900">
+                @if (Model.TotalTickets > 0) { @($"%{Model.AvgConfidence:F0}") } else { <span class="text-gray-300">—</span> }
+            </p>
+            <p class="text-xs text-gray-400 mt-1">
+                <span class="lang-tr">AI öz-güven skoru</span>
+                <span class="lang-en">AI self-confidence score</span>
+            </p>
+        </div>
+        <span class="p-2 bg-purple-50 rounded-lg">
+            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+        </span>
+    </div>
+
+    @* Active channels *@
+    <div class="bg-white rounded-xl border border-gray-200 p-5 flex items-start justify-between">
+        <div>
+            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Aktif Kanal</span>
+                <span class="lang-en">Active Channels</span>
+            </p>
+            <p class="text-3xl font-bold text-gray-900">
+                @((Model.WaCount > 0 ? 1 : 0) + (Model.TgCount > 0 ? 1 : 0))
+            </p>
+            <div class="flex items-center gap-2 mt-1">
+                @if (Model.WaCount > 0)
+                {
+                    <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                        <span class="w-2 h-2 rounded-full bg-[#25D366]"></span>
+                        WA @Model.WaCount
+                    </span>
+                }
+                @if (Model.TgCount > 0)
+                {
+                    <span class="inline-flex items-center gap-1 text-xs text-gray-500">
+                        <span class="w-2 h-2 rounded-full bg-[#229ED9]"></span>
+                        TG @Model.TgCount
+                    </span>
+                }
+            </div>
+        </div>
+        <span class="p-2 bg-green-50 rounded-lg">
+            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+        </span>
+    </div>
+
+</div>
+
+@* ── Middle row: Feed + Category chart ───────────────────────────────────────── *@
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
+    @* Live triage feed (2 cols) *@
+    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="font-semibold text-gray-900 text-sm">
+                <span class="lang-tr">Canlı Triage Akışı</span>
+                <span class="lang-en">Live Triage Feed</span>
+            </h2>
+            <a href="/tickets" class="text-xs text-blue-600 hover:underline">
+                <span class="lang-tr">Tümünü gör →</span>
+                <span class="lang-en">View all →</span>
+            </a>
+        </div>
+
+        @if (!Model.RecentTickets.Any())
+        {
+            <div class="px-5 py-8 text-center text-gray-400 text-sm">
+                <span class="lang-tr">Henüz ticket yok.</span>
+                <span class="lang-en">No tickets yet.</span>
+            </div>
+        }
+        else
+        {
+            <ul class="divide-y divide-gray-50">
+                @foreach (var item in Model.RecentTickets)
+                {
+                    var channelDot = item.Channel switch
+                    {
+                        ChannelType.WhatsApp => "#25D366",
+                        ChannelType.Telegram => "#229ED9",
+                        _                    => "#9CA3AF"
+                    };
+                    var channelLabel = item.Channel switch
+                    {
+                        ChannelType.WhatsApp => "WA",
+                        ChannelType.Telegram => "TG",
+                        _                    => "—"
+                    };
+                    var sevColor = item.Severity switch
+                    {
+                        TicketSeverity.Urgent => "bg-red-100 text-red-700",
+                        TicketSeverity.High   => "bg-orange-100 text-orange-700",
+                        TicketSeverity.Medium => "bg-blue-100 text-blue-700",
+                        _                     => "bg-gray-100 text-gray-600"
+                    };
+
+                    <li class="px-5 py-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-start gap-2 min-w-0">
+                                @* Channel dot *@
+                                <span title="@item.Channel"
+                                      class="mt-1 w-2 h-2 rounded-full shrink-0"
+                                      style="background-color: @channelDot"></span>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="text-xs font-medium text-gray-700">@item.Category</span>
+                                        @if (item.IsEmergency)
+                                        {
+                                            <span class="px-1.5 py-0.5 rounded text-xs font-bold bg-red-600 text-white">
+                                                <span class="lang-tr">ACİL</span>
+                                                <span class="lang-en">EMRG</span>
+                                            </span>
+                                        }
+                                    </div>
+                                    <p class="text-xs text-gray-400 mt-0.5 truncate">@item.Preview</p>
+                                    <p class="text-xs text-gray-400 mt-0.5">@item.Resident</p>
+                                </div>
+                            </div>
+                            <div class="shrink-0 flex flex-col items-end gap-1">
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium @sevColor">@item.Severity</span>
+                                <span class="text-xs text-gray-400">@item.TimeIst</span>
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    @* Category + channel charts (1 col) *@
+    <div class="flex flex-col gap-4">
+        <div class="bg-white rounded-xl border border-gray-200 flex-1">
+            <div class="px-5 py-4 border-b border-gray-100">
+                <h2 class="font-semibold text-gray-900 text-sm">
+                    <span class="lang-tr">Kategori Dağılımı</span>
+                    <span class="lang-en">Category Distribution</span>
+                </h2>
+            </div>
+            <div class="p-4">
+                <canvas id="categoryChart" height="200"></canvas>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200">
+            <div class="px-5 py-4 border-b border-gray-100">
+                <h2 class="font-semibold text-gray-900 text-sm">
+                    <span class="lang-tr">Kanal Dağılımı</span>
+                    <span class="lang-en">Channel Distribution</span>
+                </h2>
+            </div>
+            <div class="p-4 flex items-center justify-center">
+                <canvas id="channelChart" width="160" height="120" class="max-w-[160px]"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@* ── Bottom row: Severity + Routing + Model Quality ──────────────────────────── *@
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+
+    @* Severity chart *@
+    <div class="bg-white rounded-xl border border-gray-200">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="font-semibold text-gray-900 text-sm">
+                <span class="lang-tr">Şiddet Dağılımı</span>
+                <span class="lang-en">Severity Distribution</span>
+            </h2>
+        </div>
+        <div class="p-4 flex justify-center">
+            <canvas id="severityChart" width="200" height="160" class="max-w-[200px]"></canvas>
+        </div>
+    </div>
+
+    @* Routing chart *@
+    <div class="bg-white rounded-xl border border-gray-200">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="font-semibold text-gray-900 text-sm">
+                <span class="lang-tr">Yönlendirme Dağılımı</span>
+                <span class="lang-en">Routing Distribution</span>
+            </h2>
+        </div>
+        <div class="p-4">
+            <canvas id="routingChart" height="160"></canvas>
+        </div>
+    </div>
+
+    @* Model quality card *@
+    <div class="bg-white rounded-xl border border-gray-200">
+        <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="font-semibold text-gray-900 text-sm">
+                <span class="lang-tr">Model Kalitesi</span>
+                <span class="lang-en">Model Quality</span>
+            </h2>
+        </div>
+        <div class="p-5 space-y-4" id="eval-panel">
+            <div class="text-xs text-gray-400 italic">
+                <span class="lang-tr">Eval yükleniyor…</span>
+                <span class="lang-en">Loading eval…</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@* ── FinOps card (full width) ─────────────────────────────────────────────────── *@
+<div class="bg-white rounded-xl border border-gray-200">
+    <div class="px-5 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900 text-sm">
+            <span class="lang-tr">FinOps</span>
+            <span class="lang-en">FinOps</span>
+        </h2>
+    </div>
+    <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-6" id="finops-panel">
+        <div class="text-xs text-gray-400 italic col-span-3">
+            <span class="lang-tr">Yükleniyor…</span>
+            <span class="lang-en">Loading…</span>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+
+    // ── Fetch helpers ──────────────────────────────────────────────────────────
+    function fetchJSON(url, cb) {
+        fetch(url).then(function(r) { return r.json(); }).then(cb).catch(function(e) {
+            console.warn('Stats fetch failed:', url, e);
+        });
+    }
+
+    // ── Category chart (horizontal bar) ───────────────────────────────────────
+    fetchJSON('/api/stats/categories', function(data) {
+        if (!data || !data.length) return;
+        var ctx = document.getElementById('categoryChart');
+        if (!ctx) return;
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(function(d) { return d.category; }),
+                datasets: [{
+                    data: data.map(function(d) { return d.count; }),
+                    backgroundColor: 'rgba(59,130,246,0.7)',
+                    borderRadius: 4,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+    });
+
+    // ── Channel chart (doughnut) ───────────────────────────────────────────────
+    (function() {
+        var wa = @Model.WaCount;
+        var tg = @Model.TgCount;
+        if (wa + tg === 0) return;
+        var ctx = document.getElementById('channelChart');
+        if (!ctx) return;
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['WhatsApp', 'Telegram'],
+                datasets: [{
+                    data: [wa, tg],
+                    backgroundColor: ['#25D366', '#229ED9'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: false,
+                cutout: '60%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { size: 10 }, boxWidth: 10, padding: 8 }
+                    }
+                }
+            }
+        });
+    })();
+
+    // ── Severity chart (doughnut) ──────────────────────────────────────────────
+    fetchJSON('/api/stats/severity', function(data) {
+        if (!data || !data.length) return;
+        var colors = { Low: '#9CA3AF', Medium: '#60A5FA', High: '#FB923C', Urgent: '#EF4444' };
+        var ctx = document.getElementById('severityChart');
+        if (!ctx) return;
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.map(function(d) { return d.severity; }),
+                datasets: [{
+                    data: data.map(function(d) { return d.count; }),
+                    backgroundColor: data.map(function(d) { return colors[d.severity] || '#6B7280'; }),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: false,
+                cutout: '55%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { size: 10 }, boxWidth: 10, padding: 6 }
+                    }
+                }
+            }
+        });
+    });
+
+    // ── Routing chart (horizontal bar) ────────────────────────────────────────
+    fetchJSON('/api/stats/routing', function(data) {
+        if (!data || !data.length) return;
+        var ctx = document.getElementById('routingChart');
+        if (!ctx) return;
+        var actionColors = {
+            TriggerEmergency:  '#EF4444',
+            EscalateToManager: '#F97316',
+            AssignTechnician:  '#3B82F6',
+            NotifyResident:    '#8B5CF6',
+            Defer:             '#6B7280',
+            Archive:           '#374151'
+        };
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(function(d) { return d.action; }),
+                datasets: [{
+                    data: data.map(function(d) { return d.count; }),
+                    backgroundColor: data.map(function(d) { return actionColors[d.action] || '#6B7280'; }),
+                    borderRadius: 4,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+    });
+
+    // ── Eval summary ───────────────────────────────────────────────────────────
+    fetchJSON('/api/eval/summary', function(data) {
+        var panel = document.getElementById('eval-panel');
+        if (!panel) return;
+
+        var lang = localStorage.getItem('atriage_lang') || 'tr';
+
+        function pct(v) { return v != null ? '%' + Math.round(v * 100) : '—'; }
+
+        var html = '';
+        html += '<div class="space-y-3">';
+
+        // Category accuracy
+        var accColor = data.categoryAccuracy != null && data.categoryAccuracy >= 0.8 ? 'text-green-600' : 'text-gray-400';
+        html += '<div>';
+        html += '<div class="flex justify-between items-center mb-1">';
+        html += '<span class="text-xs text-gray-600">' + (lang === 'tr' ? 'Kategori Doğruluğu' : 'Category Accuracy') + '</span>';
+        html += '<span class="text-sm font-semibold ' + accColor + '">' + pct(data.categoryAccuracy) + '</span>';
+        html += '</div>';
+        if (data.categoryAccuracy != null) {
+            var accW = Math.round(data.categoryAccuracy * 100);
+            html += '<div class="w-full bg-gray-100 rounded-full h-1.5">';
+            html += '<div class="bg-green-500 h-1.5 rounded-full" style="width:' + accW + '%"></div>';
+            html += '</div>';
+        }
+        html += '</div>';
+
+        // Emergency recall
+        var recColor = data.emergencyRecall != null && data.emergencyRecall >= 0.95 ? 'text-green-600' : 'text-gray-400';
+        html += '<div>';
+        html += '<div class="flex justify-between items-center mb-1">';
+        html += '<span class="text-xs text-gray-600">' + (lang === 'tr' ? 'Acil Recall' : 'Emergency Recall') + '</span>';
+        html += '<span class="text-sm font-semibold ' + recColor + '">' + pct(data.emergencyRecall) + '</span>';
+        html += '</div>';
+        if (data.emergencyRecall != null) {
+            var recW = Math.round(data.emergencyRecall * 100);
+            html += '<div class="w-full bg-gray-100 rounded-full h-1.5">';
+            html += '<div class="bg-blue-500 h-1.5 rounded-full" style="width:' + recW + '%"></div>';
+            html += '</div>';
+        }
+        html += '</div>';
+
+        // Note
+        var note = data.runDate
+            ? (lang === 'tr' ? data.totalCases + ' etiketli case · ' + data.runDate : data.totalCases + ' labeled cases · ' + data.runDate)
+            : (lang === 'tr' ? data.totalCases + ' etiketli case · Eval bekleniyor' : data.totalCases + ' labeled cases · Awaiting eval run');
+        html += '<p class="text-xs text-gray-400 italic">' + note + '</p>';
+
+        html += '</div>';
+        panel.innerHTML = html;
+    });
+
+    // ── FinOps ─────────────────────────────────────────────────────────────────
+    fetchJSON('/api/eval/summary', function(data) {
+        var panel = document.getElementById('finops-panel');
+        if (!panel) return;
+        var lang = localStorage.getItem('atriage_lang') || 'tr';
+
+        function card(label, value, note) {
+            return '<div><p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">' + label + '</p>' +
+                   '<p class="text-xl font-bold text-gray-900">' + value + '</p>' +
+                   (note ? '<p class="text-xs text-gray-400 mt-1">' + note + '</p>' : '') + '</div>';
+        }
+
+        var ratio = lang === 'tr' ? 'N/A — migration bekleniyor' : 'N/A — migration pending';
+        var evalCost = data.evalCostEstimateUsd != null
+            ? '$' + parseFloat(data.evalCostEstimateUsd).toFixed(3)
+            : '—';
+        var totalCost = data.totalApiCostUsd || '$0.00';
+
+        var html = '';
+        html += card(
+            lang === 'tr' ? 'Haiku / Sonnet Oranı' : 'Haiku / Sonnet Ratio',
+            ratio,
+            lang === 'tr' ? 'ADR-0012 §Açık Sorunlar' : 'ADR-0012 §Open Issues'
+        );
+        html += card(
+            lang === 'tr' ? 'Eval Maliyet Tahmini' : 'Eval Cost Estimate',
+            evalCost,
+            lang === 'tr' ? 'Eval bazlı tahmin' : 'Eval-based estimate'
+        );
+        html += card(
+            lang === 'tr' ? 'Toplam API Maliyeti' : 'Total API Cost',
+            totalCost,
+            lang === 'tr' ? 'Anthropic Console · manuel güncellenir' : 'Anthropic Console · updated manually'
+        );
+
+        panel.innerHTML = html;
+    });
+
+})();
+</script>
+}
