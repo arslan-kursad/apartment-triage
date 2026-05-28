@@ -1,0 +1,120 @@
+using ApartmentTriage.Application.Orchestration;
+using ApartmentTriage.Domain.Entities;
+using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Infrastructure.Persistence;
+using ApartmentTriage.Web.Helpers;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+
+namespace ApartmentTriage.Web.Pages.Inbox;
+
+public sealed class IndexModel : PageModel
+{
+    private readonly ApartmentTriageDbContext _db;
+
+    public IndexModel(ApartmentTriageDbContext db) => _db = db;
+
+    [BindProperty(SupportsGet = true)]
+    public Guid? TicketId { get; set; }
+
+    public IReadOnlyList<InboxItem> Items  { get; private set; } = [];
+    public TicketDetail?            Detail { get; private set; }
+
+    public async Task OnGetAsync(CancellationToken ct)
+    {
+        // Left panel: last 30 tickets with source message + resident
+        var tickets = await _db.Tickets
+            .Include(t => t.SourceMessage)
+            .Include(t => t.Resident)
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(30)
+            .ToListAsync(ct);
+
+        Items = tickets.Select(t => new InboxItem(
+            TicketId:    t.Id,
+            Resident:    ResidentLabel(t.Resident, t.ResidentId),
+            Initials:    Initials(t.Resident),
+            Preview:     TruncatePreview(t.SourceMessage?.RawText),
+            Channel:     t.SourceMessage?.ChannelType ?? ChannelType.Mock,
+            IsEmergency: t.IsEmergency,
+            TimeIst:     IstanbulTime.Format(t.CreatedAt)
+        )).ToList();
+
+        // Determine selected ticket
+        var selectedId = TicketId ?? tickets.FirstOrDefault()?.Id;
+        if (selectedId.HasValue)
+        {
+            var sel = tickets.FirstOrDefault(t => t.Id == selectedId.Value)
+                ?? await _db.Tickets
+                    .Include(t => t.SourceMessage)
+                    .Include(t => t.Resident)
+                    .FirstOrDefaultAsync(t => t.Id == selectedId.Value, ct);
+
+            if (sel is not null)
+            {
+                var lang = Request.Cookies["atriage_lang"] ?? "tr";
+                var draftReply = ReplyTemplates.BuildTicketReply(sel, lang);
+
+                Detail = new TicketDetail(
+                    TicketId:      sel.Id,
+                    Resident:      ResidentLabel(sel.Resident, sel.ResidentId),
+                    Initials:      Initials(sel.Resident),
+                    Channel:       sel.SourceMessage?.ChannelType ?? ChannelType.Mock,
+                    RawText:       sel.SourceMessage?.RawText ?? "—",
+                    ReceivedAt:    IstanbulTime.Format(sel.SourceMessage?.ReceivedAt ?? sel.CreatedAt),
+                    Category:      sel.Category,
+                    Severity:      sel.Severity,
+                    IsEmergency:   sel.IsEmergency,
+                    Confidence:    sel.CategoryConfidence,
+                    LocationHint:  sel.LocationHint,
+                    RoutingAction: sel.RoutingAction,
+                    DraftReply:    draftReply
+                );
+            }
+        }
+    }
+
+    private static string ResidentLabel(Resident? r, Guid id)
+        => r?.DisplayName ?? r?.ApartmentNumber ?? id.ToString()[..8] + "…";
+
+    private static string Initials(Resident? r)
+    {
+        var name = r?.DisplayName ?? r?.ApartmentNumber;
+        if (string.IsNullOrEmpty(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+            : name[..Math.Min(2, name.Length)].ToUpperInvariant();
+    }
+
+    private static string TruncatePreview(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return "—";
+        return text.Length > 50 ? text[..50] + "…" : text;
+    }
+
+    public sealed record InboxItem(
+        Guid TicketId,
+        string Resident,
+        string Initials,
+        string Preview,
+        ChannelType Channel,
+        bool IsEmergency,
+        string TimeIst);
+
+    public sealed record TicketDetail(
+        Guid TicketId,
+        string Resident,
+        string Initials,
+        ChannelType Channel,
+        string RawText,
+        string ReceivedAt,
+        TicketCategory Category,
+        TicketSeverity Severity,
+        bool IsEmergency,
+        ConfidenceLevel Confidence,
+        string? LocationHint,
+        RoutingAction? RoutingAction,
+        string DraftReply);
+}

@@ -1,0 +1,310 @@
+@page "/inbox"
+@model ApartmentTriage.Web.Pages.Inbox.IndexModel
+@using ApartmentTriage.Domain.Enums
+@{
+    ViewData["Title"]       = "Mesajlar";
+    ViewData["PageTitleTR"] = "Mesajlar";
+    ViewData["PageTitleEN"] = "Messages";
+}
+
+@* 3-panel inbox — full viewport height minus topbar *@
+<div class="flex gap-0 -m-4 md:-m-6 h-[calc(100vh-130px)] min-h-[500px] bg-white rounded-xl border border-gray-200 overflow-hidden">
+
+    @* ── Left panel: message list (176px) ─────────────────────────────────────── *@
+    <aside class="w-44 shrink-0 border-r border-gray-100 flex flex-col overflow-hidden">
+        <div class="px-3 py-3 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <span class="lang-tr">Son Mesajlar</span>
+            <span class="lang-en">Recent</span>
+        </div>
+        <ul class="flex-1 overflow-y-auto">
+            @foreach (var item in Model.Items)
+            {
+                var isSelected = Model.Detail?.TicketId == item.TicketId;
+                var chDot = item.Channel switch
+                {
+                    ChannelType.WhatsApp => "#25D366",
+                    ChannelType.Telegram => "#229ED9",
+                    _                    => "#9CA3AF"
+                };
+                var chBadge = item.Channel switch
+                {
+                    ChannelType.WhatsApp => "WA",
+                    ChannelType.Telegram => "TG",
+                    _                    => "—"
+                };
+                var rowClass = isSelected
+                    ? "px-3 py-2.5 bg-blue-50 border-l-2 border-blue-500 cursor-pointer"
+                    : "px-3 py-2.5 hover:bg-gray-50 border-l-2 border-transparent cursor-pointer transition-colors";
+
+                <li class="@rowClass"
+                    onclick="window.location='/inbox?ticketId=@item.TicketId'">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        @* Avatar initials *@
+                        <span class="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold shrink-0">@item.Initials</span>
+                        <span class="text-xs font-medium text-gray-800 truncate">@item.Resident</span>
+                    </div>
+                    <p class="text-xs text-gray-400 truncate">@item.Preview</p>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="inline-flex items-center gap-0.5 text-xs text-gray-400">
+                            <span class="w-1.5 h-1.5 rounded-full" style="background-color: @chDot"></span>
+                            @chBadge
+                        </span>
+                        @if (item.IsEmergency)
+                        {
+                            <span class="text-xs font-bold text-red-600">!</span>
+                        }
+                        <span class="text-xs text-gray-300">@item.TimeIst</span>
+                    </div>
+                </li>
+            }
+            @if (!Model.Items.Any())
+            {
+                <li class="px-3 py-6 text-center">
+                    <p class="text-xs text-gray-400">
+                        <span class="lang-tr">Mesaj yok</span>
+                        <span class="lang-en">No messages</span>
+                    </p>
+                </li>
+            }
+        </ul>
+    </aside>
+
+    @if (Model.Detail is not null)
+    {
+        var d = Model.Detail;
+        var chColor = d.Channel switch
+        {
+            ChannelType.WhatsApp => "#25D366",
+            ChannelType.Telegram => "#229ED9",
+            _                    => "#9CA3AF"
+        };
+        var sevColor = d.Severity switch
+        {
+            TicketSeverity.Urgent => "bg-red-100 text-red-700",
+            TicketSeverity.High   => "bg-orange-100 text-orange-700",
+            TicketSeverity.Medium => "bg-blue-100 text-blue-700",
+            _                     => "bg-gray-100 text-gray-600"
+        };
+        var confPct = d.Confidence switch { ConfidenceLevel.High => 100, ConfidenceLevel.Medium => 60, _ => 33 };
+        var confColor = d.Confidence switch
+        {
+            ConfidenceLevel.High   => "bg-green-500",
+            ConfidenceLevel.Medium => "bg-yellow-400",
+            _                      => "bg-red-400"
+        };
+
+        @* ── Middle panel: chat window ─────────────────────────────────────────── *@
+        <div class="flex-1 flex flex-col min-w-0 border-r border-gray-100">
+            @* Chat header *@
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
+                <span class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">@d.Initials</span>
+                <div>
+                    <p class="text-sm font-semibold text-gray-900">@d.Resident</p>
+                    <div class="flex items-center gap-1.5 text-xs text-gray-400">
+                        <span class="w-2 h-2 rounded-full" style="background-color: @chColor"></span>
+                        @d.Channel
+                        @if (d.IsEmergency)
+                        {
+                            <span class="px-1.5 py-0.5 rounded text-xs font-bold bg-red-600 text-white">
+                                <span class="lang-tr">ACİL</span>
+                                <span class="lang-en">EMRG</span>
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Chat bubbles *@
+            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                @* Incoming message *@
+                <div class="flex justify-start">
+                    <div class="max-w-xs lg:max-w-md">
+                        <div class="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-2.5">
+                            <p class="text-sm text-gray-800 whitespace-pre-wrap break-words">@d.RawText</p>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1 ml-1">@d.ReceivedAt IST</p>
+                    </div>
+                </div>
+
+                @* Draft reply preview (outgoing bubble, dimmed) *@
+                <div class="flex justify-end" id="reply-preview-bubble" style="display:none !important">
+                    <div class="max-w-xs lg:max-w-md">
+                        <div class="bg-blue-500 rounded-2xl rounded-tr-sm px-4 py-2.5">
+                            <p class="text-sm text-white whitespace-pre-wrap break-words" id="reply-preview-text"></p>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1 text-right mr-1">
+                            <span class="lang-tr">Gönderildi</span>
+                            <span class="lang-en">Sent</span>
+                            ✓
+                        </p>
+                    </div>
+                </div>
+
+                @* Success/error status *@
+                <div id="reply-status" class="text-xs text-center" style="display:none"></div>
+            </div>
+        </div>
+
+        @* ── Right panel: AI triage + reply (200px) ───────────────────────────── *@
+        <aside class="w-52 shrink-0 flex flex-col overflow-hidden">
+            @* Triage metadata *@
+            <div class="px-3 py-3 border-b border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    <span class="lang-tr">AI Triage</span>
+                    <span class="lang-en">AI Triage</span>
+                </p>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500">
+                            <span class="lang-tr">Kategori</span>
+                            <span class="lang-en">Category</span>
+                        </span>
+                        <span class="px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">@d.Category</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500">
+                            <span class="lang-tr">Şiddet</span>
+                            <span class="lang-en">Severity</span>
+                        </span>
+                        <span class="px-1.5 py-0.5 rounded-full text-xs font-medium @sevColor">@d.Severity</span>
+                    </div>
+                    @if (d.LocationHint is not null)
+                    {
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs text-gray-500 shrink-0">
+                                <span class="lang-tr">Konum</span>
+                                <span class="lang-en">Location</span>
+                            </span>
+                            <span class="text-xs text-gray-700 text-right truncate">@d.LocationHint</span>
+                        </div>
+                    }
+                    @if (d.RoutingAction.HasValue)
+                    {
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-500">
+                                <span class="lang-tr">Aksiyon</span>
+                                <span class="lang-en">Action</span>
+                            </span>
+                            <span class="text-xs text-gray-700">@d.RoutingAction.Value</span>
+                        </div>
+                    }
+                    @* Confidence bar *@
+                    <div>
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
+                            <span>
+                                <span class="lang-tr">Güven</span>
+                                <span class="lang-en">Confidence</span>
+                            </span>
+                            <span>@d.Confidence</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-1.5">
+                            <div class="@confColor h-1.5 rounded-full" style="width: @(confPct)%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Draft reply section *@
+            <div class="flex-1 flex flex-col p-3 overflow-hidden">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    <span class="lang-tr">Taslak Yanıt</span>
+                    <span class="lang-en">Draft Reply</span>
+                </p>
+                <textarea id="reply-textarea"
+                          class="flex-1 w-full text-xs text-gray-700 border border-gray-200 rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="@(/* bilingual placeholder via JS */ "")"
+                >@d.DraftReply</textarea>
+
+                <button id="send-btn"
+                        onclick="sendReply('@d.TicketId')"
+                        class="mt-2 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50">
+                    <span class="lang-tr">Onayla & Gönder ✓</span>
+                    <span class="lang-en">Approve & Send ✓</span>
+                </button>
+            </div>
+        </aside>
+    }
+    else
+    {
+        @* No ticket selected *@
+        <div class="flex-1 flex items-center justify-center">
+            <p class="text-sm text-gray-400">
+                <span class="lang-tr">Soldan bir mesaj seçin</span>
+                <span class="lang-en">Select a message on the left</span>
+            </p>
+        </div>
+    }
+
+</div>
+
+@section Scripts {
+<script>
+    // Set placeholder text after lang is applied
+    (function() {
+        var ta = document.getElementById('reply-textarea');
+        if (!ta) return;
+        var lang = localStorage.getItem('atriage_lang') || 'tr';
+        ta.placeholder = lang === 'tr' ? 'Yanıtı buraya yazın…' : 'Type your reply here…';
+    })();
+
+    function sendReply(ticketId) {
+        var ta = document.getElementById('reply-textarea');
+        var btn = document.getElementById('send-btn');
+        var status = document.getElementById('reply-status');
+        if (!ta || !btn || !ticketId) return;
+
+        var text = ta.value.trim();
+        if (!text) {
+            var lang = localStorage.getItem('atriage_lang') || 'tr';
+            alert(lang === 'tr' ? 'Yanıt boş olamaz.' : 'Reply cannot be empty.');
+            return;
+        }
+
+        btn.disabled = true;
+        if (status) { status.style.display = 'none'; }
+
+        fetch('/api/messages/' + ticketId + '/reply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                // Show sent bubble
+                var preview = document.getElementById('reply-preview-bubble');
+                var previewText = document.getElementById('reply-preview-text');
+                if (preview && previewText) {
+                    previewText.textContent = text;
+                    preview.style.removeProperty('display');
+                }
+                if (status) {
+                    var lang = localStorage.getItem('atriage_lang') || 'tr';
+                    status.style.display = 'block';
+                    status.className = 'text-xs text-center text-green-600';
+                    status.textContent = lang === 'tr' ? '✓ Gönderildi' : '✓ Sent';
+                }
+                btn.textContent = '✓';
+                btn.disabled = true;
+            } else {
+                btn.disabled = false;
+                if (status) {
+                    status.style.display = 'block';
+                    status.className = 'text-xs text-center text-red-500';
+                    status.textContent = data.error || 'Error';
+                }
+            }
+        })
+        .catch(function(e) {
+            btn.disabled = false;
+            if (status) {
+                status.style.display = 'block';
+                status.className = 'text-xs text-center text-red-500';
+                var lang = localStorage.getItem('atriage_lang') || 'tr';
+                status.textContent = lang === 'tr' ? 'Gönderilemedi.' : 'Failed to send.';
+            }
+        });
+    }
+</script>
+}

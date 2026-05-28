@@ -125,6 +125,7 @@ try
 
     app.MapRazorPages();
     app.MapStatsEndpoints();
+    app.MapReplyEndpoints();
 
     static bool IsChannelConsumerJob(Job? job)
     {
