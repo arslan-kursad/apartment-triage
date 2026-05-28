@@ -83,18 +83,7 @@ else
         <ul class="divide-y divide-gray-100">
             @foreach (var t in Model.Tickets)
             {
-                var channelColor = (t.SourceMessage?.ChannelType ?? ChannelType.Mock) switch
-                {
-                    ChannelType.WhatsApp => "#25D366",
-                    ChannelType.Telegram => "#229ED9",
-                    _                    => "#9CA3AF"
-                };
-                var channelLabel = (t.SourceMessage?.ChannelType ?? ChannelType.Mock) switch
-                {
-                    ChannelType.WhatsApp => "WhatsApp",
-                    ChannelType.Telegram => "Telegram",
-                    _                    => "Mock"
-                };
+                var channelType = t.SourceMessage?.ChannelType ?? ChannelType.Mock;
                 var sevColor = t.Severity switch
                 {
                     TicketSeverity.Urgent => "bg-red-100 text-red-700",
@@ -111,17 +100,26 @@ else
                 var preview = t.SourceMessage?.RawText is { Length: > 0 } raw
                     ? (raw.Length > 60 ? raw[..60] + "…" : raw)
                     : "—";
-                var sender = t.Resident?.DisplayName
-                    ?? t.Resident?.ApartmentNumber
-                    ?? t.ResidentId.ToString()[..8] + "…";
+                var sender = t.Resident?.ApartmentNumber is { Length: > 0 } apt ? apt : "—";
 
                 <li class="px-5 py-4 hover:bg-gray-50 transition-colors">
                     <div class="flex items-start justify-between gap-4">
                         <div class="flex items-start gap-3 min-w-0">
-                            @* Channel dot *@
-                            <span class="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0"
-                                  title="@channelLabel"
-                                  style="background-color: @channelColor"></span>
+                            @* Channel icon *@
+                            <span class="mt-0.5 shrink-0 w-5 text-center">
+                                @if (channelType == ChannelType.WhatsApp)
+                                {
+                                    <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:15px"></i>
+                                }
+                                else if (channelType == ChannelType.Telegram)
+                                {
+                                    <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:15px"></i>
+                                }
+                                else
+                                {
+                                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-gray-400 mt-1"></span>
+                                }
+                            </span>
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="font-medium text-sm text-gray-900">@t.Category</span>

@@ -80,7 +80,18 @@ public sealed class IndexModel : PageModel
 
     private static string Initials(Resident? r)
     {
-        var name = r?.DisplayName ?? r?.ApartmentNumber;
+        if (r is null) return "?";
+
+        var apt = r.ApartmentNumber;
+        if (!string.IsNullOrEmpty(apt))
+        {
+            // "Daire 7" → "D7", "Daire 12" → "D12"
+            if (apt.StartsWith("Daire ", StringComparison.OrdinalIgnoreCase))
+                return "D" + apt["Daire ".Length..].Trim();
+            return apt.Length >= 2 ? apt[..2].ToUpperInvariant() : apt.ToUpperInvariant();
+        }
+
+        var name = r.DisplayName;
         if (string.IsNullOrEmpty(name)) return "?";
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return parts.Length >= 2
