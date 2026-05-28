@@ -97,7 +97,7 @@ public sealed class TicketRepository : ITicketRepository
     {
         public Guid Id { get; set; }
         public Domain.Enums.TicketCategory Category { get; set; }
-        public float CosineSimilarity { get; set; }
+        public double CosineSimilarity { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

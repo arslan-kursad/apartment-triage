@@ -104,8 +104,8 @@ public sealed class EnricherAgent : AgentBase<EnricherInput, EnricherOutput>
         var top = similar[0].CosineSimilarity;
         return top switch
         {
-            > 0.85f => ConfidenceLevel.High,
-            > 0.65f => ConfidenceLevel.Medium,
+            > 0.85 => ConfidenceLevel.High,
+            > 0.65 => ConfidenceLevel.Medium,
             _       => ConfidenceLevel.Low
         };
     }
