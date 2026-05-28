@@ -72,7 +72,7 @@ public static class WhatsAppWebhookEndpoints
             if (!WhatsAppAdapter.VerifySignature(appSecret, body, signature))
             {
                 logger.LogWarning("WhatsApp webhook: invalid signature — request rejected");
-                return Results.Forbid();
+                return Results.StatusCode(403);
             }
         }
         else
