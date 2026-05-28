@@ -43,13 +43,18 @@ public static class StatsEndpoints
         int waCount = channelCounts.FirstOrDefault(x => x.Channel == ChannelType.WhatsApp)?.Count ?? 0;
         int tgCount = channelCounts.FirstOrDefault(x => x.Channel == ChannelType.Telegram)?.Count ?? 0;
 
+        int sonnetCount = await db.Tickets.CountAsync(t => t.EscalatedToSonnet);
+        int haikuCount  = total - sonnetCount;
+
         return Results.Ok(new
         {
             total,
             emergency,
             avgConfidence,
             waCount,
-            tgCount
+            tgCount,
+            haikuCount,
+            sonnetCount
         });
     }
 
@@ -171,8 +176,7 @@ public static class StatsEndpoints
             emergencyPrecision = ParseNullableDouble(emergencyPrecision),
             totalCases        = totalCases ?? 48,
             runDate,
-            // FinOps — Haiku/Sonnet ratio requires schema migration (ADR-0012 §Açık Sorunlar)
-            haikuSonnetRatioAvailable = false,
+            haikuSonnetRatioAvailable = true,
             evalCostEstimateUsd = section.GetValue<double?>("EvalCostEstimateUsd"),
             totalApiCostUsd = config.GetValue<string>("Dashboard:TotalApiCostUsd")
         });

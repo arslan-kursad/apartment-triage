@@ -119,6 +119,9 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
 
         var tickets = ApplyOrchestratorRule(message, output, secondaryIssuesJson);
 
+        if (escalated)
+            foreach (var t in tickets) t.MarkEscalatedToSonnet();
+
         // ── Persist tickets (IDs required before Enricher similarity search) ──
 
         await _ticketRepository.AddRangeAsync(tickets, cancellationToken);
@@ -248,6 +251,9 @@ public sealed class TriageOrchestrator : ITriageOrchestrator
                     ticket.Id);
             }
         }
+
+        if (escalated)
+            ticket.MarkEscalatedToSonnet();
 
         // Apply new classification to the existing ticket
         ticket.UpdateClassification(

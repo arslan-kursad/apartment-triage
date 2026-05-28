@@ -50,6 +50,9 @@ public sealed class Ticket
     public bool IsEmergency { get; private set; }
     public bool EmergencyConfirmedByLlm { get; private set; }
 
+    /// <summary>True when Form B escalation fired: Haiku confidence was Low and Sonnet re-classified.</summary>
+    public bool EscalatedToSonnet { get; private set; }
+
     // Classifier confidence (dual — see taxonomy.v3.yaml § confidence)
     public ConfidenceLevel CategoryConfidence { get; private set; }
     public ConfidenceLevel EmergencyConfidence { get; private set; }
@@ -148,6 +151,13 @@ public sealed class Ticket
         IsEmergency = isEmergency;
         EmergencyConfirmedByLlm = emergencyConfirmedByLlm;
         EmergencyConfidence = emergencyConfidence;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>Records that Form B Sonnet escalation fired for this ticket.</summary>
+    public void MarkEscalatedToSonnet()
+    {
+        EscalatedToSonnet = true;
         UpdatedAt = DateTime.UtcNow;
     }
 
