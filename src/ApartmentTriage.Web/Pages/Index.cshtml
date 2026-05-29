@@ -275,8 +275,8 @@
             <span class="lang-en">FinOps</span>
         </h2>
     </div>
-    <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-6" id="finops-panel">
-        <div class="text-xs text-gray-400 italic col-span-3">
+    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-6" id="finops-panel">
+        <div class="text-xs text-gray-400 italic col-span-2">
             <span class="lang-tr">Yükleniyor…</span>
             <span class="lang-en">Loading…</span>
         </div>
@@ -496,20 +496,12 @@
                 ratioNote  = haiku + ' Haiku · ' + sonnet + ' Sonnet · ' + total + (lang === 'tr' ? ' toplam' : ' total');
             }
 
-            var evalCost = evalData.evalCostEstimateUsd != null
-                ? '$' + parseFloat(evalData.evalCostEstimateUsd).toFixed(3)
-                : '—';
             var totalCost = evalData.totalApiCostUsd || '$0.00';
 
             var html = '';
             html += card(
                 lang === 'tr' ? 'Haiku / Sonnet Oranı' : 'Haiku / Sonnet Ratio',
                 ratioValue, ratioNote
-            );
-            html += card(
-                lang === 'tr' ? 'Eval Maliyet Tahmini' : 'Eval Cost Estimate',
-                evalCost,
-                lang === 'tr' ? 'Eval bazlı tahmin' : 'Eval-based estimate'
             );
             html += card(
                 lang === 'tr' ? 'Toplam API Maliyeti' : 'Total API Cost',
