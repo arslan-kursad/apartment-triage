@@ -90,10 +90,17 @@ public static class ResidentEndpoints
         if (resident is null)
             return Results.Ok(new { success = false, error = "Sakin bulunamadı." });
 
+        // FLAG 3 guard: never overwrite WhatsApp with a masked value ("+90***1234").
+        // Masked strings originate from the list-view display; persisting one would
+        // corrupt the channel identity. Pass null → UpdateContactInfo keeps existing.
+        var whatsApp = NullIfEmpty(req.WhatsAppNumber);
+        if (whatsApp is not null && whatsApp.Contains('*'))
+            whatsApp = null;
+
         resident.UpdateContactInfo(
             displayName:     req.DisplayName?.Trim(),
             apartmentNumber: req.ApartmentNumber?.Trim(),
-            whatsAppNumber:  NullIfEmpty(req.WhatsAppNumber),
+            whatsAppNumber:  whatsApp,
             telegramId:      req.TelegramId);
 
         if (req.PreferredLanguage is "tr" or "en")
