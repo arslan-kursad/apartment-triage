@@ -173,34 +173,17 @@
 </script>
 }
 
-@* ── Topbar actions ── *@
-<div class="flex items-center justify-between mb-4">
-    <div class="flex items-center gap-3">
-        @* Toggle: show inactive *@
-        @{
-            var toggleUrl = Model.ShowInactive ? "/residents" : "/residents?showInactive=true";
-            var toggleLabel_tr = Model.ShowInactive
-                ? $"Aktif sakinler ({Model.ActiveCount})"
-                : $"Deaktif olanları göster ({Model.InactiveCount})";
-            var toggleLabel_en = Model.ShowInactive
-                ? $"Active residents ({Model.ActiveCount})"
-                : $"Show inactive ({Model.InactiveCount})";
-        }
-        <a href="@toggleUrl"
-           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors
-                  @(Model.ShowInactive ? "border-gray-400 bg-gray-100 text-gray-700" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50")">
-            @if (Model.ShowInactive)
-            {
-                <i class="fa-solid fa-eye-slash text-gray-400"></i>
-            }
-            else
-            {
-                <i class="fa-solid fa-eye text-gray-400"></i>
-            }
-            <span class="lang-tr">@toggleLabel_tr</span>
-            <span class="lang-en">@toggleLabel_en</span>
-        </a>
-    </div>
+@* ── Topbar: count + new resident ── *@
+<div class="flex items-center justify-between mb-3">
+    <p class="text-sm text-gray-500">
+        <span class="lang-tr">Aktif:</span>
+        <span class="lang-en">Active:</span>
+        <span class="font-semibold text-gray-900">@Model.ActiveCount</span>
+        <span class="text-gray-300">·</span>
+        <span class="lang-tr">Deaktif:</span>
+        <span class="lang-en">Inactive:</span>
+        <span class="font-semibold text-gray-900">@Model.InactiveCount</span>
+    </p>
 
     <button onclick="openCreateModal()"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors">
@@ -209,6 +192,46 @@
         <span class="lang-en">New Resident</span>
     </button>
 </div>
+
+@* ── Filter bar (search / channel / status) ── *@
+<form method="get" class="flex flex-wrap gap-2 mb-4">
+    <input type="text" name="Q" value="@Model.Q"
+           class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[200px]"
+           placeholder="İsim / Daire / Blok ara…" />
+
+    <select name="Channel" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">
+            <span class="lang-tr">Tüm Kanallar</span>
+            <span class="lang-en">All Channels</span>
+        </option>
+        <option value="whatsapp" selected="@(Model.Channel == "whatsapp")">WhatsApp</option>
+        <option value="telegram" selected="@(Model.Channel == "telegram")">Telegram</option>
+    </select>
+
+    <select name="Status" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="active"   selected="@(Model.Status == "active")">
+            <span class="lang-tr">Aktif</span>
+            <span class="lang-en">Active</span>
+        </option>
+        <option value="inactive" selected="@(Model.Status == "inactive")">
+            <span class="lang-tr">Deaktif</span>
+            <span class="lang-en">Inactive</span>
+        </option>
+        <option value="all"      selected="@(Model.Status == "all")">
+            <span class="lang-tr">Tümü</span>
+            <span class="lang-en">All</span>
+        </option>
+    </select>
+
+    <button type="submit" class="text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+        <span class="lang-tr">Filtrele</span>
+        <span class="lang-en">Filter</span>
+    </button>
+    <a href="/residents" class="text-sm px-3 py-1.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
+        <span class="lang-tr">Temizle</span>
+        <span class="lang-en">Clear</span>
+    </a>
+</form>
 
 @* ── Residents table ── *@
 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">

@@ -13,8 +13,18 @@ public sealed class IndexModel : PageModel
 
     public IndexModel(ApartmentTriageDbContext db) => _db = db;
 
+    // ── Filter bindings (Tickets filter pattern) ──────────────────────────────
+    /// <summary>Free-text search over name + apartment/block.</summary>
     [BindProperty(SupportsGet = true)]
-    public bool ShowInactive { get; set; } = false;
+    public string? Q { get; set; }
+
+    /// <summary>"whatsapp" | "telegram" | null (all).</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? Channel { get; set; }
+
+    /// <summary>"active" (default) | "inactive" | "all".</summary>
+    [BindProperty(SupportsGet = true)]
+    public string Status { get; set; } = "active";
 
     [BindProperty(SupportsGet = true)]
     public Guid? Edit { get; set; }
@@ -30,8 +40,23 @@ public sealed class IndexModel : PageModel
         InactiveCount = await _db.Residents.CountAsync(r => !r.IsActive, ct);
 
         var query = _db.Residents.AsQueryable();
-        if (!ShowInactive)
-            query = query.Where(r => r.IsActive);
+
+        // Status: active (default) / inactive / all
+        if (Status == "inactive")      query = query.Where(r => !r.IsActive);
+        else if (Status != "all")      query = query.Where(r => r.IsActive);
+
+        // Channel presence
+        if (Channel == "whatsapp")     query = query.Where(r => r.WhatsAppNumber != null);
+        else if (Channel == "telegram") query = query.Where(r => r.TelegramId != null);
+
+        // Free-text search over name + apartment/block (Postgres ILike, accent/case-insensitive)
+        if (!string.IsNullOrWhiteSpace(Q))
+        {
+            var term = $"%{Q.Trim()}%";
+            query = query.Where(r =>
+                (r.DisplayName != null && EF.Functions.ILike(r.DisplayName, term)) ||
+                (r.ApartmentNumber != null && EF.Functions.ILike(r.ApartmentNumber, term)));
+        }
 
         var residents = await query
             .OrderBy(r => r.ApartmentNumber)
@@ -73,7 +98,8 @@ public sealed class IndexModel : PageModel
                 if (r is not null)
                     EditRow = new ResidentRow(r.Id, BuildInitials(r), r.DisplayName ?? "—",
                         r.ApartmentNumber ?? "—", r.WhatsAppNumber is not null, r.TelegramId.HasValue,
-                        BuildPhoneDisplay(r), r.WhatsAppNumber, r.ContactPhone, r.TelegramUsername, "—", r.IsActive);
+                        BuildPhoneDisplay(r), r.WhatsAppNumber, r.ContactPhone, r.TelegramUsername,
+                        "—", r.IsActive);
             }
         }
     }
