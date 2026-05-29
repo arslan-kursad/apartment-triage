@@ -54,6 +54,9 @@ public sealed class IndexModel : PageModel
             HasWhatsApp:     r.WhatsAppNumber is not null,
             HasTelegram:     r.TelegramId.HasValue,
             PhoneDisplay:    BuildPhoneDisplay(r),
+            WhatsAppNumber:  r.WhatsAppNumber,
+            ContactPhone:    r.ContactPhone,
+            TelegramUsername: r.TelegramUsername,
             LastActivity:    lastActivities.TryGetValue(r.Id, out var lat)
                                  ? IstanbulTime.Format(lat)
                                  : "—",
@@ -70,7 +73,7 @@ public sealed class IndexModel : PageModel
                 if (r is not null)
                     EditRow = new ResidentRow(r.Id, BuildInitials(r), r.DisplayName ?? "—",
                         r.ApartmentNumber ?? "—", r.WhatsAppNumber is not null, r.TelegramId.HasValue,
-                        BuildPhoneDisplay(r), "—", r.IsActive);
+                        BuildPhoneDisplay(r), r.WhatsAppNumber, r.ContactPhone, r.TelegramUsername, "—", r.IsActive);
             }
         }
     }
@@ -111,6 +114,9 @@ public sealed class IndexModel : PageModel
         bool    HasWhatsApp,
         bool    HasTelegram,
         string? PhoneDisplay,
+        string? WhatsAppNumber,
+        string? ContactPhone,
+        string? TelegramUsername,
         string  LastActivity,
         bool    IsActive);
 }

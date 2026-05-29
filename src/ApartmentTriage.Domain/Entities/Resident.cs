@@ -20,6 +20,12 @@ public sealed class Resident
     /// <summary>Telegram user ID (long).</summary>
     public long? TelegramId { get; private set; }
 
+    /// <summary>Contact phone for reaching the resident — NOT a channel identity. May differ from WhatsAppNumber.</summary>
+    public string? ContactPhone { get; private set; }
+
+    /// <summary>Telegram @username (display/contact only). TelegramId remains the channel identity.</summary>
+    public string? TelegramUsername { get; private set; }
+
     /// <summary>"tr" or "en". Detected from channel language_code or message content on first contact.</summary>
     public string PreferredLanguage { get; private set; } = "tr";
 
@@ -74,12 +80,16 @@ public sealed class Resident
         string? displayName = null,
         string? apartmentNumber = null,
         string? whatsAppNumber = null,
-        long? telegramId = null)
+        long? telegramId = null,
+        string? contactPhone = null,
+        string? telegramUsername = null)
     {
         if (displayName is not null) DisplayName = displayName.Trim();
         if (apartmentNumber is not null) ApartmentNumber = apartmentNumber.Trim();
         if (whatsAppNumber is not null) WhatsAppNumber = whatsAppNumber.Trim();
         if (telegramId.HasValue) TelegramId = telegramId;
+        if (contactPhone is not null) ContactPhone = contactPhone.Trim();
+        if (telegramUsername is not null) TelegramUsername = telegramUsername.Trim().TrimStart('@');
     }
 
     public void Deactivate() => IsActive = false;

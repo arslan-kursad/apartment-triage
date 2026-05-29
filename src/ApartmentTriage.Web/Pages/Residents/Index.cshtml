@@ -15,13 +15,15 @@
         id   = r.Id,
         name = r.Name,
         apt  = r.ApartmentNumber,
-        wa   = r.PhoneDisplay
+        wa   = r.WhatsAppNumber,
+        contactPhone = r.ContactPhone,
+        telegramUsername = r.TelegramUsername
     }));
 
     function editResident(id) {
         var r = residentData.find(function (x) { return x.id === id; });
         if (!r) return;
-        openEditModal(r.id, r.name, r.apt, r.wa);
+        openEditModal(r);
     }
 
     function openCreateModal() {
@@ -32,16 +34,20 @@
         document.getElementById('modal-name').value = '';
         document.getElementById('modal-apt').value = '';
         document.getElementById('modal-wa').value = '';
+        document.getElementById('modal-contact-phone').value = '';
+        document.getElementById('modal-tg-username').value = '';
     }
 
-    function openEditModal(id, name, apt, wa) {
+    function openEditModal(r) {
         document.getElementById('resident-modal').classList.remove('hidden');
         document.getElementById('modal-title-tr').textContent = 'Sakini Düzenle';
         document.getElementById('modal-title-en').textContent = 'Edit Resident';
-        document.getElementById('modal-resident-id').value = id;
-        document.getElementById('modal-name').value = name;
-        document.getElementById('modal-apt').value = apt === '—' ? '' : apt;
-        document.getElementById('modal-wa').value = wa || '';
+        document.getElementById('modal-resident-id').value = r.id;
+        document.getElementById('modal-name').value = r.name;
+        document.getElementById('modal-apt').value = r.apt === '—' ? '' : r.apt;
+        document.getElementById('modal-wa').value = r.wa || '';
+        document.getElementById('modal-contact-phone').value = r.contactPhone || '';
+        document.getElementById('modal-tg-username').value = r.telegramUsername || '';
     }
 
     function closeModal() {
@@ -53,6 +59,8 @@
         var name = document.getElementById('modal-name').value.trim();
         var apt  = document.getElementById('modal-apt').value.trim();
         var wa   = document.getElementById('modal-wa').value.trim();
+        var contactPhone = document.getElementById('modal-contact-phone').value.trim();
+        var telegramUsername = document.getElementById('modal-tg-username').value.trim();
         var lang = localStorage.getItem('atriage_lang') || 'tr';
 
         var url    = id ? '/api/residents/' + id : '/api/residents';
@@ -61,7 +69,7 @@
         fetch(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ displayName: name || null, apartmentNumber: apt || null, whatsAppNumber: wa || null })
+            body: JSON.stringify({ displayName: name || null, apartmentNumber: apt || null, whatsAppNumber: wa || null, contactPhone: contactPhone || null, telegramUsername: telegramUsername || null })
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -84,9 +92,11 @@
             id   = er.Id,
             name = er.Name,
             apt  = er.ApartmentNumber,
-            wa   = er.PhoneDisplay
+            wa   = er.WhatsAppNumber,
+            contactPhone = er.ContactPhone,
+            telegramUsername = er.TelegramUsername
         });
-        openEditModal(ed.id, ed.name, ed.apt, ed.wa);
+        openEditModal(ed);
     });
         </text>
     }
@@ -321,6 +331,24 @@
                 <input id="modal-wa" type="text"
                        class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="+905xxxxxxxxx" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">
+                    <span class="lang-tr">İletişim Telefonu</span>
+                    <span class="lang-en">Contact Phone</span>
+                </label>
+                <input id="modal-contact-phone" type="text"
+                       class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="0532 xxx xx xx" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">
+                    <span class="lang-tr">Telegram Kullanıcı Adı</span>
+                    <span class="lang-en">Telegram Username</span>
+                </label>
+                <input id="modal-tg-username" type="text"
+                       class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="@@kullanici" />
             </div>
         </div>
         <div class="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">

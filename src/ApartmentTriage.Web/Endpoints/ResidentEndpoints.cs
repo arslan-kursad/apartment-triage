@@ -45,6 +45,8 @@ public static class ResidentEndpoints
             apartmentNumber  = r.ApartmentNumber,
             whatsAppNumber   = r.WhatsAppNumber,
             telegramId       = r.TelegramId,
+            contactPhone     = r.ContactPhone,
+            telegramUsername = r.TelegramUsername,
             preferredLanguage = r.PreferredLanguage,
             isActive         = r.IsActive,
             lastActivityAt   = lastActivities.TryGetValue(r.Id, out var lat) ? lat : (DateTime?)null,
@@ -69,6 +71,10 @@ public static class ResidentEndpoints
             whatsAppNumber:   NullIfEmpty(req.WhatsAppNumber),
             telegramId:       req.TelegramId,
             preferredLanguage: req.PreferredLanguage is "tr" or "en" ? req.PreferredLanguage : "tr");
+
+        resident.UpdateContactInfo(
+            contactPhone:     NullIfEmpty(req.ContactPhone),
+            telegramUsername: NullIfEmpty(req.TelegramUsername));
 
         await db.Residents.AddAsync(resident, ct);
         await db.SaveChangesAsync(ct);
@@ -98,10 +104,12 @@ public static class ResidentEndpoints
             whatsApp = null;
 
         resident.UpdateContactInfo(
-            displayName:     req.DisplayName?.Trim(),
-            apartmentNumber: req.ApartmentNumber?.Trim(),
-            whatsAppNumber:  whatsApp,
-            telegramId:      req.TelegramId);
+            displayName:      req.DisplayName?.Trim(),
+            apartmentNumber:  req.ApartmentNumber?.Trim(),
+            whatsAppNumber:   whatsApp,
+            telegramId:       req.TelegramId,
+            contactPhone:     NullIfEmpty(req.ContactPhone),
+            telegramUsername: NullIfEmpty(req.TelegramUsername));
 
         if (req.PreferredLanguage is "tr" or "en")
             resident.SetPreferredLanguage(req.PreferredLanguage);
@@ -147,6 +155,8 @@ public sealed record ResidentUpsertRequest(
     string? ApartmentNumber      = null,
     string? WhatsAppNumber       = null,
     long?   TelegramId           = null,
+    string? ContactPhone         = null,
+    string? TelegramUsername     = null,
     string  PreferredLanguage    = "tr");
 
 public sealed record StatusRequest(bool IsActive);
