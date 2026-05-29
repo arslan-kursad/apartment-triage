@@ -23,12 +23,12 @@ public static class StatsEndpoints
         var total = await db.Tickets.CountAsync();
         var emergency = await db.Tickets.CountAsync(t => t.IsEmergency);
 
-        var confidenceInts = await db.Tickets
-            .Select(t => (int)t.CategoryConfidence)
+        var confidenceLevels = await db.Tickets
+            .Select(t => t.CategoryConfidence)
             .ToListAsync();
 
-        double avgConfidence = confidenceInts.Count > 0
-            ? Math.Round(confidenceInts.Average() / 2.0 * 100.0, 1)
+        double avgConfidence = confidenceLevels.Count > 0
+            ? Math.Round(confidenceLevels.Average(c => (int)c) / 2.0 * 100.0, 1)
             : 0;
 
         var channelCounts = await db.Tickets

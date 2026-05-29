@@ -28,10 +28,10 @@ public sealed class IndexModel : PageModel
         EmergencyCount = await _db.Tickets.CountAsync(t => t.IsEmergency, ct);
 
         var confidences = await _db.Tickets
-            .Select(t => (int)t.CategoryConfidence)
+            .Select(t => t.CategoryConfidence)
             .ToListAsync(ct);
         AvgConfidence = confidences.Count > 0
-            ? Math.Round(confidences.Average() / 2.0 * 100.0, 1)
+            ? Math.Round(confidences.Average(c => (int)c) / 2.0 * 100.0, 1)
             : 0;
 
         var channels = await _db.Tickets
