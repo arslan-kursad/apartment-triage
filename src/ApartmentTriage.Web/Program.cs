@@ -123,6 +123,7 @@ try
         }
     }
 
+    app.MapGet("/", () => Results.Redirect("/overview"));
     app.MapRazorPages();
     app.MapStatsEndpoints();
     app.MapReplyEndpoints();
