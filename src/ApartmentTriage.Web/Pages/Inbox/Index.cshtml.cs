@@ -36,7 +36,7 @@ public sealed class IndexModel : PageModel
             var ch = t.SourceMessage?.ChannelType ?? ChannelType.Mock;
             return new InboxItem(
                 TicketId:    t.Id,
-                Resident:    ResidentLabel(t.Resident, ch),
+                Resident:    ResidentLabel(t.Resident),
                 Initials:    Initials(t.Resident),
                 Preview:     TruncatePreview(t.SourceMessage?.RawText),
                 Channel:     ch,
@@ -62,7 +62,8 @@ public sealed class IndexModel : PageModel
                 var selChannel = sel.SourceMessage?.ChannelType ?? ChannelType.Mock;
                 Detail = new TicketDetail(
                     TicketId:      sel.Id,
-                    Resident:      ResidentLabel(sel.Resident, selChannel),
+                    Resident:      ResidentLabel(sel.Resident),
+                    ResidentDisplayName: sel.Resident?.DisplayName,
                     Initials:      Initials(sel.Resident),
                     Channel:       selChannel,
                     RawText:       sel.SourceMessage?.RawText ?? "—",
@@ -82,12 +83,9 @@ public sealed class IndexModel : PageModel
         }
     }
 
-    private static string ResidentLabel(Resident? r, ChannelType channel)
-    {
-        if (r?.DisplayName is { Length: > 0 } name) return name;
-        if (r?.ApartmentNumber is { Length: > 0 } apt) return apt;
-        return channel == ChannelType.WhatsApp ? "WA Sakin" : "TG Sakin";
-    }
+    // Name only — never the channel. Channel is rendered separately as an icon.
+    private static string ResidentLabel(Resident? r)
+        => r?.DisplayName is { Length: > 0 } name ? name : "Sakin";
 
     private static string Initials(Resident? r)
     {
@@ -128,6 +126,7 @@ public sealed class IndexModel : PageModel
     public sealed record TicketDetail(
         Guid TicketId,
         string Resident,
+        string? ResidentDisplayName,
         string Initials,
         ChannelType Channel,
         string RawText,

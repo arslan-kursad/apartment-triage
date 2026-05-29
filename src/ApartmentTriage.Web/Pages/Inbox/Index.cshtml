@@ -177,7 +177,37 @@
                     <span class="lang-en">Resident</span>
                 </p>
                 <div class="space-y-1">
-                    <p class="text-xs font-medium text-gray-800">@d.Resident</p>
+                    <p class="text-xs font-medium text-gray-800">
+                        @if (d.ResidentDisplayName is { Length: > 0 } dn)
+                        {
+                            @dn
+                        }
+                        else
+                        {
+                            <span class="lang-tr">Bilinmiyor</span>
+                            <span class="lang-en">Unknown</span>
+                        }
+                    </p>
+                    <p class="text-xs text-gray-500 flex items-center gap-1.5">
+                        <span>
+                            <span class="lang-tr">Kanal:</span>
+                            <span class="lang-en">Channel:</span>
+                        </span>
+                        @if (d.Channel == ChannelType.WhatsApp)
+                        {
+                            <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:13px"></i>
+                            <span>WhatsApp</span>
+                        }
+                        else if (d.Channel == ChannelType.Telegram)
+                        {
+                            <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:13px"></i>
+                            <span>Telegram</span>
+                        }
+                        else
+                        {
+                            <span class="text-gray-400">—</span>
+                        }
+                    </p>
                     <p class="text-xs text-gray-500">
                         <span class="lang-tr">Daire:</span>
                         <span class="lang-en">Unit:</span>
