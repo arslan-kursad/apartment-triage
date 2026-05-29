@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace ApartmentTriage.Domain.Entities;
 
 /// <summary>
@@ -45,6 +47,15 @@ public sealed class Resident
     public IReadOnlyCollection<Message> Messages { get; private set; } = new List<Message>();
     public IReadOnlyCollection<Ticket> Tickets { get; private set; } = new List<Ticket>();
 
+    private static readonly CultureInfo TurkishCulture = CultureInfo.GetCultureInfo("tr-TR");
+
+    /// <summary>Normalize display name to Turkish uppercase ("i"→"İ", "ı" preserved). Returns null for empty input.</summary>
+    private static string? NormalizeDisplayName(string? name)
+    {
+        var trimmed = name?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed.ToUpper(TurkishCulture);
+    }
+
     private Resident() { } // EF Core
 
     public static Resident Create(
@@ -58,7 +69,7 @@ public sealed class Resident
         {
             Id = Guid.NewGuid(),
             ApartmentNumber = apartmentNumber?.Trim(),
-            DisplayName = displayName?.Trim(),
+            DisplayName = NormalizeDisplayName(displayName),
             WhatsAppNumber = whatsAppNumber?.Trim(),
             TelegramId = telegramId,
             PreferredLanguage = preferredLanguage is "tr" or "en" ? preferredLanguage : "tr",
@@ -84,7 +95,7 @@ public sealed class Resident
         string? contactPhone = null,
         string? telegramUsername = null)
     {
-        if (displayName is not null) DisplayName = displayName.Trim();
+        if (displayName is not null) DisplayName = NormalizeDisplayName(displayName);
         if (apartmentNumber is not null) ApartmentNumber = apartmentNumber.Trim();
         if (whatsAppNumber is not null) WhatsAppNumber = whatsAppNumber.Trim();
         if (telegramId.HasValue) TelegramId = telegramId;
