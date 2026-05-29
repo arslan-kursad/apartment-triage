@@ -1,0 +1,307 @@
+@page "/residents"
+@model ApartmentTriage.Web.Pages.Residents.IndexModel
+@{
+    ViewData["Title"]       = "Sakinler";
+    ViewData["PageTitleTR"] = "Sakinler";
+    ViewData["PageTitleEN"] = "Residents";
+}
+
+@* Topbar action: + Yeni Sakin *@
+@section Scripts {
+<script>
+    function openCreateModal() {
+        document.getElementById('resident-modal').classList.remove('hidden');
+        document.getElementById('modal-title-tr').textContent = 'Yeni Sakin';
+        document.getElementById('modal-title-en').textContent = 'New Resident';
+        document.getElementById('modal-resident-id').value = '';
+        document.getElementById('modal-name').value = '';
+        document.getElementById('modal-apt').value = '';
+        document.getElementById('modal-wa').value = '';
+    }
+
+    function openEditModal(id, name, apt, wa) {
+        document.getElementById('resident-modal').classList.remove('hidden');
+        document.getElementById('modal-title-tr').textContent = 'Sakini Düzenle';
+        document.getElementById('modal-title-en').textContent = 'Edit Resident';
+        document.getElementById('modal-resident-id').value = id;
+        document.getElementById('modal-name').value = name;
+        document.getElementById('modal-apt').value = apt === '—' ? '' : apt;
+        document.getElementById('modal-wa').value = wa || '';
+    }
+
+    function closeModal() {
+        document.getElementById('resident-modal').classList.add('hidden');
+    }
+
+    function submitResidentForm() {
+        var id   = document.getElementById('modal-resident-id').value;
+        var name = document.getElementById('modal-name').value.trim();
+        var apt  = document.getElementById('modal-apt').value.trim();
+        var wa   = document.getElementById('modal-wa').value.trim();
+        var lang = localStorage.getItem('atriage_lang') || 'tr';
+
+        var url    = id ? '/api/residents/' + id : '/api/residents';
+        var method = id ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ displayName: name || null, apartmentNumber: apt || null, whatsAppNumber: wa || null })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { closeModal(); location.reload(); }
+            else { alert(data.error || (lang === 'tr' ? 'Hata oluştu.' : 'An error occurred.')); }
+        })
+        .catch(function() {
+            var lang2 = localStorage.getItem('atriage_lang') || 'tr';
+            alert(lang2 === 'tr' ? 'Bağlantı hatası.' : 'Connection error.');
+        });
+    }
+
+    function toggleActive(id, activate) {
+        var lang = localStorage.getItem('atriage_lang') || 'tr';
+        var msg = activate
+            ? (lang === 'tr' ? 'Bu sakini aktif etmek istiyor musunuz?' : 'Reactivate this resident?')
+            : (lang === 'tr' ? 'Bu sakini deaktif etmek istiyor musunuz?' : 'Deactivate this resident?');
+        if (!confirm(msg)) return;
+
+        fetch('/api/residents/' + id + '/status', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isActive: activate })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) { location.reload(); }
+            else { alert(data.error || 'Error'); }
+        });
+    }
+</script>
+}
+
+@* ── Topbar actions ── *@
+<div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+        @* Toggle: show inactive *@
+        @{
+            var toggleUrl = Model.ShowInactive ? "/residents" : "/residents?showInactive=true";
+            var toggleLabel_tr = Model.ShowInactive
+                ? $"Aktif sakinler ({Model.ActiveCount})"
+                : $"Deaktif olanları göster ({Model.InactiveCount})";
+            var toggleLabel_en = Model.ShowInactive
+                ? $"Active residents ({Model.ActiveCount})"
+                : $"Show inactive ({Model.InactiveCount})";
+        }
+        <a href="@toggleUrl"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors
+                  @(Model.ShowInactive ? "border-gray-400 bg-gray-100 text-gray-700" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50")">
+            @if (Model.ShowInactive)
+            {
+                <i class="fa-solid fa-eye-slash text-gray-400"></i>
+            }
+            else
+            {
+                <i class="fa-solid fa-eye text-gray-400"></i>
+            }
+            <span class="lang-tr">@toggleLabel_tr</span>
+            <span class="lang-en">@toggleLabel_en</span>
+        </a>
+    </div>
+
+    <button onclick="openCreateModal()"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors">
+        <i class="fa-solid fa-plus"></i>
+        <span class="lang-tr">+ Yeni Sakin</span>
+        <span class="lang-en">+ New Resident</span>
+    </button>
+</div>
+
+@* ── Residents table ── *@
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+            <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide w-8"></th>
+                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">Ad Soyad</span>
+                        <span class="lang-en">Name</span>
+                    </th>
+                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">Daire/Blok</span>
+                        <span class="lang-en">Unit</span>
+                    </th>
+                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">Kanal</span>
+                        <span class="lang-en">Channel</span>
+                    </th>
+                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">Telefon/WA</span>
+                        <span class="lang-en">Phone/WA</span>
+                    </th>
+                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">Son Aktivite</span>
+                        <span class="lang-en">Last Active</span>
+                    </th>
+                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">Durum</span>
+                        <span class="lang-en">Status</span>
+                    </th>
+                    <th class="px-3 py-2.5 text-right font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">İşlemler</span>
+                        <span class="lang-en">Actions</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                @foreach (var row in Model.Rows)
+                {
+                    <tr class="hover:bg-gray-50 transition-colors @(row.IsActive ? "" : "opacity-60")">
+                        @* Avatar *@
+                        <td class="px-3 py-2.5">
+                            <span class="w-7 h-7 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold">
+                                @row.Initials
+                            </span>
+                        </td>
+                        @* Name *@
+                        <td class="px-3 py-2.5 font-medium text-gray-800">@row.Name</td>
+                        @* Unit *@
+                        <td class="px-3 py-2.5 text-gray-600">@row.ApartmentNumber</td>
+                        @* Channel icons *@
+                        <td class="px-3 py-2.5">
+                            <div class="flex items-center gap-1.5">
+                                @if (row.HasWhatsApp)
+                                {
+                                    <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:14px" title="WhatsApp"></i>
+                                }
+                                @if (row.HasTelegram)
+                                {
+                                    <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:14px" title="Telegram"></i>
+                                }
+                                @if (!row.HasWhatsApp && !row.HasTelegram)
+                                {
+                                    <span class="text-gray-300">—</span>
+                                }
+                            </div>
+                        </td>
+                        @* Phone *@
+                        <td class="px-3 py-2.5 text-gray-500 font-mono">@(row.PhoneDisplay ?? "—")</td>
+                        @* Last activity *@
+                        <td class="px-3 py-2.5 text-gray-400">@row.LastActivity</td>
+                        @* Status badge *@
+                        <td class="px-3 py-2.5">
+                            @if (row.IsActive)
+                            {
+                                <span class="px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                                    <span class="lang-tr">Aktif</span>
+                                    <span class="lang-en">Active</span>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
+                                    <span class="lang-tr">Deaktif</span>
+                                    <span class="lang-en">Inactive</span>
+                                </span>
+                            }
+                        </td>
+                        @* Actions *@
+                        <td class="px-3 py-2.5 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <button onclick="openEditModal('@row.Id', '@row.Name', '@row.ApartmentNumber', '@(row.PhoneDisplay ?? "")')"
+                                        class="px-2 py-1 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors">
+                                    <span class="lang-tr">Düzenle</span>
+                                    <span class="lang-en">Edit</span>
+                                </button>
+                                @if (row.IsActive)
+                                {
+                                    <button onclick="toggleActive('@row.Id', false)"
+                                            class="px-2 py-1 rounded text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 transition-colors">
+                                        <span class="lang-tr">Deaktif et</span>
+                                        <span class="lang-en">Deactivate</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button onclick="toggleActive('@row.Id', true)"
+                                            class="px-2 py-1 rounded text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700 transition-colors">
+                                        <span class="lang-tr">Aktif et</span>
+                                        <span class="lang-en">Reactivate</span>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Rows.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="px-4 py-8 text-center text-gray-400">
+                            <span class="lang-tr">Sakin bulunamadı</span>
+                            <span class="lang-en">No residents found</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* ── Create/Edit modal ── *@
+<div id="resident-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-900">
+                <span id="modal-title-tr" class="lang-tr">Sakin</span>
+                <span id="modal-title-en" class="lang-en">Resident</span>
+            </h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="px-5 py-4 space-y-3">
+            <input type="hidden" id="modal-resident-id" />
+
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">
+                    <span class="lang-tr">Ad Soyad</span>
+                    <span class="lang-en">Full Name</span>
+                </label>
+                <input id="modal-name" type="text"
+                       class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Ahmet Yılmaz" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">
+                    <span class="lang-tr">Daire / Blok</span>
+                    <span class="lang-en">Unit / Block</span>
+                </label>
+                <input id="modal-apt" type="text"
+                       class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Daire 5" />
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">
+                    <span class="lang-tr">WhatsApp Numarası</span>
+                    <span class="lang-en">WhatsApp Number</span>
+                </label>
+                <input id="modal-wa" type="text"
+                       class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="+905xxxxxxxxx" />
+            </div>
+        </div>
+        <div class="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
+            <button onclick="closeModal()"
+                    class="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <span class="lang-tr">İptal</span>
+                <span class="lang-en">Cancel</span>
+            </button>
+            <button onclick="submitResidentForm()"
+                    class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+                <span class="lang-tr">Kaydet</span>
+                <span class="lang-en">Save</span>
+            </button>
+        </div>
+    </div>
+</div>
