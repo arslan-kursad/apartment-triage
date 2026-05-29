@@ -207,7 +207,7 @@ public sealed class TelegramAdapter : IMessageChannel
     }
 
     private const string TrWelcome = """
-        👋 Merhaba! Ben Hanwas AI.
+        👋 Merhaba! Ben Hanwas.
         Apartmanınızdaki arıza ve bakım taleplerinizi buraya yazmanız yeterli — sistemimiz talebinizi otomatik olarak değerlendirip yöneticinize iletecek.
 
         📌 Bildirebilecekleriniz:
@@ -222,7 +222,7 @@ public sealed class TelegramAdapter : IMessageChannel
         """;
 
     private const string EnWelcome = """
-        👋 Hello! I'm Hanwas AI.
+        👋 Hello! I'm Hanwas.
         Just describe your maintenance issue — our system will assess and route it to your building manager automatically.
 
         📌 You can report:
