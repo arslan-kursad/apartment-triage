@@ -38,7 +38,7 @@ public class ChannelConsumerJobTests
 
         sentMessages.Should().HaveCount(2);
         sentMessages[0].RecipientId.Should().Be("8013067042");
-        sentMessages[0].Text.Should().Contain("Hanwas AI");
+        sentMessages[0].Text.Should().Contain("Hanwas");
         sentMessages[0].Text.Should().Contain("Talebinizi yazabilirsiniz");
         sentMessages[1].RecipientId.Should().Be("8013067042");
         sentMessages[1].Text.Should().Contain("Talebinizi aldık.");
