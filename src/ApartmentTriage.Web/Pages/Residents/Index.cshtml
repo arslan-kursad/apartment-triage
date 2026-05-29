@@ -26,6 +26,45 @@
         openEditModal(r);
     }
 
+    var E164_RE = /^\+\d{10,15}$/;
+
+    function tMsg(tr, en) {
+        return (localStorage.getItem('atriage_lang') || 'tr') === 'en' ? en : tr;
+    }
+
+    function setFieldError(spanId, msg) {
+        var el = document.getElementById(spanId);
+        if (!el) return;
+        if (msg) { el.textContent = msg; el.classList.remove('hidden'); }
+        else { el.textContent = ''; el.classList.add('hidden'); }
+    }
+
+    function clearFormErrors() {
+        setFieldError('err-name', null);
+        setFieldError('err-wa', null);
+        setFieldError('modal-error', null);
+    }
+
+    function validateName() {
+        var v = document.getElementById('modal-name').value.trim();
+        if (v.length < 2) {
+            setFieldError('err-name', tMsg('Ad Soyad en az 2 karakter olmalıdır.', 'Full name must be at least 2 characters.'));
+            return false;
+        }
+        setFieldError('err-name', null);
+        return true;
+    }
+
+    function validateWa() {
+        var v = document.getElementById('modal-wa').value.trim();
+        if (v && !E164_RE.test(v)) {
+            setFieldError('err-wa', tMsg('WhatsApp numarası E.164 formatında olmalıdır (+905xxxxxxxxx).', 'WhatsApp number must be in E.164 format (+905xxxxxxxxx).'));
+            return false;
+        }
+        setFieldError('err-wa', null);
+        return true;
+    }
+
     function openCreateModal() {
         document.getElementById('resident-modal').classList.remove('hidden');
         document.getElementById('modal-title-tr').textContent = 'Yeni Sakin';
@@ -36,6 +75,7 @@
         document.getElementById('modal-wa').value = '';
         document.getElementById('modal-contact-phone').value = '';
         document.getElementById('modal-tg-username').value = '';
+        clearFormErrors();
     }
 
     function openEditModal(r) {
@@ -43,11 +83,12 @@
         document.getElementById('modal-title-tr').textContent = 'Sakini Düzenle';
         document.getElementById('modal-title-en').textContent = 'Edit Resident';
         document.getElementById('modal-resident-id').value = r.id;
-        document.getElementById('modal-name').value = r.name;
-        document.getElementById('modal-apt').value = r.apt === '—' ? '' : r.apt;
+        document.getElementById('modal-name').value = r.name === '—' ? '' : (r.name || '');
+        document.getElementById('modal-apt').value = r.apt === '—' ? '' : (r.apt || '');
         document.getElementById('modal-wa').value = r.wa || '';
         document.getElementById('modal-contact-phone').value = r.contactPhone || '';
         document.getElementById('modal-tg-username').value = r.telegramUsername || '';
+        clearFormErrors();
     }
 
     function closeModal() {
@@ -59,9 +100,14 @@
         var name = document.getElementById('modal-name').value.trim();
         var apt  = document.getElementById('modal-apt').value.trim();
         var wa   = document.getElementById('modal-wa').value.trim();
-        var contactPhone = document.getElementById('modal-contact-phone').value.trim();
+        var contactPhone     = document.getElementById('modal-contact-phone').value.trim();
         var telegramUsername = document.getElementById('modal-tg-username').value.trim();
-        var lang = localStorage.getItem('atriage_lang') || 'tr';
+
+        // Client-side gate — block submit until inline errors clear
+        var nameOk = validateName();
+        var waOk   = validateWa();
+        if (!nameOk || !waOk) return;
+        setFieldError('modal-error', null);
 
         var url    = id ? '/api/residents/' + id : '/api/residents';
         var method = id ? 'PUT' : 'POST';
@@ -69,16 +115,21 @@
         fetch(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ displayName: name || null, apartmentNumber: apt || null, whatsAppNumber: wa || null, contactPhone: contactPhone || null, telegramUsername: telegramUsername || null })
+            body: JSON.stringify({
+                displayName: name || null,
+                apartmentNumber: apt || null,
+                whatsAppNumber: wa || null,
+                contactPhone: contactPhone || null,
+                telegramUsername: telegramUsername || null
+            })
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) { closeModal(); location.reload(); }
-            else { alert(data.error || (lang === 'tr' ? 'Hata oluştu.' : 'An error occurred.')); }
+            else { setFieldError('modal-error', data.error || tMsg('Hata oluştu.', 'An error occurred.')); }
         })
         .catch(function() {
-            var lang2 = localStorage.getItem('atriage_lang') || 'tr';
-            alert(lang2 === 'tr' ? 'Bağlantı hatası.' : 'Connection error.');
+            setFieldError('modal-error', tMsg('Bağlantı hatası.', 'Connection error.'));
         });
     }
 
@@ -310,9 +361,10 @@
                     <span class="lang-tr">Ad Soyad</span>
                     <span class="lang-en">Full Name</span>
                 </label>
-                <input id="modal-name" type="text"
+                <input id="modal-name" type="text" onblur="validateName()"
                        class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="Ahmet Yılmaz" />
+                <p id="err-name" class="hidden text-xs text-red-600 mt-1"></p>
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -328,9 +380,10 @@
                     <span class="lang-tr">WhatsApp Numarası</span>
                     <span class="lang-en">WhatsApp Number</span>
                 </label>
-                <input id="modal-wa" type="text"
+                <input id="modal-wa" type="text" onblur="validateWa()"
                        class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="+905xxxxxxxxx" />
+                <p id="err-wa" class="hidden text-xs text-red-600 mt-1"></p>
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -351,7 +404,8 @@
                        placeholder="@@kullanici" />
             </div>
         </div>
-        <div class="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
+        <div class="px-5 py-3 border-t border-gray-100 flex items-center justify-end gap-2">
+            <p id="modal-error" class="hidden text-xs text-red-600 mr-auto"></p>
             <button onclick="closeModal()"
                     class="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                 <span class="lang-tr">İptal</span>
