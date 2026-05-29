@@ -23,6 +23,9 @@ public sealed class Resident
     /// <summary>"tr" or "en". Detected from channel language_code or message content on first contact.</summary>
     public string PreferredLanguage { get; private set; } = "tr";
 
+    /// <summary>Soft-delete flag. False means resident is deactivated but data retained (KVKK).</summary>
+    public bool IsActive { get; private set; } = true;
+
     /// <summary>
     /// Set when a clarification question is sent to the resident. The next incoming message
     /// is treated as the clarification response and updates this ticket instead of creating a new one.
@@ -53,6 +56,7 @@ public sealed class Resident
             WhatsAppNumber = whatsAppNumber?.Trim(),
             TelegramId = telegramId,
             PreferredLanguage = preferredLanguage is "tr" or "en" ? preferredLanguage : "tr",
+            IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -68,13 +72,19 @@ public sealed class Resident
 
     public void UpdateContactInfo(
         string? displayName = null,
+        string? apartmentNumber = null,
         string? whatsAppNumber = null,
         long? telegramId = null)
     {
         if (displayName is not null) DisplayName = displayName.Trim();
+        if (apartmentNumber is not null) ApartmentNumber = apartmentNumber.Trim();
         if (whatsAppNumber is not null) WhatsAppNumber = whatsAppNumber.Trim();
         if (telegramId.HasValue) TelegramId = telegramId;
     }
+
+    public void Deactivate() => IsActive = false;
+
+    public void Reactivate() => IsActive = true;
 
     /// <summary>KVKK anonymization — irreversible. Call only from AnonymizationService.</summary>
     public void Anonymize()
