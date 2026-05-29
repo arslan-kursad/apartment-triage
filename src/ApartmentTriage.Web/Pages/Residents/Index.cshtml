@@ -42,6 +42,7 @@
     function clearFormErrors() {
         setFieldError('err-name', null);
         setFieldError('err-wa', null);
+        setFieldError('err-contact', null);
         setFieldError('modal-error', null);
     }
 
@@ -62,6 +63,16 @@
             return false;
         }
         setFieldError('err-wa', null);
+        return true;
+    }
+
+    function validateContact() {
+        var v = document.getElementById('modal-contact-phone').value.trim();
+        if (v && !E164_RE.test(v)) {
+            setFieldError('err-contact', tMsg('Telefon E.164 formatında olmalıdır (+905xxxxxxxxx).', 'Phone must be in E.164 format (+905xxxxxxxxx).'));
+            return false;
+        }
+        setFieldError('err-contact', null);
         return true;
     }
 
@@ -104,9 +115,10 @@
         var telegramUsername = document.getElementById('modal-tg-username').value.trim();
 
         // Client-side gate — block submit until inline errors clear
-        var nameOk = validateName();
-        var waOk   = validateWa();
-        if (!nameOk || !waOk) return;
+        var nameOk    = validateName();
+        var waOk      = validateWa();
+        var contactOk = validateContact();
+        if (!nameOk || !waOk || !contactOk) return;
         setFieldError('modal-error', null);
 
         var url    = id ? '/api/residents/' + id : '/api/residents';
@@ -405,7 +417,7 @@
                 </label>
                 <input id="modal-wa" type="text" onblur="validateWa()"
                        class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="+905xxxxxxxxx" />
+                       placeholder="+90 5xx xxx xx xx" />
                 <p id="err-wa" class="hidden text-xs text-red-600 mt-1"></p>
             </div>
             <div>
@@ -413,9 +425,10 @@
                     <span class="lang-tr">İletişim Telefonu</span>
                     <span class="lang-en">Contact Phone</span>
                 </label>
-                <input id="modal-contact-phone" type="text"
+                <input id="modal-contact-phone" type="text" onblur="validateContact()"
                        class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="0532 xxx xx xx" />
+                       placeholder="+90 5xx xxx xx xx" />
+                <p id="err-contact" class="hidden text-xs text-red-600 mt-1"></p>
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">
