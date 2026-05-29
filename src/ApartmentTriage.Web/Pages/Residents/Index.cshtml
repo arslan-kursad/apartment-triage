@@ -9,6 +9,21 @@
 @* Topbar action: + Yeni Sakin *@
 @section Scripts {
 <script>
+    // Resident data passed as JSON (script-safe) instead of HTML-encoded onclick
+    // args — avoids Turkish-char double-encoding (KÜRŞAD → K&#xDC;R&#x15E;AD).
+    var residentData = @Json.Serialize(Model.Rows.Select(r => new {
+        id   = r.Id,
+        name = r.Name,
+        apt  = r.ApartmentNumber,
+        wa   = r.PhoneDisplay
+    }));
+
+    function editResident(id) {
+        var r = residentData.find(function (x) { return x.id === id; });
+        if (!r) return;
+        openEditModal(r.id, r.name, r.apt, r.wa);
+    }
+
     function openCreateModal() {
         document.getElementById('resident-modal').classList.remove('hidden');
         document.getElementById('modal-title-tr').textContent = 'Yeni Sakin';
@@ -63,14 +78,15 @@
     {
         var er = Model.EditRow;
         <text>
-    // Auto-open modal for ?edit={id}
+    // Auto-open modal for ?edit={id} — JSON-serialized to avoid TR char encoding
     document.addEventListener('DOMContentLoaded', function() {
-        openEditModal(
-            '@er.Id',
-            '@er.Name.Replace("'", "\\'")',
-            '@er.ApartmentNumber.Replace("'", "\\'")',
-            '@(er.PhoneDisplay?.Replace("'", "\\'") ?? "")'
-        );
+        var ed = @Json.Serialize(new {
+            id   = er.Id,
+            name = er.Name,
+            apt  = er.ApartmentNumber,
+            wa   = er.PhoneDisplay
+        });
+        openEditModal(ed.id, ed.name, ed.apt, ed.wa);
     });
         </text>
     }
@@ -225,7 +241,7 @@
                         @* Actions *@
                         <td class="px-3 py-2.5 text-right">
                             <div class="flex items-center justify-end gap-1.5">
-                                <button onclick="openEditModal('@row.Id', '@row.Name', '@row.ApartmentNumber', '@(row.PhoneDisplay ?? "")')"
+                                <button onclick="editResident('@row.Id')"
                                         class="px-2 py-1 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors">
                                     <span class="lang-tr">Düzenle</span>
                                     <span class="lang-en">Edit</span>
