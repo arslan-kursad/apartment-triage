@@ -16,7 +16,11 @@ public sealed class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public bool ShowInactive { get; set; } = false;
 
+    [BindProperty(SupportsGet = true)]
+    public Guid? Edit { get; set; }
+
     public IReadOnlyList<ResidentRow> Rows { get; private set; } = [];
+    public ResidentRow?               EditRow { get; private set; }
     public int ActiveCount   { get; private set; }
     public int InactiveCount { get; private set; }
 
@@ -55,6 +59,20 @@ public sealed class IndexModel : PageModel
                                  : "—",
             IsActive:        r.IsActive
         )).ToList();
+
+        // ?edit={id} — auto-open modal on page load (may be inactive, load separately)
+        if (Edit.HasValue)
+        {
+            EditRow = Rows.FirstOrDefault(r => r.Id == Edit.Value);
+            if (EditRow is null)
+            {
+                var r = await _db.Residents.FirstOrDefaultAsync(x => x.Id == Edit.Value, ct);
+                if (r is not null)
+                    EditRow = new ResidentRow(r.Id, BuildInitials(r), r.DisplayName ?? "—",
+                        r.ApartmentNumber ?? "—", r.WhatsAppNumber is not null, r.TelegramId.HasValue,
+                        BuildPhoneDisplay(r), "—", r.IsActive);
+            }
+        }
     }
 
     private static string BuildInitials(Resident r)

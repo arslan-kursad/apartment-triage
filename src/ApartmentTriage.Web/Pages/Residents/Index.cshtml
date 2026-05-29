@@ -59,6 +59,22 @@
         });
     }
 
+    @if (Model.EditRow is not null)
+    {
+        var er = Model.EditRow;
+        <text>
+    // Auto-open modal for ?edit={id}
+    document.addEventListener('DOMContentLoaded', function() {
+        openEditModal(
+            '@er.Id',
+            '@er.Name.Replace("'", "\\'")',
+            '@er.ApartmentNumber.Replace("'", "\\'")',
+            '@(er.PhoneDisplay?.Replace("'", "\\'") ?? "")'
+        );
+    });
+        </text>
+    }
+
     function toggleActive(id, activate) {
         var lang = localStorage.getItem('atriage_lang') || 'tr';
         var msg = activate

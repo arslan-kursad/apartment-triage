@@ -170,6 +170,30 @@
 
         @* ── Right panel: AI triage + reply (28%) ─────────────────────────────── *@
         <aside class="flex flex-col overflow-hidden">
+            @* Resident info *@
+            <div class="px-3 py-3 border-b border-gray-100">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    <span class="lang-tr">Sakin</span>
+                    <span class="lang-en">Resident</span>
+                </p>
+                <div class="space-y-1">
+                    <p class="text-xs font-medium text-gray-800">@d.Resident</p>
+                    <p class="text-xs text-gray-500">
+                        <span class="lang-tr">Daire:</span>
+                        <span class="lang-en">Unit:</span>
+                        @(d.ResidentApartmentNumber ?? "—")
+                    </p>
+                    @if (d.ResidentId.HasValue)
+                    {
+                        <a href="/residents?edit=@d.ResidentId"
+                           class="text-xs text-blue-600 hover:text-blue-700 hover:underline">
+                            <span class="lang-tr">Sakini Düzenle →</span>
+                            <span class="lang-en">Edit Resident →</span>
+                        </a>
+                    }
+                </div>
+            </div>
+
             @* Triage metadata *@
             <div class="px-3 py-3 border-b border-gray-100">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">

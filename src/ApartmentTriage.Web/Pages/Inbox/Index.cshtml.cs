@@ -73,8 +73,10 @@ public sealed class IndexModel : PageModel
                     Confidence:    sel.CategoryConfidence,
                     LocationHint:  sel.LocationHint,
                     RoutingAction: sel.RoutingAction,
-                    DraftReply:    draftReply,
-                    Status:        sel.Status
+                    DraftReply:               draftReply,
+                    Status:                   sel.Status,
+                    ResidentId:               sel.Resident?.Id,
+                    ResidentApartmentNumber:  sel.Resident?.ApartmentNumber
                 );
             }
         }
@@ -137,5 +139,7 @@ public sealed class IndexModel : PageModel
         string? LocationHint,
         RoutingAction? RoutingAction,
         string DraftReply,
-        TicketStatus Status);
+        TicketStatus Status,
+        Guid? ResidentId,
+        string? ResidentApartmentNumber);
 }

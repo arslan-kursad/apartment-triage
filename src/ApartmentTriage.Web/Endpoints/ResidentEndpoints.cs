@@ -1,0 +1,145 @@
+using ApartmentTriage.Domain.Entities;
+using ApartmentTriage.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
+
+namespace ApartmentTriage.Web.Endpoints;
+
+public static class ResidentEndpoints
+{
+    private static readonly Regex E164Regex = new(@"^\+\d{10,15}$", RegexOptions.Compiled);
+
+    public static void MapResidentEndpoints(this IEndpointRouteBuilder app)
+    {
+        app.MapGet("/api/residents",                          GetResidents);
+        app.MapPost("/api/residents",                         CreateResident);
+        app.MapPut("/api/residents/{id:guid}",               UpdateResident);
+        app.MapPatch("/api/residents/{id:guid}/status",      UpdateStatus);
+    }
+
+    // GET /api/residents?showInactive=false
+    private static async Task<IResult> GetResidents(
+        ApartmentTriageDbContext db,
+        bool showInactive = false,
+        CancellationToken ct = default)
+    {
+        var query = db.Residents.AsQueryable();
+        if (!showInactive) query = query.Where(r => r.IsActive);
+
+        var residents = await query
+            .OrderBy(r => r.ApartmentNumber)
+            .ThenBy(r => r.DisplayName)
+            .ToListAsync(ct);
+
+        var ids = residents.Select(r => r.Id).ToList();
+        var lastActivities = await db.Messages
+            .Where(m => ids.Contains(m.ResidentId))
+            .GroupBy(m => m.ResidentId)
+            .Select(g => new { ResidentId = g.Key, LastAt = g.Max(m => m.ReceivedAt) })
+            .ToDictionaryAsync(x => x.ResidentId, x => (DateTime?)x.LastAt, ct);
+
+        var result = residents.Select(r => new
+        {
+            id               = r.Id,
+            displayName      = r.DisplayName,
+            apartmentNumber  = r.ApartmentNumber,
+            whatsAppNumber   = r.WhatsAppNumber,
+            telegramId       = r.TelegramId,
+            preferredLanguage = r.PreferredLanguage,
+            isActive         = r.IsActive,
+            lastActivityAt   = lastActivities.TryGetValue(r.Id, out var lat) ? lat : (DateTime?)null,
+            channelFlags     = new { whatsApp = r.WhatsAppNumber is not null, telegram = r.TelegramId.HasValue }
+        });
+
+        return Results.Ok(result);
+    }
+
+    // POST /api/residents → 201 Created
+    private static async Task<IResult> CreateResident(
+        ResidentUpsertRequest req,
+        ApartmentTriageDbContext db,
+        CancellationToken ct)
+    {
+        var err = Validate(req);
+        if (err is not null) return Results.Ok(new { success = false, error = err });
+
+        var resident = Resident.Create(
+            displayName:      req.DisplayName?.Trim(),
+            apartmentNumber:  req.ApartmentNumber?.Trim(),
+            whatsAppNumber:   NullIfEmpty(req.WhatsAppNumber),
+            telegramId:       req.TelegramId,
+            preferredLanguage: req.PreferredLanguage is "tr" or "en" ? req.PreferredLanguage : "tr");
+
+        await db.Residents.AddAsync(resident, ct);
+        await db.SaveChangesAsync(ct);
+
+        return Results.Created($"/api/residents/{resident.Id}", new { success = true, id = resident.Id });
+    }
+
+    // PUT /api/residents/{id}
+    private static async Task<IResult> UpdateResident(
+        Guid id,
+        ResidentUpsertRequest req,
+        ApartmentTriageDbContext db,
+        CancellationToken ct)
+    {
+        var err = Validate(req);
+        if (err is not null) return Results.Ok(new { success = false, error = err });
+
+        var resident = await db.Residents.FirstOrDefaultAsync(r => r.Id == id, ct);
+        if (resident is null)
+            return Results.Ok(new { success = false, error = "Sakin bulunamadı." });
+
+        resident.UpdateContactInfo(
+            displayName:     req.DisplayName?.Trim(),
+            apartmentNumber: req.ApartmentNumber?.Trim(),
+            whatsAppNumber:  NullIfEmpty(req.WhatsAppNumber),
+            telegramId:      req.TelegramId);
+
+        if (req.PreferredLanguage is "tr" or "en")
+            resident.SetPreferredLanguage(req.PreferredLanguage);
+
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { success = true });
+    }
+
+    // PATCH /api/residents/{id}/status
+    private static async Task<IResult> UpdateStatus(
+        Guid id,
+        StatusRequest req,
+        ApartmentTriageDbContext db,
+        CancellationToken ct)
+    {
+        var resident = await db.Residents.FirstOrDefaultAsync(r => r.Id == id, ct);
+        if (resident is null)
+            return Results.Ok(new { success = false, error = "Sakin bulunamadı." });
+
+        if (req.IsActive) resident.Reactivate();
+        else              resident.Deactivate();
+
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(new { success = true });
+    }
+
+    private static string? Validate(ResidentUpsertRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.DisplayName) || req.DisplayName.Trim().Length < 2)
+            return "Ad Soyad en az 2 karakter olmalıdır.";
+        if (req.WhatsAppNumber is not null && !string.IsNullOrWhiteSpace(req.WhatsAppNumber)
+            && !E164Regex.IsMatch(req.WhatsAppNumber.Trim()))
+            return "WhatsApp numarası E.164 formatında olmalıdır (+905xxxxxxxxx).";
+        return null;
+    }
+
+    private static string? NullIfEmpty(string? s)
+        => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+}
+
+public sealed record ResidentUpsertRequest(
+    string? DisplayName,
+    string? ApartmentNumber      = null,
+    string? WhatsAppNumber       = null,
+    long?   TelegramId           = null,
+    string  PreferredLanguage    = "tr");
+
+public sealed record StatusRequest(bool IsActive);
