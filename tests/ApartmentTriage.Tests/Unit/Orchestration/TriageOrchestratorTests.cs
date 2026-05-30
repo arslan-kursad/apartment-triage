@@ -57,7 +57,7 @@ internal sealed class FakeTicketRepository : ITicketRepository
 
     public Task<(IReadOnlyList<Ticket> Items, int TotalCount)> GetPagedAsync(
         TicketStatus? status, TicketCategory? category, bool? isEmergency,
-        int page, int pageSize, CancellationToken cancellationToken = default)
+        Guid? residentId, int page, int pageSize, CancellationToken cancellationToken = default)
         => Task.FromResult<(IReadOnlyList<Ticket>, int)>((Saved.ToList(), Saved.Count));
 }
 

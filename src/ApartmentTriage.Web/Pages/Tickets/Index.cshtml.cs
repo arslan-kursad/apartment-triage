@@ -21,11 +21,21 @@ public sealed class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public bool?           FilterIsEmergency { get; set; }
     [BindProperty(SupportsGet = true)] public int             CurrentPage       { get; set; } = 1;
 
+    // ── Cross-link query params (overview / residents deep-links) ──────────────
+    [BindProperty(SupportsGet = true, Name = "emergency")] public bool? Emergency { get; set; }
+    [BindProperty(SupportsGet = true, Name = "resident")]  public Guid? Resident  { get; set; }
+
+    /// <summary>Effective emergency filter — dropdown takes precedence over the deep-link param.</summary>
+    public bool? EffectiveEmergency => FilterIsEmergency ?? Emergency;
+
     // ── Page result ───────────────────────────────────────────────────────────
 
     public IReadOnlyList<Ticket> Tickets    { get; private set; } = [];
     public int                   TotalCount { get; private set; }
     public int                   TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+
+    /// <summary>Display label for the active resident filter chip (apartment or "—").</summary>
+    public string? ResidentLabel { get; private set; }
 
     // Enum values for filter dropdowns
     public IEnumerable<TicketStatus>   AllStatuses    => Enum.GetValues<TicketStatus>();
@@ -38,12 +48,18 @@ public sealed class IndexModel : PageModel
         var (items, total) = await _tickets.GetPagedAsync(
             FilterStatus,
             FilterCategory,
-            FilterIsEmergency,
+            EffectiveEmergency,
+            Resident,
             CurrentPage,
             PageSize,
             cancellationToken);
 
         Tickets    = items;
         TotalCount = total;
+
+        // Resident chip label — derive from the loaded page to avoid an extra lookup.
+        if (Resident.HasValue)
+            ResidentLabel = items.FirstOrDefault()?.Resident?.ApartmentNumber
+                            ?? items.FirstOrDefault()?.Resident?.DisplayName;
     }
 }

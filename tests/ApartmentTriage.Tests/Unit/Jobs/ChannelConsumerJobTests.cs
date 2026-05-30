@@ -189,7 +189,7 @@ internal sealed class FakeTicketRepository : ITicketRepository
     public Task<(IReadOnlyList<Ticket> Items, int TotalCount)> GetPagedAsync(
         ApartmentTriage.Domain.Enums.TicketStatus? status,
         ApartmentTriage.Domain.Enums.TicketCategory? category,
-        bool? isEmergency, int page, int pageSize,
+        bool? isEmergency, Guid? residentId, int page, int pageSize,
         CancellationToken cancellationToken = default)
         => Task.FromResult<(IReadOnlyList<Ticket>, int)>((Array.Empty<Ticket>(), 0));
 }

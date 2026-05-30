@@ -330,7 +330,7 @@ public sealed class EnricherEvalTests : IClassFixture<EnricherDbFixture>
 
         public Task<(IReadOnlyList<Ticket> Items, int TotalCount)> GetPagedAsync(
             TicketStatus? status, TicketCategory? category, bool? isEmergency,
-            int page, int pageSize, CancellationToken ct = default)
+            Guid? residentId, int page, int pageSize, CancellationToken ct = default)
             => Task.FromResult<(IReadOnlyList<Ticket>, int)>(([], 0));
     }
 }

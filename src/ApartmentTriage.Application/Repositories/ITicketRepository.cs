@@ -25,6 +25,7 @@ public interface ITicketRepository
         TicketStatus? status,
         TicketCategory? category,
         bool? isEmergency,
+        Guid? residentId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);

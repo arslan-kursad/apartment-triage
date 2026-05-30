@@ -68,6 +68,7 @@ public sealed class TicketRepository : ITicketRepository
         TicketStatus? status,
         TicketCategory? category,
         bool? isEmergency,
+        Guid? residentId,
         int page,
         int pageSize,
         CancellationToken cancellationToken = default)
@@ -80,6 +81,8 @@ public sealed class TicketRepository : ITicketRepository
             query = query.Where(t => t.Category == category.Value);
         if (isEmergency.HasValue)
             query = query.Where(t => t.IsEmergency == isEmergency.Value);
+        if (residentId.HasValue)
+            query = query.Where(t => t.ResidentId == residentId.Value);
 
         var total = await query.CountAsync(cancellationToken);
 

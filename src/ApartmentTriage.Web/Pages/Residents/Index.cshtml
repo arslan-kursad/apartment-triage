@@ -315,8 +315,19 @@
                         </td>
                         @* Phone *@
                         <td class="px-3 py-2.5 text-gray-500 font-mono">@(row.PhoneDisplay ?? "—")</td>
-                        @* Last activity *@
-                        <td class="px-3 py-2.5 text-gray-400">@row.LastActivity</td>
+                        @* Last activity → resident's tickets *@
+                        <td class="px-3 py-2.5">
+                            @if (row.LastActivity != "—")
+                            {
+                                <a href="/tickets?resident=@row.Id"
+                                   class="text-blue-600 hover:underline cursor-pointer"
+                                   title="Bu sakinin ticket'ları / Resident's tickets">@row.LastActivity</a>
+                            }
+                            else
+                            {
+                                <span class="text-gray-400">@row.LastActivity</span>
+                            }
+                        </td>
                         @* Status badge *@
                         <td class="px-3 py-2.5">
                             @if (row.IsActive)

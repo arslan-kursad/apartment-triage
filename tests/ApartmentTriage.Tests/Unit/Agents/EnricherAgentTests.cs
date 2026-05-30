@@ -81,6 +81,7 @@ public sealed class EnricherAgentTests
             TicketStatus? status,
             TicketCategory? category,
             bool? isEmergency,
+            Guid? residentId,
             int page,
             int pageSize,
             CancellationToken cancellationToken = default)

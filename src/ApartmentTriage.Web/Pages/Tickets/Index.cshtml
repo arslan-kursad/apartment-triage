@@ -67,6 +67,34 @@
     </a>
 </form>
 
+@* ── Active deep-link filter chip (overview / residents cross-link) ───────────── *@
+@if (Model.Emergency == true || Model.Resident.HasValue)
+{
+    <div class="mb-4">
+        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+            @if (Model.Emergency == true)
+            {
+                <span>
+                    <span class="lang-tr">Acil durumlar gösteriliyor</span>
+                    <span class="lang-en">Showing emergencies</span>
+                </span>
+            }
+            else
+            {
+                <span>
+                    <span class="lang-tr">Sakin ticket'ları: @(Model.ResidentLabel ?? "—")</span>
+                    <span class="lang-en">Resident tickets: @(Model.ResidentLabel ?? "—")</span>
+                </span>
+            }
+            <a href="/tickets" class="inline-flex items-center gap-1 text-blue-500 hover:text-blue-800">
+                <span class="lang-tr">filtreyi temizle</span>
+                <span class="lang-en">clear filter</span>
+                <i class="fa-solid fa-xmark"></i>
+            </a>
+        </span>
+    </div>
+}
+
 @* ── Ticket list ───────────────────────────────────────────────────────────────── *@
 @if (!Model.Tickets.Any())
 {
@@ -157,7 +185,7 @@ else
         <div class="flex items-center justify-center gap-2 mt-4">
             @if (Model.CurrentPage > 1)
             {
-                <a href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&CurrentPage=@(Model.CurrentPage - 1)"
+                <a href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&emergency=@Model.Emergency&resident=@Model.Resident&CurrentPage=@(Model.CurrentPage - 1)"
                    class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
                     <span class="lang-tr">← Önceki</span>
                     <span class="lang-en">← Previous</span>
@@ -166,7 +194,7 @@ else
             <span class="px-3 py-1.5 text-sm text-gray-500">@Model.CurrentPage / @Model.TotalPages</span>
             @if (Model.CurrentPage < Model.TotalPages)
             {
-                <a href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&CurrentPage=@(Model.CurrentPage + 1)"
+                <a href="?FilterStatus=@Model.FilterStatus&FilterCategory=@Model.FilterCategory&FilterIsEmergency=@Model.FilterIsEmergency&emergency=@Model.Emergency&resident=@Model.Resident&CurrentPage=@(Model.CurrentPage + 1)"
                    class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">
                     <span class="lang-tr">Sonraki →</span>
                     <span class="lang-en">Next →</span>
