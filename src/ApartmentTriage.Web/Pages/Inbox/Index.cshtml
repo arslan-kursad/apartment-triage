@@ -49,7 +49,7 @@
                         {
                             <span class="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold shrink-0">@item.Initials</span>
                         }
-                        <span class="text-xs font-medium text-gray-800 truncate">@item.Resident</span>
+                        <span class="text-xs font-medium text-gray-800 truncate">@if (string.IsNullOrEmpty(item.Resident)) { <span data-i18n-tr="Sakin" data-i18n-en="Resident">Sakin</span> } else { @item.Resident }</span>
                     </div>
                     <p class="text-xs text-gray-400 truncate">@item.Preview</p>
                     <div class="flex items-center justify-between mt-1">
@@ -111,7 +111,7 @@
             <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
                 <span class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">@d.Initials</span>
                 <div>
-                    <p class="text-sm font-semibold text-gray-900">@d.Resident</p>
+                    <p class="text-sm font-semibold text-gray-900">@if (string.IsNullOrEmpty(d.Resident)) { <span data-i18n-tr="Sakin" data-i18n-en="Resident">Sakin</span> } else { @d.Resident }</p>
                     <div class="flex items-center gap-1.5 text-xs text-gray-400">
                         @if (d.Channel == ChannelType.WhatsApp)
                         {
@@ -299,7 +299,9 @@
                 </p>
                 <textarea id="reply-textarea"
                           class="flex-1 w-full text-xs text-gray-700 border border-gray-200 rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="@(/* bilingual placeholder via JS */ "")"
+                          placeholder="Yanıtı buraya yazın…"
+                          data-i18n-tr-ph="Yanıtı buraya yazın…"
+                          data-i18n-en-ph="Type your reply here…"
                 >@d.DraftReply</textarea>
 
                 @if (showSend)
@@ -342,14 +344,6 @@
 
 @section Scripts {
 <script>
-    // Set placeholder text after lang is applied
-    (function() {
-        var ta = document.getElementById('reply-textarea');
-        if (!ta) return;
-        var lang = localStorage.getItem('atriage_lang') || 'tr';
-        ta.placeholder = lang === 'tr' ? 'Yanıtı buraya yazın…' : 'Type your reply here…';
-    })();
-
     function sendReply(ticketId) {
         var ta = document.getElementById('reply-textarea');
         var btn = document.getElementById('send-btn');

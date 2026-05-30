@@ -209,30 +209,20 @@
 <form method="get" class="flex flex-wrap gap-2 mb-4">
     <input type="text" name="Q" value="@Model.Q"
            class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[200px]"
-           placeholder="İsim / Daire / Blok ara…" />
+           placeholder="İsim / Daire / Blok ara…"
+           data-i18n-tr-ph="İsim / Daire / Blok ara…"
+           data-i18n-en-ph="Search name / unit / block…" />
 
     <select name="Channel" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <option value="">
-            <span class="lang-tr">Tüm Kanallar</span>
-            <span class="lang-en">All Channels</span>
-        </option>
+        <option value="" data-i18n-tr="Tüm Kanallar" data-i18n-en="All Channels">Tüm Kanallar</option>
         <option value="whatsapp" selected="@(Model.Channel == "whatsapp")">WhatsApp</option>
         <option value="telegram" selected="@(Model.Channel == "telegram")">Telegram</option>
     </select>
 
     <select name="Status" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <option value="active"   selected="@(Model.Status == "active")">
-            <span class="lang-tr">Aktif</span>
-            <span class="lang-en">Active</span>
-        </option>
-        <option value="inactive" selected="@(Model.Status == "inactive")">
-            <span class="lang-tr">Deaktif</span>
-            <span class="lang-en">Inactive</span>
-        </option>
-        <option value="all"      selected="@(Model.Status == "all")">
-            <span class="lang-tr">Tümü</span>
-            <span class="lang-en">All</span>
-        </option>
+        <option value="active"   selected="@(Model.Status == "active")"   data-i18n-tr="Aktif"  data-i18n-en="Active">Aktif</option>
+        <option value="inactive" selected="@(Model.Status == "inactive")" data-i18n-tr="Deaktif" data-i18n-en="Inactive">Deaktif</option>
+        <option value="all"      selected="@(Model.Status == "all")"      data-i18n-tr="Tümü"   data-i18n-en="All">Tümü</option>
     </select>
 
     <button type="submit" class="text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
@@ -419,7 +409,7 @@
                 </label>
                 <input id="modal-apt" type="text"
                        class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="Daire 5" />
+                       placeholder="Daire 5" data-i18n-tr-ph="Daire 5" data-i18n-en-ph="Unit 5" />
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">
@@ -448,7 +438,7 @@
                 </label>
                 <input id="modal-tg-username" type="text"
                        class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="@@kullanici" />
+                       placeholder="@@kullanici" data-i18n-tr-ph="@@kullanici" data-i18n-en-ph="@@username" />
             </div>
         </div>
         <div class="px-5 py-3 border-t border-gray-100 flex items-center justify-end gap-2">

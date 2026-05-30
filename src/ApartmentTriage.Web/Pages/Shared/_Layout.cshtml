@@ -165,6 +165,10 @@
     <script>
     (function () {
         // ── Language ───────────────────────────────────────────────────────────
+        // Toggles legacy .lang-tr/.lang-en spans AND data-attribute driven
+        // text / placeholder / title. Use data-i18n-tr / data-i18n-en for
+        // <option>, JS-built labels and fallbacks (where inline spans don't
+        // render), data-i18n-{tr,en}-ph for placeholders, -title for tooltips.
         function applyLang(l) {
             document.querySelectorAll('.lang-tr').forEach(function (e) {
                 e.style.display = l === 'tr' ? '' : 'none';
@@ -172,9 +176,27 @@
             document.querySelectorAll('.lang-en').forEach(function (e) {
                 e.style.display = l === 'en' ? '' : 'none';
             });
+            // Text content — selects/options, JS-generated labels, fallbacks
+            document.querySelectorAll('[data-i18n-tr],[data-i18n-en]').forEach(function (e) {
+                var v = e.getAttribute('data-i18n-' + l);
+                if (v !== null) e.textContent = v;
+            });
+            // Input / textarea placeholders
+            document.querySelectorAll('[data-i18n-tr-ph],[data-i18n-en-ph]').forEach(function (e) {
+                var v = e.getAttribute('data-i18n-' + l + '-ph');
+                if (v !== null) e.placeholder = v;
+            });
+            // Tooltips (title attribute)
+            document.querySelectorAll('[data-i18n-tr-title],[data-i18n-en-title]').forEach(function (e) {
+                var v = e.getAttribute('data-i18n-' + l + '-title');
+                if (v !== null) e.title = v;
+            });
             var btn = document.getElementById('lang-btn');
             if (btn) btn.textContent = l === 'tr' ? 'EN' : 'TR';
         }
+        // Exposed so page scripts can re-apply after injecting dynamic DOM.
+        window.applyLang = applyLang;
+        window.atriageLang = function () { return localStorage.getItem('atriage_lang') || 'tr'; };
 
         window.toggleLang = function () {
             var current = localStorage.getItem('atriage_lang') || 'tr';

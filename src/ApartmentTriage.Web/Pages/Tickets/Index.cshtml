@@ -21,40 +21,27 @@
 
 <form method="get" class="flex flex-wrap gap-2 mb-4">
     <select name="FilterStatus" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <option value="">
-            <span class="lang-tr">Tüm Statüler</span>
-            <span class="lang-en">All Statuses</span>
-        </option>
+        <option value="" data-i18n-tr="Tüm Statüler" data-i18n-en="All Statuses">Tüm Statüler</option>
         @foreach (var s in Model.AllStatuses)
         {
-            <option value="@s" selected="@(Model.FilterStatus == s)">@s</option>
+            var lbl = EnumLabels.For(s);
+            <option value="@s" selected="@(Model.FilterStatus == s)" data-i18n-tr="@lbl.Tr" data-i18n-en="@lbl.En">@lbl.Tr</option>
         }
     </select>
 
     <select name="FilterCategory" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <option value="">
-            <span class="lang-tr">Tüm Kategoriler</span>
-            <span class="lang-en">All Categories</span>
-        </option>
+        <option value="" data-i18n-tr="Tüm Kategoriler" data-i18n-en="All Categories">Tüm Kategoriler</option>
         @foreach (var c in Model.AllCategories)
         {
-            <option value="@c" selected="@(Model.FilterCategory == c)">@c</option>
+            var lbl = EnumLabels.For(c);
+            <option value="@c" selected="@(Model.FilterCategory == c)" data-i18n-tr="@lbl.Tr" data-i18n-en="@lbl.En">@lbl.Tr</option>
         }
     </select>
 
     <select name="FilterIsEmergency" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <option value="">
-            <span class="lang-tr">Acil Durum: Tümü</span>
-            <span class="lang-en">Emergency: All</span>
-        </option>
-        <option value="true"  selected="@(Model.FilterIsEmergency == true)">
-            <span class="lang-tr">Acil</span>
-            <span class="lang-en">Emergency</span>
-        </option>
-        <option value="false" selected="@(Model.FilterIsEmergency == false)">
-            <span class="lang-tr">Normal</span>
-            <span class="lang-en">Normal</span>
-        </option>
+        <option value=""      data-i18n-tr="Acil Durum: Tümü" data-i18n-en="Emergency: All">Acil Durum: Tümü</option>
+        <option value="true"  selected="@(Model.FilterIsEmergency == true)"  data-i18n-tr="Acil"   data-i18n-en="Emergency">Acil</option>
+        <option value="false" selected="@(Model.FilterIsEmergency == false)" data-i18n-tr="Normal" data-i18n-en="Normal">Normal</option>
     </select>
 
     <button type="submit" class="text-sm px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">

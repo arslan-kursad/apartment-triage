@@ -84,8 +84,9 @@ public sealed class IndexModel : PageModel
     }
 
     // Name only — never the channel. Channel is rendered separately as an icon.
-    private static string ResidentLabel(Resident? r)
-        => r?.DisplayName is { Length: > 0 } name ? name : "Sakin";
+    // Returns null when no name; the view renders an i18n "Sakin/Resident" fallback.
+    private static string? ResidentLabel(Resident? r)
+        => r?.DisplayName is { Length: > 0 } name ? name : null;
 
     private static string Initials(Resident? r)
     {
@@ -116,7 +117,7 @@ public sealed class IndexModel : PageModel
 
     public sealed record InboxItem(
         Guid TicketId,
-        string Resident,
+        string? Resident,
         string Initials,
         string Preview,
         ChannelType Channel,
@@ -125,7 +126,7 @@ public sealed class IndexModel : PageModel
 
     public sealed record TicketDetail(
         Guid TicketId,
-        string Resident,
+        string? Resident,
         string? ResidentDisplayName,
         string Initials,
         ChannelType Channel,
