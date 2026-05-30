@@ -421,7 +421,7 @@
     @* Page navigation *@
     @if (Model.TotalPages > 1)
     {
-        var cur = Model.Page;
+        var cur = Model.CurrentPage;
         var tp = Model.TotalPages;
         var start = Math.Max(1, cur - 2);
         var end = Math.Min(tp, cur + 2);

@@ -32,7 +32,7 @@ public sealed class IndexModel : PageModel
     // ── Pagination ────────────────────────────────────────────────────────────
     private static readonly int[] AllowedPageSizes = [10, 20, 50];
 
-    [BindProperty(SupportsGet = true)] public int Page     { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int CurrentPage     { get; set; } = 1;
     [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
 
     public IReadOnlyList<ResidentRow> Rows { get; private set; } = [];
@@ -42,8 +42,8 @@ public sealed class IndexModel : PageModel
 
     public int TotalMatching { get; private set; }
     public int TotalPages => PageSize > 0 ? Math.Max(1, (int)Math.Ceiling((double)TotalMatching / PageSize)) : 1;
-    public int FirstRow => TotalMatching == 0 ? 0 : (Page - 1) * PageSize + 1;
-    public int LastRow  => Math.Min(Page * PageSize, TotalMatching);
+    public int FirstRow => TotalMatching == 0 ? 0 : (CurrentPage - 1) * PageSize + 1;
+    public int LastRow  => Math.Min(CurrentPage * PageSize, TotalMatching);
     public IReadOnlyList<int> PageSizeOptions => AllowedPageSizes;
 
     /// <summary>Builds a /residents URL preserving the active filters (search/channel/status).</summary>
@@ -53,7 +53,7 @@ public sealed class IndexModel : PageModel
         if (!string.IsNullOrWhiteSpace(Q))       qs.Add($"Q={Uri.EscapeDataString(Q)}");
         if (!string.IsNullOrWhiteSpace(Channel)) qs.Add($"Channel={Uri.EscapeDataString(Channel)}");
         if (!string.IsNullOrWhiteSpace(Status))  qs.Add($"Status={Uri.EscapeDataString(Status)}");
-        qs.Add($"Page={page}");
+        qs.Add($"CurrentPage={page}");
         qs.Add($"PageSize={pageSize ?? PageSize}");
         return "/residents?" + string.Join("&", qs);
     }
@@ -88,13 +88,13 @@ public sealed class IndexModel : PageModel
         // Pagination — validate page size, count matches, clamp page into range
         if (!AllowedPageSizes.Contains(PageSize)) PageSize = 20;
         TotalMatching = await query.CountAsync(ct);
-        if (Page < 1) Page = 1;
-        if (Page > TotalPages) Page = TotalPages;
+        if (CurrentPage < 1) CurrentPage = 1;
+        if (CurrentPage > TotalPages) CurrentPage = TotalPages;
 
         var residents = await query
             .OrderBy(r => r.ApartmentNumber)
             .ThenBy(r => r.DisplayName)
-            .Skip((Page - 1) * PageSize)
+            .Skip((CurrentPage - 1) * PageSize)
             .Take(PageSize)
             .ToListAsync(ct);
 
