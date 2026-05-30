@@ -128,6 +128,7 @@ try
     app.MapStatsEndpoints();
     app.MapReplyEndpoints();
     app.MapResidentEndpoints();
+    app.MapTicketEndpoints();
 
     static bool IsChannelConsumerJob(Job? job)
     {
