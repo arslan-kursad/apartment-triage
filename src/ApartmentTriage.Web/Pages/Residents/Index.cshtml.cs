@@ -29,10 +29,34 @@ public sealed class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public Guid? Edit { get; set; }
 
+    // ── Pagination ────────────────────────────────────────────────────────────
+    private static readonly int[] AllowedPageSizes = [10, 20, 50];
+
+    [BindProperty(SupportsGet = true)] public int Page     { get; set; } = 1;
+    [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 20;
+
     public IReadOnlyList<ResidentRow> Rows { get; private set; } = [];
     public ResidentRow?               EditRow { get; private set; }
     public int ActiveCount   { get; private set; }
     public int InactiveCount { get; private set; }
+
+    public int TotalMatching { get; private set; }
+    public int TotalPages => PageSize > 0 ? Math.Max(1, (int)Math.Ceiling((double)TotalMatching / PageSize)) : 1;
+    public int FirstRow => TotalMatching == 0 ? 0 : (Page - 1) * PageSize + 1;
+    public int LastRow  => Math.Min(Page * PageSize, TotalMatching);
+    public IReadOnlyList<int> PageSizeOptions => AllowedPageSizes;
+
+    /// <summary>Builds a /residents URL preserving the active filters (search/channel/status).</summary>
+    public string BuildUrl(int page, int? pageSize = null)
+    {
+        var qs = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Q))       qs.Add($"Q={Uri.EscapeDataString(Q)}");
+        if (!string.IsNullOrWhiteSpace(Channel)) qs.Add($"Channel={Uri.EscapeDataString(Channel)}");
+        if (!string.IsNullOrWhiteSpace(Status))  qs.Add($"Status={Uri.EscapeDataString(Status)}");
+        qs.Add($"Page={page}");
+        qs.Add($"PageSize={pageSize ?? PageSize}");
+        return "/residents?" + string.Join("&", qs);
+    }
 
     public async Task OnGetAsync(CancellationToken ct)
     {
@@ -49,18 +73,29 @@ public sealed class IndexModel : PageModel
         if (Channel == "whatsapp")     query = query.Where(r => r.WhatsAppNumber != null);
         else if (Channel == "telegram") query = query.Where(r => r.TelegramId != null);
 
-        // Free-text search over name + apartment/block (Postgres ILike, accent/case-insensitive)
+        // Free-text search over all visible identity columns (Postgres ILike, accent/case-insensitive)
         if (!string.IsNullOrWhiteSpace(Q))
         {
             var term = $"%{Q.Trim()}%";
             query = query.Where(r =>
-                (r.DisplayName != null && EF.Functions.ILike(r.DisplayName, term)) ||
-                (r.ApartmentNumber != null && EF.Functions.ILike(r.ApartmentNumber, term)));
+                (r.DisplayName != null      && EF.Functions.ILike(r.DisplayName, term)) ||
+                (r.ApartmentNumber != null  && EF.Functions.ILike(r.ApartmentNumber, term)) ||
+                (r.WhatsAppNumber != null   && EF.Functions.ILike(r.WhatsAppNumber, term)) ||
+                (r.ContactPhone != null     && EF.Functions.ILike(r.ContactPhone, term)) ||
+                (r.TelegramUsername != null && EF.Functions.ILike(r.TelegramUsername, term)));
         }
+
+        // Pagination — validate page size, count matches, clamp page into range
+        if (!AllowedPageSizes.Contains(PageSize)) PageSize = 20;
+        TotalMatching = await query.CountAsync(ct);
+        if (Page < 1) Page = 1;
+        if (Page > TotalPages) Page = TotalPages;
 
         var residents = await query
             .OrderBy(r => r.ApartmentNumber)
             .ThenBy(r => r.DisplayName)
+            .Skip((Page - 1) * PageSize)
+            .Take(PageSize)
             .ToListAsync(ct);
 
         var residentIds = residents.Select(r => r.Id).ToList();

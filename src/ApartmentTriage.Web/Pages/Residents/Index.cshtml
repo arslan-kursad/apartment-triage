@@ -207,11 +207,14 @@
 
 @* ── Filter bar (search / channel / status) ── *@
 <form method="get" class="flex flex-wrap gap-2 mb-4">
+    @* Preserve page size across filter changes; page resets to 1 (not submitted) *@
+    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+
     <input type="text" name="Q" value="@Model.Q"
            class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[200px]"
-           placeholder="İsim / Daire / Blok ara…"
-           data-i18n-tr-ph="İsim / Daire / Blok ara…"
-           data-i18n-en-ph="Search name / unit / block…" />
+           placeholder="İsim / Daire / Telefon / Kullanıcı ara…"
+           data-i18n-tr-ph="İsim / Daire / Telefon / Kullanıcı ara…"
+           data-i18n-en-ph="Search name / unit / phone / username…" />
 
     <select name="Channel" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
         <option value="" data-i18n-tr="Tüm Kanallar" data-i18n-en="All Channels">Tüm Kanallar</option>
@@ -257,6 +260,14 @@
                     <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
                         <span class="lang-tr">Telefon/WA</span>
                         <span class="lang-en">Phone/WA</span>
+                    </th>
+                    <th class="hidden md:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">İletişim Tel.</span>
+                        <span class="lang-en">Contact Phone</span>
+                    </th>
+                    <th class="hidden md:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span class="lang-tr">Telegram</span>
+                        <span class="lang-en">Telegram</span>
                     </th>
                     <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
                         <span class="lang-tr">Son Aktivite</span>
@@ -305,6 +316,14 @@
                         </td>
                         @* Phone *@
                         <td class="px-3 py-2.5 text-gray-500 font-mono">@(row.PhoneDisplay ?? "—")</td>
+                        @* Contact phone — distinct from channel identity; shown in full for operational contact *@
+                        <td class="hidden md:table-cell px-3 py-2.5 text-gray-500 font-mono">
+                            @if (string.IsNullOrEmpty(row.ContactPhone)) { <span class="text-gray-300">—</span> } else { @row.ContactPhone }
+                        </td>
+                        @* Telegram username (@handle) *@
+                        <td class="hidden md:table-cell px-3 py-2.5 text-gray-500">
+                            @if (string.IsNullOrEmpty(row.TelegramUsername)) { <span class="text-gray-300">—</span> } else { <span>@("@" + row.TelegramUsername)</span> }
+                        </td>
                         @* Last activity → resident's tickets *@
                         <td class="px-3 py-2.5">
                             @if (row.LastActivity != "—")
@@ -366,7 +385,7 @@
                 @if (!Model.Rows.Any())
                 {
                     <tr>
-                        <td colspan="8" class="px-4 py-8 text-center text-gray-400">
+                        <td colspan="10" class="px-4 py-8 text-center text-gray-400">
                             <span class="lang-tr">Sakin bulunamadı</span>
                             <span class="lang-en">No residents found</span>
                         </td>
@@ -375,6 +394,81 @@
             </tbody>
         </table>
     </div>
+</div>
+
+@* ── Pagination bar (range + page size + page nav) ── *@
+<div class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 text-xs text-gray-500">
+    @* Range indicator + page size *@
+    <div class="flex items-center gap-4">
+        <span>
+            <span class="font-semibold text-gray-700">@Model.FirstRow–@Model.LastRow</span>
+            <span class="lang-tr">/ @Model.TotalMatching kayıt</span>
+            <span class="lang-en">of @Model.TotalMatching</span>
+        </span>
+        <span class="flex items-center gap-1.5">
+            <span class="lang-tr">Sayfa boyutu</span>
+            <span class="lang-en">Page size</span>
+            <select onchange="location.href=this.value"
+                    class="border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                @foreach (var size in Model.PageSizeOptions)
+                {
+                    <option value="@Model.BuildUrl(1, size)" selected="@(Model.PageSize == size)">@size</option>
+                }
+            </select>
+        </span>
+    </div>
+
+    @* Page navigation *@
+    @if (Model.TotalPages > 1)
+    {
+        var cur = Model.Page;
+        var tp = Model.TotalPages;
+        var start = Math.Max(1, cur - 2);
+        var end = Math.Min(tp, cur + 2);
+        <nav class="flex items-center gap-1">
+            @if (cur > 1)
+            {
+                <a href="@Model.BuildUrl(cur - 1)" class="px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50" aria-label="Previous">‹</a>
+            }
+            else
+            {
+                <span class="px-2 py-1 rounded-md border border-gray-100 text-gray-300 cursor-not-allowed">‹</span>
+            }
+
+            @if (start > 1)
+            {
+                <a href="@Model.BuildUrl(1)" class="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50">1</a>
+                @if (start > 2) { <span class="px-1 text-gray-400">…</span> }
+            }
+
+            @for (var p = start; p <= end; p++)
+            {
+                if (p == cur)
+                {
+                    <span class="px-2.5 py-1 rounded-md bg-blue-600 text-white font-semibold">@p</span>
+                }
+                else
+                {
+                    <a href="@Model.BuildUrl(p)" class="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50">@p</a>
+                }
+            }
+
+            @if (end < tp)
+            {
+                @if (end < tp - 1) { <span class="px-1 text-gray-400">…</span> }
+                <a href="@Model.BuildUrl(tp)" class="px-2.5 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50">@tp</a>
+            }
+
+            @if (cur < tp)
+            {
+                <a href="@Model.BuildUrl(cur + 1)" class="px-2 py-1 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50" aria-label="Next">›</a>
+            }
+            else
+            {
+                <span class="px-2 py-1 rounded-md border border-gray-100 text-gray-300 cursor-not-allowed">›</span>
+            }
+        </nav>
+    }
 </div>
 
 @* ── Create/Edit modal ── *@
