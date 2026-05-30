@@ -12,9 +12,46 @@
 
     @* ── Left panel: message list (28%) ────────────────────────────────────────── *@
     <aside class="border-b border-gray-100 md:border-b-0 md:border-r flex flex-col overflow-hidden">
-        <div class="px-3 py-3 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            <span class="lang-tr">Son Mesajlar</span>
-            <span class="lang-en">Recent</span>
+        <div class="px-3 py-3 border-b border-gray-100 space-y-2 shrink-0">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <span class="lang-tr">Mesajlar</span>
+                    <span class="lang-en">Messages</span>
+                </span>
+                <span class="text-xs text-gray-400">@Model.TotalMatching</span>
+            </div>
+
+            @* Search by resident name *@
+            <form method="get" action="/inbox">
+                <input type="hidden" name="Range" value="@Model.EffectiveRange" />
+                <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                <input type="text" name="Q" value="@Model.Q"
+                       placeholder="İsim ara…" data-i18n-tr-ph="İsim ara…" data-i18n-en-ph="Search name…"
+                       class="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </form>
+
+            @* Quick date presets *@
+            @{
+                (string Val, string Tr, string En)[] presets =
+                {
+                    ("today", "Bugün", "Today"),
+                    ("week",  "Bu Hafta", "This Week"),
+                    ("all",   "Tümü", "All")
+                };
+            }
+            <div class="flex items-center gap-1">
+                @foreach (var p in presets)
+                {
+                    var active = Model.EffectiveRange == p.Val;
+                    var cls = active
+                        ? "px-2 py-0.5 rounded-full text-xs font-medium bg-blue-600 text-white"
+                        : "px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200";
+                    <a href="@Model.PresetUrl(p.Val)" class="@cls">
+                        <span class="lang-tr">@p.Tr</span>
+                        <span class="lang-en">@p.En</span>
+                    </a>
+                }
+            </div>
         </div>
         <ul class="flex-1 overflow-y-auto">
             @foreach (var item in Model.Items)
@@ -25,7 +62,7 @@
                     : "px-3 py-2.5 hover:bg-gray-50 border-l-2 border-transparent cursor-pointer transition-colors";
 
                 <li class="@rowClass"
-                    onclick="window.location='/inbox?ticketId=@item.TicketId'">
+                    onclick="window.location='@Model.SelectUrl(item.TicketId)'">
                     <div class="flex items-center gap-1.5 mb-0.5">
                         @* Avatar: initials or channel icon fallback *@
                         @if (item.Initials == "?")
@@ -85,6 +122,39 @@
                 </li>
             }
         </ul>
+
+        @* Left-list pagination (page size + prev/next) *@
+        @if (Model.TotalMatching > 0)
+        {
+            <div class="border-t border-gray-100 px-2 py-2 flex items-center justify-between gap-2 text-xs text-gray-500 shrink-0">
+                <select onchange="location.href=this.value"
+                        class="border border-gray-200 rounded-md px-1.5 py-0.5 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    @foreach (var size in Model.PageSizeOptions)
+                    {
+                        <option value="@Model.PageSizeUrl(size)" selected="@(Model.PageSize == size)">@size</option>
+                    }
+                </select>
+                <div class="flex items-center gap-1">
+                    @if (Model.CurrentPage > 1)
+                    {
+                        <a href="@Model.PageUrl(Model.CurrentPage - 1)" class="px-1.5 py-0.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50" aria-label="Previous">‹</a>
+                    }
+                    else
+                    {
+                        <span class="px-1.5 py-0.5 rounded-md border border-gray-100 text-gray-300">‹</span>
+                    }
+                    <span class="tabular-nums">@Model.CurrentPage/@Model.TotalPages</span>
+                    @if (Model.CurrentPage < Model.TotalPages)
+                    {
+                        <a href="@Model.PageUrl(Model.CurrentPage + 1)" class="px-1.5 py-0.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50" aria-label="Next">›</a>
+                    }
+                    else
+                    {
+                        <span class="px-1.5 py-0.5 rounded-md border border-gray-100 text-gray-300">›</span>
+                    }
+                </div>
+            </div>
+        }
     </aside>
 
     @if (Model.Detail is not null)
