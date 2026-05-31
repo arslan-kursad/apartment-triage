@@ -1,12 +1,15 @@
 using ApartmentTriage.Application;
+using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Infrastructure;
 using ApartmentTriage.Infrastructure.Persistence;
+using ApartmentTriage.Infrastructure.Services;
 using ApartmentTriage.Web.Endpoints;
 using ApartmentTriage.Web.Jobs;
 using Hangfire;
 using Hangfire.Common;
 using Hangfire.Dashboard;
 using Hangfire.Storage;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -57,8 +60,42 @@ try
     // Telegram channel (Singleton keyed adapter + ITelegramBotClient)
     builder.Services.AddTelegramChannel(builder.Configuration);
 
-    // Razor Pages (dashboard UI)
-    builder.Services.AddRazorPages();
+    // ── Auth (GRUP C) ──────────────────────────────────────────────────────────
+    // Auth:Enabled is the demo safety net. When false, authorization is not wired at
+    // all (every page/API open) — used for the first deploy until bootstrap + live
+    // login are verified, and for local dev while the login pages (GRUP B) don't exist.
+    var authEnabled = builder.Configuration.GetValue("Auth:Enabled", true);
+
+    builder.Services
+        .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+        .AddCookie(options =>
+        {
+            options.LoginPath = "/login";
+            options.LogoutPath = "/logout";
+            options.AccessDeniedPath = "/login";   // GRUP B: friendly "panel atanmadı" message
+            options.ExpireTimeSpan = TimeSpan.FromHours(8);
+            options.SlidingExpiration = true;
+            options.Cookie.Name = "hanwas_auth";
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SameSite = SameSiteMode.Lax;
+            // GRUP D hardening will force CookieSecurePolicy.Always for prod;
+            // SameAsRequest keeps local http dev working in the meantime.
+            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        });
+
+    // Role-ready policy: today Manager only; future roles extend via RequireRole(...).
+    builder.Services.AddAuthorization(options =>
+        options.AddPolicy("DashboardAccess", policy =>
+            policy.RequireRole(nameof(ResidentRole.Manager))));
+
+    // Razor Pages (dashboard UI) — protected as a folder unless the flag is off.
+    builder.Services.AddRazorPages(options =>
+    {
+        if (!authEnabled) return;
+        options.Conventions.AuthorizeFolder("/", "DashboardAccess");
+        options.Conventions.AllowAnonymousToPage("/Login");
+        options.Conventions.AllowAnonymousToPage("/Logout");
+    });
 
     // Telegram consumer: run as a simple background service instead of Hangfire recurring job.
     // This avoids distributed lock issues in local development and keeps polling reliable.
@@ -123,12 +160,22 @@ try
         }
     }
 
+    app.UseAuthentication();
+    app.UseAuthorization();
+
     app.MapGet("/", () => Results.Redirect("/overview"));
     app.MapRazorPages();
-    app.MapStatsEndpoints();
-    app.MapReplyEndpoints();
-    app.MapResidentEndpoints();
-    app.MapTicketEndpoints();
+
+    // Dashboard data/mutation APIs — gated behind the same policy as the pages when auth
+    // is enabled (otherwise the page lock would be bypassable via /api/*). The WhatsApp
+    // webhook and /health stay anonymous (mapped on `app` below).
+    var dashboardApi = app.MapGroup("");
+    if (authEnabled)
+        dashboardApi.RequireAuthorization("DashboardAccess");
+    dashboardApi.MapStatsEndpoints();
+    dashboardApi.MapReplyEndpoints();
+    dashboardApi.MapResidentEndpoints();
+    dashboardApi.MapTicketEndpoints();
 
     static bool IsChannelConsumerJob(Job? job)
     {
@@ -151,6 +198,10 @@ try
     {
         var db = scope.ServiceProvider.GetRequiredService<ApartmentTriageDbContext>();
         await db.Database.MigrateAsync();
+
+        // Bootstrap the first Manager (idempotent; no-op until the resident exists).
+        var bootstrapper = scope.ServiceProvider.GetRequiredService<ManagerBootstrapper>();
+        await bootstrapper.RunAsync();
     }
 
     app.Run();

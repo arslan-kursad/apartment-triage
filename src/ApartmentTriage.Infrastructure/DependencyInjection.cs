@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IOtpChallengeRepository, OtpChallengeRepository>();
         services.AddScoped<IAnonymizationService, AnonymizationService>();
         services.AddScoped<IOtpService, OtpService>();
+        services.AddScoped<ManagerBootstrapper>();
 
         // Hangfire — PostgreSQL storage (no Redis)
         services.AddHangfire(cfg => cfg
