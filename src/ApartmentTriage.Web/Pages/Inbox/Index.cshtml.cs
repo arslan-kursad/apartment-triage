@@ -47,6 +47,8 @@ public sealed class IndexModel : PageModel
     }
 
     public string SelectUrl(Guid ticketId) => Compose(ticketId, CurrentPage, PageSize, EffectiveRange);
+    // Mobile master-detail: return to the list, preserving filter/page state, dropping selection.
+    public string BackToListUrl => Compose(null, CurrentPage, PageSize, EffectiveRange);
     public string PageUrl(int page)         => Compose(TicketId, page, PageSize, EffectiveRange);
     public string PageSizeUrl(int size)     => Compose(TicketId, 1, size, EffectiveRange);
     public string PresetUrl(string range)   => Compose(null, 1, PageSize, range);

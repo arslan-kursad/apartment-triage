@@ -11,7 +11,8 @@
 <div class="flex flex-col md:grid md:grid-cols-[28%_44%_28%] -m-4 md:-m-6 h-auto md:h-[calc(100vh-130px)] min-h-[500px] bg-white rounded-xl border border-gray-200 overflow-hidden">
 
     @* ── Left panel: message list (28%) ────────────────────────────────────────── *@
-    <aside class="border-b border-gray-100 md:border-b-0 md:border-r flex flex-col overflow-hidden">
+    @* Mobile master-detail: hide the list once a message is explicitly opened. *@
+    <aside class="@(Model.TicketId.HasValue ? "hidden md:flex" : "flex") border-b border-gray-100 md:border-b-0 md:border-r flex-col overflow-hidden">
         <div class="px-3 py-3 border-b border-gray-100 space-y-2 shrink-0">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -176,7 +177,15 @@
         };
 
         @* ── Middle panel: chat window (44%) ───────────────────────────────────── *@
-        <div class="flex flex-col min-w-0 border-b border-gray-100 md:border-b-0 md:border-r min-h-[300px] md:min-h-0">
+        @* Mobile: shown only when a message is explicitly opened (master-detail). *@
+        <div class="@(Model.TicketId.HasValue ? "flex" : "hidden md:flex") flex-col min-w-0 border-b border-gray-100 md:border-b-0 md:border-r min-h-[300px] md:min-h-0">
+            @* Mobile back-to-list bar *@
+            <a href="@Model.BackToListUrl"
+               class="md:hidden flex items-center gap-1.5 px-4 py-2.5 border-b border-gray-100 text-xs font-medium text-blue-600 shrink-0">
+                <span aria-hidden="true">←</span>
+                <span class="lang-tr">Mesajlara dön</span>
+                <span class="lang-en">Back to messages</span>
+            </a>
             @* Chat header *@
             <div class="px-4 py-3 border-b border-gray-100 flex items-center gap-2 shrink-0">
                 <span class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm font-bold">@d.Initials</span>
@@ -239,7 +248,8 @@
         </div>
 
         @* ── Right panel: AI triage + reply (28%) ─────────────────────────────── *@
-        <aside class="flex flex-col overflow-hidden">
+        @* Mobile: shown only when a message is explicitly opened (master-detail). *@
+        <aside class="@(Model.TicketId.HasValue ? "flex" : "hidden md:flex") flex-col overflow-hidden">
             @* Resident info *@
             <div class="px-3 py-3 border-b border-gray-100">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
