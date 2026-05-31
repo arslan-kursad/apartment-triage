@@ -169,7 +169,15 @@
         // text / placeholder / title. Use data-i18n-tr / data-i18n-en for
         // <option>, JS-built labels and fallbacks (where inline spans don't
         // render), data-i18n-{tr,en}-ph for placeholders, -title for tooltips.
+        // Browser tab title can't host TR/EN spans → swap document.title per language.
+        var PAGE_TITLE = {
+            tr: @Html.Raw(Json.Serialize((ViewData["PageTitleTR"] ?? ViewData["Title"])?.ToString() ?? "")),
+            en: @Html.Raw(Json.Serialize((ViewData["PageTitleEN"] ?? ViewData["Title"])?.ToString() ?? ""))
+        };
+
         function applyLang(l) {
+            var pt = PAGE_TITLE[l] || PAGE_TITLE.tr;
+            if (pt) document.title = pt + ' — Hanwas';
             document.querySelectorAll('.lang-tr').forEach(function (e) {
                 e.style.display = l === 'tr' ? '' : 'none';
             });

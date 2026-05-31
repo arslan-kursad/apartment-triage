@@ -1,6 +1,7 @@
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace ApartmentTriage.Web.Endpoints;
@@ -8,6 +9,9 @@ namespace ApartmentTriage.Web.Endpoints;
 public static class ResidentEndpoints
 {
     private static readonly Regex E164Regex = new(@"^\+\d{10,15}$", RegexOptions.Compiled);
+    // Turkish address content (BLOK / DAİRE / NUMARA) → uppercase with TR casing
+    // so "daire" → "DAİRE" (dotted İ), matching existing seed data.
+    private static readonly CultureInfo TrCulture = new("tr-TR");
 
     public static void MapResidentEndpoints(this IEndpointRouteBuilder app)
     {
@@ -67,14 +71,14 @@ public static class ResidentEndpoints
 
         var resident = Resident.Create(
             displayName:      req.DisplayName?.Trim(),
-            apartmentNumber:  req.ApartmentNumber?.Trim(),
-            whatsAppNumber:   NullIfEmpty(req.WhatsAppNumber),
+            apartmentNumber:  NormalizeUnit(req.ApartmentNumber),
+            whatsAppNumber:   NormalizePhone(req.WhatsAppNumber),
             telegramId:       req.TelegramId,
             preferredLanguage: req.PreferredLanguage is "tr" or "en" ? req.PreferredLanguage : "tr");
 
         resident.UpdateContactInfo(
-            contactPhone:     NullIfEmpty(req.ContactPhone),
-            telegramUsername: NullIfEmpty(req.TelegramUsername));
+            contactPhone:     NormalizePhone(req.ContactPhone),
+            telegramUsername: NormalizeUsername(req.TelegramUsername));
 
         await db.Residents.AddAsync(resident, ct);
         await db.SaveChangesAsync(ct);
@@ -99,17 +103,17 @@ public static class ResidentEndpoints
         // FLAG 3 guard: never overwrite WhatsApp with a masked value ("+90***1234").
         // Masked strings originate from the list-view display; persisting one would
         // corrupt the channel identity. Pass null → UpdateContactInfo keeps existing.
-        var whatsApp = NullIfEmpty(req.WhatsAppNumber);
+        var whatsApp = NormalizePhone(req.WhatsAppNumber);
         if (whatsApp is not null && whatsApp.Contains('*'))
             whatsApp = null;
 
         resident.UpdateContactInfo(
             displayName:      req.DisplayName?.Trim(),
-            apartmentNumber:  req.ApartmentNumber?.Trim(),
+            apartmentNumber:  NormalizeUnit(req.ApartmentNumber),
             whatsAppNumber:   whatsApp,
             telegramId:       req.TelegramId,
-            contactPhone:     NullIfEmpty(req.ContactPhone),
-            telegramUsername: NullIfEmpty(req.TelegramUsername));
+            contactPhone:     NormalizePhone(req.ContactPhone),
+            telegramUsername: NormalizeUsername(req.TelegramUsername));
 
         if (req.PreferredLanguage is "tr" or "en")
             resident.SetPreferredLanguage(req.PreferredLanguage);
@@ -140,14 +144,44 @@ public static class ResidentEndpoints
     {
         if (string.IsNullOrWhiteSpace(req.DisplayName) || req.DisplayName.Trim().Length < 2)
             return "Ad Soyad en az 2 karakter olmalıdır.";
-        if (req.WhatsAppNumber is not null && !string.IsNullOrWhiteSpace(req.WhatsAppNumber)
-            && !E164Regex.IsMatch(req.WhatsAppNumber.Trim()))
+        // Validate the normalized number — input may carry spaces/dashes the user typed.
+        var wa = NormalizePhone(req.WhatsAppNumber);
+        if (wa is not null && !wa.Contains('*') && !E164Regex.IsMatch(wa))
             return "WhatsApp numarası E.164 formatında olmalıdır (+905xxxxxxxxx).";
+        var contact = NormalizePhone(req.ContactPhone);
+        if (contact is not null && !contact.Contains('*') && !E164Regex.IsMatch(contact))
+            return "İletişim telefonu E.164 formatında olmalıdır (+905xxxxxxxxx).";
         return null;
     }
 
     private static string? NullIfEmpty(string? s)
         => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    // ── Normalization: enforce storage consistency regardless of how it was typed ──
+
+    /// <summary>Unit/block → trimmed, collapsed whitespace, Turkish uppercase.</summary>
+    private static string? NormalizeUnit(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        var collapsed = Regex.Replace(s.Trim(), @"\s+", " ");
+        return collapsed.ToUpper(TrCulture);
+    }
+
+    /// <summary>Phone/WhatsApp → strip spaces, dashes, dots, parentheses (E.164 digits only).</summary>
+    private static string? NormalizePhone(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        var cleaned = Regex.Replace(s.Trim(), @"[\s\-().]", "");
+        return cleaned.Length == 0 ? null : cleaned;
+    }
+
+    /// <summary>Telegram username → strip leading '@', lowercase (case-insensitive, ASCII handle).</summary>
+    private static string? NormalizeUsername(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        var cleaned = s.Trim().TrimStart('@').Trim();
+        return cleaned.Length == 0 ? null : cleaned.ToLowerInvariant();
+    }
 }
 
 public sealed record ResidentUpsertRequest(

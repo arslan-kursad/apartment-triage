@@ -244,42 +244,35 @@
         <table class="w-full text-xs">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
-                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide w-8"></th>
                     <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">Ad Soyad</span>
-                        <span class="lang-en">Name</span>
+                        <span class="lang-tr" lang="tr">Durum</span>
+                        <span class="lang-en" lang="en">Status</span>
                     </th>
                     <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">Daire/Blok</span>
-                        <span class="lang-en">Unit</span>
+                        <span class="lang-tr" lang="tr">Ad Soyad</span>
+                        <span class="lang-en" lang="en">Full Name</span>
                     </th>
                     <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">Kanal</span>
-                        <span class="lang-en">Channel</span>
-                    </th>
-                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">Telefon/WA</span>
-                        <span class="lang-en">Phone/WA</span>
+                        <span class="lang-tr" lang="tr">Daire/Blok</span>
+                        <span class="lang-en" lang="en">Unit</span>
                     </th>
                     <th class="hidden md:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">İletişim Tel.</span>
-                        <span class="lang-en">Contact Phone</span>
+                        <span class="lang-tr" lang="tr">İletişim Tel.</span>
+                        <span class="lang-en" lang="en">Contact Phone</span>
+                    </th>
+                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
+                        <span lang="en">WhatsApp</span>
                     </th>
                     <th class="hidden md:table-cell px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">Telegram</span>
-                        <span class="lang-en">Telegram</span>
+                        <span lang="en">Telegram</span>
                     </th>
                     <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">Son Aktivite</span>
-                        <span class="lang-en">Last Active</span>
-                    </th>
-                    <th class="px-3 py-2.5 text-left font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">Durum</span>
-                        <span class="lang-en">Status</span>
+                        <span class="lang-tr" lang="tr">Son Aktivite</span>
+                        <span class="lang-en" lang="en">Last Active</span>
                     </th>
                     <th class="px-3 py-2.5 text-right font-semibold text-gray-500 uppercase tracking-wide">
-                        <span class="lang-tr">İşlemler</span>
-                        <span class="lang-en">Actions</span>
+                        <span class="lang-tr" lang="tr">İşlemler</span>
+                        <span class="lang-en" lang="en">Actions</span>
                     </th>
                 </tr>
             </thead>
@@ -287,42 +280,67 @@
                 @foreach (var row in Model.Rows)
                 {
                     <tr class="hover:bg-gray-50 transition-colors @(row.IsActive ? "" : "opacity-60")">
-                        @* Avatar *@
+                        @* Status badge *@
                         <td class="px-3 py-2.5">
-                            <span class="w-7 h-7 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold">
-                                @row.Initials
-                            </span>
+                            @if (row.IsActive)
+                            {
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                    <span class="lang-tr">Aktif</span>
+                                    <span class="lang-en">Active</span>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                    <span class="lang-tr">Deaktif</span>
+                                    <span class="lang-en">Inactive</span>
+                                </span>
+                            }
                         </td>
-                        @* Name *@
-                        <td class="px-3 py-2.5 font-medium text-gray-800">@row.Name</td>
-                        @* Unit *@
-                        <td class="px-3 py-2.5 text-gray-600">@row.ApartmentNumber</td>
-                        @* Channel icons *@
+                        @* Full Name (avatar + name) *@
                         <td class="px-3 py-2.5">
-                            <div class="flex items-center gap-1.5">
-                                @if (row.HasWhatsApp)
-                                {
-                                    <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:14px" title="WhatsApp"></i>
-                                }
-                                @if (row.HasTelegram)
-                                {
-                                    <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:14px" title="Telegram"></i>
-                                }
-                                @if (!row.HasWhatsApp && !row.HasTelegram)
-                                {
-                                    <span class="text-gray-300">—</span>
-                                }
+                            <div class="flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold shrink-0">
+                                    @row.Initials
+                                </span>
+                                <span class="font-medium text-gray-800">@row.Name</span>
                             </div>
                         </td>
-                        @* Phone *@
-                        <td class="px-3 py-2.5 text-gray-500 font-mono">@(row.PhoneDisplay ?? "—")</td>
-                        @* Contact phone — distinct from channel identity; shown in full for operational contact *@
+                        @* Unit *@
+                        <td class="px-3 py-2.5 text-gray-600">@row.ApartmentNumber</td>
+                        @* Contact phone — operational contact, shown in full *@
                         <td class="hidden md:table-cell px-3 py-2.5 text-gray-500 font-mono">
                             @if (string.IsNullOrEmpty(row.ContactPhone)) { <span class="text-gray-300">—</span> } else { @row.ContactPhone }
                         </td>
+                        @* WhatsApp number (masked) *@
+                        <td class="px-3 py-2.5 text-gray-500 font-mono">
+                            @if (row.HasWhatsApp)
+                            {
+                                <span class="inline-flex items-center gap-1.5">
+                                    <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:13px"></i>
+                                    <span>@row.PhoneDisplay</span>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-gray-300">—</span>
+                            }
+                        </td>
                         @* Telegram username (@handle) *@
                         <td class="hidden md:table-cell px-3 py-2.5 text-gray-500">
-                            @if (string.IsNullOrEmpty(row.TelegramUsername)) { <span class="text-gray-300">—</span> } else { <span>@("@" + row.TelegramUsername)</span> }
+                            @if (string.IsNullOrEmpty(row.TelegramUsername))
+                            {
+                                <span class="text-gray-300">—</span>
+                            }
+                            else
+                            {
+                                <span class="inline-flex items-center gap-1.5">
+                                    <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:13px"></i>
+                                    <span>@("@" + row.TelegramUsername)</span>
+                                </span>
+                            }
                         </td>
                         @* Last activity → resident's tickets *@
                         <td class="px-3 py-2.5">
@@ -337,45 +355,28 @@
                                 <span class="text-gray-400">@row.LastActivity</span>
                             }
                         </td>
-                        @* Status badge *@
-                        <td class="px-3 py-2.5">
-                            @if (row.IsActive)
-                            {
-                                <span class="px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                                    <span class="lang-tr">Aktif</span>
-                                    <span class="lang-en">Active</span>
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
-                                    <span class="lang-tr">Deaktif</span>
-                                    <span class="lang-en">Inactive</span>
-                                </span>
-                            }
-                        </td>
-                        @* Actions *@
+                        @* Actions — icon buttons with tooltips *@
                         <td class="px-3 py-2.5 text-right">
                             <div class="flex items-center justify-end gap-1.5">
                                 <button onclick="editResident('@row.Id')"
-                                        class="px-2 py-1 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors">
-                                    <span class="lang-tr">Düzenle</span>
-                                    <span class="lang-en">Edit</span>
+                                        title="Düzenle" data-i18n-tr-title="Düzenle" data-i18n-en-title="Edit"
+                                        class="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                                    <i class="fa-solid fa-pen text-xs"></i>
                                 </button>
                                 @if (row.IsActive)
                                 {
                                     <button onclick="toggleActive('@row.Id', false)"
-                                            class="px-2 py-1 rounded text-xs font-medium bg-red-50 hover:bg-red-100 text-red-600 transition-colors">
-                                        <span class="lang-tr">Deaktif et</span>
-                                        <span class="lang-en">Deactivate</span>
+                                            title="Deaktif et" data-i18n-tr-title="Deaktif et" data-i18n-en-title="Deactivate"
+                                            class="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50 transition-colors">
+                                        <i class="fa-solid fa-user-slash text-xs"></i>
                                     </button>
                                 }
                                 else
                                 {
                                     <button onclick="toggleActive('@row.Id', true)"
-                                            class="px-2 py-1 rounded text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700 transition-colors">
-                                        <span class="lang-tr">Aktif et</span>
-                                        <span class="lang-en">Reactivate</span>
+                                            title="Aktif et" data-i18n-tr-title="Aktif et" data-i18n-en-title="Reactivate"
+                                            class="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:text-green-700 hover:border-green-300 hover:bg-green-50 transition-colors">
+                                        <i class="fa-solid fa-user-check text-xs"></i>
                                     </button>
                                 }
                             </div>
@@ -385,7 +386,7 @@
                 @if (!Model.Rows.Any())
                 {
                     <tr>
-                        <td colspan="10" class="px-4 py-8 text-center text-gray-400">
+                        <td colspan="8" class="px-4 py-8 text-center text-gray-400">
                             <span class="lang-tr">Sakin bulunamadı</span>
                             <span class="lang-en">No residents found</span>
                         </td>
