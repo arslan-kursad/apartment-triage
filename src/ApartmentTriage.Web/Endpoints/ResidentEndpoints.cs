@@ -50,7 +50,6 @@ public static class ResidentEndpoints
             whatsAppNumber   = r.WhatsAppNumber,
             telegramId       = r.TelegramId,
             contactPhone     = r.ContactPhone,
-            telegramUsername = r.TelegramUsername,
             preferredLanguage = r.PreferredLanguage,
             isActive         = r.IsActive,
             lastActivityAt   = lastActivities.TryGetValue(r.Id, out var lat) ? lat : (DateTime?)null,
@@ -77,8 +76,7 @@ public static class ResidentEndpoints
             preferredLanguage: req.PreferredLanguage is "tr" or "en" ? req.PreferredLanguage : "tr");
 
         resident.UpdateContactInfo(
-            contactPhone:     NormalizePhone(req.ContactPhone),
-            telegramUsername: NormalizeUsername(req.TelegramUsername));
+            contactPhone:     NormalizePhone(req.ContactPhone));
 
         await db.Residents.AddAsync(resident, ct);
         await db.SaveChangesAsync(ct);
@@ -112,8 +110,7 @@ public static class ResidentEndpoints
             apartmentNumber:  NormalizeUnit(req.ApartmentNumber),
             whatsAppNumber:   whatsApp,
             telegramId:       req.TelegramId,
-            contactPhone:     NormalizePhone(req.ContactPhone),
-            telegramUsername: NormalizeUsername(req.TelegramUsername));
+            contactPhone:     NormalizePhone(req.ContactPhone));
 
         if (req.PreferredLanguage is "tr" or "en")
             resident.SetPreferredLanguage(req.PreferredLanguage);
@@ -174,14 +171,6 @@ public static class ResidentEndpoints
         var cleaned = Regex.Replace(s.Trim(), @"[\s\-().]", "");
         return cleaned.Length == 0 ? null : cleaned;
     }
-
-    /// <summary>Telegram username → strip leading '@', lowercase (case-insensitive, ASCII handle).</summary>
-    private static string? NormalizeUsername(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return null;
-        var cleaned = s.Trim().TrimStart('@').Trim();
-        return cleaned.Length == 0 ? null : cleaned.ToLowerInvariant();
-    }
 }
 
 public sealed record ResidentUpsertRequest(
@@ -190,7 +179,6 @@ public sealed record ResidentUpsertRequest(
     string? WhatsAppNumber       = null,
     long?   TelegramId           = null,
     string? ContactPhone         = null,
-    string? TelegramUsername     = null,
     string  PreferredLanguage    = "tr");
 
 public sealed record StatusRequest(bool IsActive);

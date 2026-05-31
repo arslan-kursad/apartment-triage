@@ -81,8 +81,7 @@ public sealed class IndexModel : PageModel
                 (r.DisplayName != null      && EF.Functions.ILike(r.DisplayName, term)) ||
                 (r.ApartmentNumber != null  && EF.Functions.ILike(r.ApartmentNumber, term)) ||
                 (r.WhatsAppNumber != null   && EF.Functions.ILike(r.WhatsAppNumber, term)) ||
-                (r.ContactPhone != null     && EF.Functions.ILike(r.ContactPhone, term)) ||
-                (r.TelegramUsername != null && EF.Functions.ILike(r.TelegramUsername, term)));
+                (r.ContactPhone != null     && EF.Functions.ILike(r.ContactPhone, term)));
         }
 
         // Pagination — validate page size, count matches, clamp page into range
@@ -113,10 +112,10 @@ public sealed class IndexModel : PageModel
             ApartmentNumber: r.ApartmentNumber ?? "—",
             HasWhatsApp:     r.WhatsAppNumber is not null,
             HasTelegram:     r.TelegramId.HasValue,
+            TelegramId:      r.TelegramId,
             PhoneDisplay:    BuildPhoneDisplay(r),
             WhatsAppNumber:  r.WhatsAppNumber,
             ContactPhone:    r.ContactPhone,
-            TelegramUsername: r.TelegramUsername,
             LastActivity:    lastActivities.TryGetValue(r.Id, out var lat)
                                  ? IstanbulTime.Format(lat)
                                  : "—",
@@ -133,7 +132,7 @@ public sealed class IndexModel : PageModel
                 if (r is not null)
                     EditRow = new ResidentRow(r.Id, BuildInitials(r), r.DisplayName ?? "—",
                         r.ApartmentNumber ?? "—", r.WhatsAppNumber is not null, r.TelegramId.HasValue,
-                        BuildPhoneDisplay(r), r.WhatsAppNumber, r.ContactPhone, r.TelegramUsername,
+                        r.TelegramId, BuildPhoneDisplay(r), r.WhatsAppNumber, r.ContactPhone,
                         "—", r.IsActive);
             }
         }
@@ -174,10 +173,10 @@ public sealed class IndexModel : PageModel
         string  ApartmentNumber,
         bool    HasWhatsApp,
         bool    HasTelegram,
+        long?   TelegramId,
         string? PhoneDisplay,
         string? WhatsAppNumber,
         string? ContactPhone,
-        string? TelegramUsername,
         string  LastActivity,
         bool    IsActive);
 }

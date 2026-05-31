@@ -1,4 +1,5 @@
 using ApartmentTriage.Domain.Entities;
+using ApartmentTriage.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -22,12 +23,17 @@ internal sealed class ResidentConfiguration : IEntityTypeConfiguration<Resident>
         b.Property(r => r.ContactPhone)
             .HasMaxLength(20);
 
-        b.Property(r => r.TelegramUsername)
-            .HasMaxLength(50);
-
         b.Property(r => r.PreferredLanguage)
             .HasMaxLength(5)
             .HasDefaultValue("tr")
+            .IsRequired();
+
+        // Authorization role — stored as string (matches enum-as-string convention).
+        // Default "None" backfills existing residents on migration (additive).
+        b.Property(r => r.Role)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(ResidentRole.None)
             .IsRequired();
 
         b.Property(r => r.PendingClarificationTicketId)

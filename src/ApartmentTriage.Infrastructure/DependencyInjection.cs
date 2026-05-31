@@ -34,7 +34,9 @@ public static class DependencyInjection
         services.AddScoped<ITicketRepository, TicketRepository>();
         services.AddScoped<IResidentRepository, ResidentRepository>();
         services.AddScoped<IMessageRepository, MessageRepository>();
+        services.AddScoped<IOtpChallengeRepository, OtpChallengeRepository>();
         services.AddScoped<IAnonymizationService, AnonymizationService>();
+        services.AddScoped<IOtpService, OtpService>();
 
         // Hangfire — PostgreSQL storage (no Redis)
         services.AddHangfire(cfg => cfg

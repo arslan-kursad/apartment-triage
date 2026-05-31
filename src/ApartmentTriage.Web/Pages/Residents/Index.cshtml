@@ -16,8 +16,7 @@
         name = r.Name,
         apt  = r.ApartmentNumber,
         wa   = r.WhatsAppNumber,
-        contactPhone = r.ContactPhone,
-        telegramUsername = r.TelegramUsername
+        contactPhone = r.ContactPhone
     }));
 
     function editResident(id) {
@@ -85,7 +84,6 @@
         document.getElementById('modal-apt').value = '';
         document.getElementById('modal-wa').value = '';
         document.getElementById('modal-contact-phone').value = '';
-        document.getElementById('modal-tg-username').value = '';
         clearFormErrors();
     }
 
@@ -98,7 +96,6 @@
         document.getElementById('modal-apt').value = r.apt === '—' ? '' : (r.apt || '');
         document.getElementById('modal-wa').value = r.wa || '';
         document.getElementById('modal-contact-phone').value = r.contactPhone || '';
-        document.getElementById('modal-tg-username').value = r.telegramUsername || '';
         clearFormErrors();
     }
 
@@ -112,7 +109,6 @@
         var apt  = document.getElementById('modal-apt').value.trim();
         var wa   = document.getElementById('modal-wa').value.trim();
         var contactPhone     = document.getElementById('modal-contact-phone').value.trim();
-        var telegramUsername = document.getElementById('modal-tg-username').value.trim();
 
         // Client-side gate — block submit until inline errors clear
         var nameOk    = validateName();
@@ -131,8 +127,7 @@
                 displayName: name || null,
                 apartmentNumber: apt || null,
                 whatsAppNumber: wa || null,
-                contactPhone: contactPhone || null,
-                telegramUsername: telegramUsername || null
+                contactPhone: contactPhone || null
             })
         })
         .then(function(r) { return r.json(); })
@@ -156,8 +151,7 @@
             name = er.Name,
             apt  = er.ApartmentNumber,
             wa   = er.WhatsAppNumber,
-            contactPhone = er.ContactPhone,
-            telegramUsername = er.TelegramUsername
+            contactPhone = er.ContactPhone
         });
         openEditModal(ed);
     });
@@ -212,9 +206,9 @@
 
     <input type="text" name="Q" value="@Model.Q"
            class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[200px]"
-           placeholder="İsim / Daire / Telefon / Kullanıcı ara…"
-           data-i18n-tr-ph="İsim / Daire / Telefon / Kullanıcı ara…"
-           data-i18n-en-ph="Search name / unit / phone / username…" />
+           placeholder="İsim / Daire / Telefon ara…"
+           data-i18n-tr-ph="İsim / Daire / Telefon ara…"
+           data-i18n-en-ph="Search name / unit / phone…" />
 
     <select name="Channel" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
         <option value="" data-i18n-tr="Tüm Kanallar" data-i18n-en="All Channels">Tüm Kanallar</option>
@@ -328,9 +322,9 @@
                                 <span class="text-gray-300">—</span>
                             }
                         </td>
-                        @* Telegram username (@handle) *@
-                        <td class="hidden md:table-cell px-3 py-2.5 text-gray-500">
-                            @if (string.IsNullOrEmpty(row.TelegramUsername))
+                        @* Telegram identity — TelegramId (chatId) is the sole Telegram identity *@
+                        <td class="hidden md:table-cell px-3 py-2.5 text-gray-500 font-mono">
+                            @if (!row.HasTelegram)
                             {
                                 <span class="text-gray-300">—</span>
                             }
@@ -338,7 +332,7 @@
                             {
                                 <span class="inline-flex items-center gap-1.5">
                                     <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:13px"></i>
-                                    <span>@("@" + row.TelegramUsername)</span>
+                                    <span>@row.TelegramId</span>
                                 </span>
                             }
                         </td>
@@ -525,15 +519,6 @@
                        class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="+90 5xx xxx xx xx" />
                 <p id="err-contact" class="hidden text-xs text-red-600 mt-1"></p>
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">
-                    <span class="lang-tr">Telegram Kullanıcı Adı</span>
-                    <span class="lang-en">Telegram Username</span>
-                </label>
-                <input id="modal-tg-username" type="text"
-                       class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       placeholder="@@kullanici" data-i18n-tr-ph="@@kullanici" data-i18n-en-ph="@@username" />
             </div>
         </div>
         <div class="px-5 py-3 border-t border-gray-100 flex items-center justify-end gap-2">

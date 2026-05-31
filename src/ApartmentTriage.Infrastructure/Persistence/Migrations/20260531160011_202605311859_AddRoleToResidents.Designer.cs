@@ -3,6 +3,7 @@ using System;
 using ApartmentTriage.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -12,9 +13,11 @@ using Pgvector;
 namespace ApartmentTriage.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApartmentTriageDbContext))]
-    partial class ApartmentTriageDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260531160011_202605311859_AddRoleToResidents")]
+    partial class _202605311859_AddRoleToResidents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -90,59 +93,6 @@ namespace ApartmentTriage.Infrastructure.Persistence.Migrations
                     b.ToTable("messages", (string)null);
                 });
 
-            modelBuilder.Entity("ApartmentTriage.Domain.Entities.OtpChallenge", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("attempt_count");
-
-                    b.Property<string>("Channel")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("channel");
-
-                    b.Property<string>("CodeHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("code_hash");
-
-                    b.Property<DateTime?>("ConsumedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("consumed_at");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.Property<string>("Identifier")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("identifier");
-
-                    b.HasKey("Id")
-                        .HasName("pk_otp_challenges");
-
-                    b.HasIndex("CodeHash")
-                        .HasDatabaseName("ix_otp_challenges_code_hash");
-
-                    b.HasIndex("Identifier", "Channel", "CreatedAt")
-                        .HasDatabaseName("ix_otp_challenges_identifier_channel_created_at");
-
-                    b.ToTable("otp_challenges", (string)null);
-                });
-
             modelBuilder.Entity("ApartmentTriage.Domain.Entities.Resident", b =>
                 {
                     b.Property<Guid>("Id")
@@ -196,6 +146,11 @@ namespace ApartmentTriage.Infrastructure.Persistence.Migrations
                     b.Property<long?>("TelegramId")
                         .HasColumnType("bigint")
                         .HasColumnName("telegram_id");
+
+                    b.Property<string>("TelegramUsername")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("telegram_username");
 
                     b.Property<string>("WhatsAppNumber")
                         .HasMaxLength(20)

@@ -1,4 +1,5 @@
 using System.Globalization;
+using ApartmentTriage.Domain.Enums;
 
 namespace ApartmentTriage.Domain.Entities;
 
@@ -25,14 +26,18 @@ public sealed class Resident
     /// <summary>Contact phone for reaching the resident — NOT a channel identity. May differ from WhatsAppNumber.</summary>
     public string? ContactPhone { get; private set; }
 
-    /// <summary>Telegram @username (display/contact only). TelegramId remains the channel identity.</summary>
-    public string? TelegramUsername { get; private set; }
-
     /// <summary>"tr" or "en". Detected from channel language_code or message content on first contact.</summary>
     public string PreferredLanguage { get; private set; } = "tr";
 
     /// <summary>Soft-delete flag. False means resident is deactivated but data retained (KVKK).</summary>
     public bool IsActive { get; private set; } = true;
+
+    /// <summary>
+    /// Authorization role for dashboard access. Additive — default <see cref="ResidentRole.None"/>
+    /// (a plain resident cannot log in). Set to <see cref="ResidentRole.Manager"/> via bootstrap
+    /// or admin action. Not a channel identity.
+    /// </summary>
+    public ResidentRole Role { get; private set; } = ResidentRole.None;
 
     /// <summary>
     /// Set when a clarification question is sent to the resident. The next incoming message
@@ -92,20 +97,21 @@ public sealed class Resident
         string? apartmentNumber = null,
         string? whatsAppNumber = null,
         long? telegramId = null,
-        string? contactPhone = null,
-        string? telegramUsername = null)
+        string? contactPhone = null)
     {
         if (displayName is not null) DisplayName = NormalizeDisplayName(displayName);
         if (apartmentNumber is not null) ApartmentNumber = apartmentNumber.Trim();
         if (whatsAppNumber is not null) WhatsAppNumber = whatsAppNumber.Trim();
         if (telegramId.HasValue) TelegramId = telegramId;
         if (contactPhone is not null) ContactPhone = contactPhone.Trim();
-        if (telegramUsername is not null) TelegramUsername = telegramUsername.Trim().TrimStart('@');
     }
 
     public void Deactivate() => IsActive = false;
 
     public void Reactivate() => IsActive = true;
+
+    /// <summary>Assigns the authorization role. Used by bootstrap and admin role management.</summary>
+    public void SetRole(ResidentRole role) => Role = role;
 
     /// <summary>KVKK anonymization — irreversible. Call only from AnonymizationService.</summary>
     public void Anonymize()
