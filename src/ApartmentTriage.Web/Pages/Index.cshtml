@@ -13,14 +13,14 @@
 @* ── Tab navigation ──────────────────────────────────────────────────────────── *@
 <div class="border-b border-slate-200 mb-6">
     <nav class="flex gap-6 -mb-px text-sm" id="ov-tab-nav">
+        <button type="button" data-tab="ops" class="ov-tab py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">
+            <span class="lang-tr">Operasyon</span><span class="lang-en">Operations</span>
+        </button>
         <button type="button" data-tab="perf" class="ov-tab py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">
             <span class="lang-tr">Performans</span><span class="lang-en">Performance</span>
         </button>
         <button type="button" data-tab="finops" class="ov-tab py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">
             FinOps
-        </button>
-        <button type="button" data-tab="ops" class="ov-tab py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">
-            <span class="lang-tr">Operasyon</span><span class="lang-en">Operations</span>
         </button>
     </nav>
 </div>
@@ -244,9 +244,9 @@
         </div>
     </div>
 
-    @* Row: live feed + status *@
+    @* Row: live feed (2/3) | Ticket Status + Channel Distribution stacked (1/3) *@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        @* Live triage feed (preserved, prominent) *@
+        @* Live triage feed — 2/3 *@
         <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200">
             <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
                 <h2 class="font-semibold text-slate-900 text-sm flex items-center gap-2">
@@ -324,24 +324,38 @@
             }
         </div>
 
-        @* Ticket status distribution (cards + donut) *@
-        <div class="bg-white rounded-xl border border-slate-200">
-            <div class="px-5 py-3.5 border-b border-slate-100">
-                <h2 class="font-semibold text-slate-900 text-sm">
-                    <span class="lang-tr">Ticket Durumu</span>
-                    <span class="lang-en">Ticket Status</span>
-                </h2>
+        @* Right column: Ticket Status (top) + Channel Distribution (bottom) — 1/3 *@
+        <div class="flex flex-col gap-4">
+            @* Ticket status distribution (cards + donut) *@
+            <div class="bg-white rounded-xl border border-slate-200 flex-1">
+                <div class="px-5 py-3.5 border-b border-slate-100">
+                    <h2 class="font-semibold text-slate-900 text-sm">
+                        <span class="lang-tr">Ticket Durumu</span>
+                        <span class="lang-en">Ticket Status</span>
+                    </h2>
+                </div>
+                <div class="p-4">
+                    <div id="ov-status-cards" class="flex flex-wrap gap-2 mb-3"></div>
+                    <div class="flex items-center justify-center"><canvas id="statusChart" height="150"></canvas></div>
+                </div>
             </div>
-            <div class="p-4">
-                <div id="ov-status-cards" class="flex flex-wrap gap-2 mb-4"></div>
-                <div class="flex items-center justify-center"><canvas id="statusChart" height="180"></canvas></div>
+
+            @* Channel distribution — 1/3 bottom *@
+            <div class="bg-white rounded-xl border border-slate-200">
+                <div class="px-5 py-3.5 border-b border-slate-100">
+                    <h2 class="font-semibold text-slate-900 text-sm">
+                        <span class="lang-tr">Kanal Dağılımı</span>
+                        <span class="lang-en">Channel Distribution</span>
+                    </h2>
+                </div>
+                <div class="p-4 flex items-center justify-center"><canvas id="channelChart" height="150"></canvas></div>
             </div>
         </div>
     </div>
 
-    @* Row: trend + channel *@
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200">
+    @* Row: Daily Trend (1/2) + Hourly Intensity (1/2) — equal width *@
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div class="bg-white rounded-xl border border-slate-200">
             <div class="px-5 py-3.5 border-b border-slate-100">
                 <h2 class="font-semibold text-slate-900 text-sm">
                     <span class="lang-tr">Günlük Ticket Trendi</span>
@@ -353,23 +367,12 @@
         <div class="bg-white rounded-xl border border-slate-200">
             <div class="px-5 py-3.5 border-b border-slate-100">
                 <h2 class="font-semibold text-slate-900 text-sm">
-                    <span class="lang-tr">Kanal Dağılımı</span>
-                    <span class="lang-en">Channel Distribution</span>
+                    <span class="lang-tr">Saat Bazlı Yoğunluk</span>
+                    <span class="lang-en">Hourly Intensity</span>
                 </h2>
             </div>
-            <div class="p-4 flex items-center justify-center"><canvas id="channelChart" height="200"></canvas></div>
+            <div class="p-4"><canvas id="hourlyChart" height="200"></canvas></div>
         </div>
-    </div>
-
-    @* Row: hourly *@
-    <div class="bg-white rounded-xl border border-slate-200">
-        <div class="px-5 py-3.5 border-b border-slate-100">
-            <h2 class="font-semibold text-slate-900 text-sm">
-                <span class="lang-tr">Saat Bazlı Yoğunluk (İstanbul)</span>
-                <span class="lang-en">Hourly Intensity (Istanbul)</span>
-            </h2>
-        </div>
-        <div class="p-4"><canvas id="hourlyChart" height="200"></canvas></div>
     </div>
 </div>
 
@@ -542,7 +545,7 @@
         b.addEventListener('click', function () { activate(b.getAttribute('data-tab')); });
     });
 
-    activate('perf');
+    activate('ops');
 
     // Re-render charts (labels) when language toggles.
     var origToggle = window.toggleLang;
