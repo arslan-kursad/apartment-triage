@@ -1,0 +1,93 @@
+@page "/login"
+@model ApartmentTriage.Web.Pages.LoginModel
+@{
+    Layout = null;
+    var title = "Giriş";
+}
+<!DOCTYPE html>
+<html lang="tr" class="h-full">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@title — Hanwas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body class="min-h-full bg-slate-50 text-slate-900">
+    <main class="min-h-screen grid place-items-center px-4 py-8">
+        <section class="w-full max-w-sm">
+            <div class="mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="grid h-10 w-10 place-items-center rounded-lg bg-slate-900 text-white">
+                        <i class="fa-solid fa-building text-sm"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-semibold leading-tight">Hanwas</h1>
+                        <p class="text-sm text-slate-500">
+                            <span class="lang-tr">Yönetici girişi</span>
+                            <span class="lang-en hidden">Manager sign-in</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-4 rounded-md border border-sky-100 bg-sky-50 p-3 text-sm text-sky-900">
+                    <p class="lang-tr">
+                        Telegram'da <span class="font-semibold">@@HanwasBot</span> hesabına
+                        <span class="font-mono font-semibold">/login</span> yazın. Size 6 haneli bir kod göndereceğiz.
+                    </p>
+                    <p class="lang-en hidden">
+                        Send <span class="font-mono font-semibold">/login</span> to
+                        <span class="font-semibold">@@HanwasBot</span> on Telegram. We will send you a 6-digit code.
+                    </p>
+                </div>
+
+                @if (Model.Message is not null)
+                {
+                    <div class="mb-4 rounded-md border @Model.Message.CssClass p-3 text-sm">
+                        <span class="lang-tr">@Model.Message.Tr</span>
+                        <span class="lang-en hidden">@Model.Message.En</span>
+                    </div>
+                }
+
+                <form method="post" class="space-y-4" autocomplete="one-time-code">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label asp-for="Code" class="mb-1.5 block text-sm font-medium text-slate-700">
+                            <span class="lang-tr">6 haneli kod</span>
+                            <span class="lang-en hidden">6-digit code</span>
+                        </label>
+                        <input asp-for="Code"
+                               inputmode="numeric"
+                               pattern="[0-9]{6}"
+                               maxlength="6"
+                               class="block w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-lg tracking-[0.25em] text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+                               placeholder="123456" />
+                        <span asp-validation-for="Code" class="mt-1 block text-sm text-rose-600"></span>
+                    </div>
+
+                    <button type="submit"
+                            class="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i>
+                        <span class="lang-tr">Doğrula ve Gir</span>
+                        <span class="lang-en hidden">Verify and Sign In</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script>
+    (function () {
+        var current = localStorage.getItem('atriage_lang') || 'tr';
+        function applyLang(lang) {
+            document.documentElement.lang = lang;
+            document.querySelectorAll('.lang-tr').forEach(function (el) { el.classList.toggle('hidden', lang !== 'tr'); });
+            document.querySelectorAll('.lang-en').forEach(function (el) { el.classList.toggle('hidden', lang !== 'en'); });
+        }
+        applyLang(current);
+    })();
+    </script>
+</body>
+</html>

@@ -2,6 +2,7 @@ using System.Text.Json;
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
+using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,7 @@ public sealed class ChannelConsumerJob(
     IResidentRepository residentRepository,
     IMessageRepository messageRepository,
     ITicketRepository ticketRepository,
+    IOtpService otpService,
     ITriageOrchestrator orchestrator,
     ILogger<ChannelConsumerJob> logger)
 {
@@ -50,6 +52,12 @@ public sealed class ChannelConsumerJob(
         if (!long.TryParse(incoming.SenderId, out var telegramId))
         {
             logger.LogWarning("Non-numeric Telegram SenderId {SenderId} — skipping", incoming.SenderId);
+            return;
+        }
+
+        if (IsLoginCommand(incoming.Text))
+        {
+            await HandleLoginCommandAsync(incoming, ct);
             return;
         }
 
@@ -207,6 +215,14 @@ public sealed class ChannelConsumerJob(
         await messageRepository.SaveChangesAsync(ct);
     }
 
+    private async Task HandleLoginCommandAsync(IncomingMessage incoming, CancellationToken ct)
+    {
+        var result = await otpService.GenerateAndSendAsync(incoming.SenderId, channel.ChannelType, ct);
+        logger.LogInformation(
+            "Telegram /login handled for {SenderId} with status {Status}",
+            incoming.SenderId, result);
+    }
+
     private static string GetWelcomeMessage(string lang) => lang == "en" ? """
         👋 Hello! I'm Hanwas.
         Just describe your maintenance issue — our system will assess and route it to your building manager automatically.
@@ -241,6 +257,9 @@ public sealed class ChannelConsumerJob(
         if (text.Any(c => "çğıöşüÇĞİÖŞÜ".Contains(c))) return "tr";
         return "en";
     }
+
+    private static bool IsLoginCommand(string text)
+        => text.Trim().Equals("/login", StringComparison.OrdinalIgnoreCase);
 
     private async Task<Resident> CreateResidentAsync(long telegramId, string preferredLanguage, CancellationToken ct)
     {

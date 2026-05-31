@@ -1,6 +1,7 @@
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
+using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Web.Jobs;
@@ -30,6 +31,7 @@ public class ChannelConsumerJobTests
             residentRepository,
             messageRepository,
             new FakeTicketRepository(),
+            new FakeOtpService(),
             orchestrator,
             NullLogger<ChannelConsumerJob>.Instance);
 
@@ -62,6 +64,7 @@ public class ChannelConsumerJobTests
             residentRepository,
             messageRepository,
             new FakeTicketRepository(),
+            new FakeOtpService(),
             orchestrator,
             NullLogger<ChannelConsumerJob>.Instance);
 
@@ -74,6 +77,35 @@ public class ChannelConsumerJobTests
 
         residentRepository.AddedResidents.Should().BeEmpty();
         messageRepository.AddedMessages.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task RunAsync_LoginCommand_RequestsOtpAndSkipsTriage()
+    {
+        var sentMessages = new List<(string RecipientId, string Text)>();
+        var channel = new FakeTelegramChannel(sentMessages, text: "/login");
+        var residentRepository = new FakeResidentRepository(existingResident: Resident.Create(telegramId: 8013067042));
+        var messageRepository = new FakeMessageRepository();
+        var orchestrator = new FakeTriageOrchestrator();
+        var otpService = new FakeOtpService();
+
+        var job = new ChannelConsumerJob(
+            channel,
+            residentRepository,
+            messageRepository,
+            new FakeTicketRepository(),
+            otpService,
+            orchestrator,
+            NullLogger<ChannelConsumerJob>.Instance);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await job.RunAsync(cts.Token);
+
+        otpService.GenerateRequests.Should().ContainSingle(r =>
+            r.Identifier == "8013067042" && r.Channel == ChannelType.Telegram);
+        messageRepository.AddedMessages.Should().BeEmpty();
+        orchestrator.ProcessCallCount.Should().Be(0);
+        sentMessages.Should().BeEmpty();
     }
 }
 
@@ -101,10 +133,12 @@ public class ClarificationTemplatesTests
 internal sealed class FakeTelegramChannel : IMessageChannel
 {
     private readonly List<(string RecipientId, string Text)> _sentMessages;
+    private readonly string _text;
 
-    public FakeTelegramChannel(List<(string RecipientId, string Text)> sentMessages)
+    public FakeTelegramChannel(List<(string RecipientId, string Text)> sentMessages, string text = "Merhaba, asansör bozuk.")
     {
         _sentMessages = sentMessages;
+        _text = text;
     }
 
     public ChannelType ChannelType => ChannelType.Telegram;
@@ -114,7 +148,7 @@ internal sealed class FakeTelegramChannel : IMessageChannel
         yield return new IncomingMessage(
             ExternalId: "mock-001",
             SenderId: "8013067042",
-            Text: "Merhaba, asansör bozuk.",
+            Text: _text,
             ReceivedAt: DateTime.UtcNow);
         await Task.CompletedTask;
     }
@@ -197,17 +231,22 @@ internal sealed class FakeTicketRepository : ITicketRepository
 
 internal sealed class FakeTriageOrchestrator : ITriageOrchestrator
 {
+    public int ProcessCallCount { get; private set; }
+
     public Task<TriageResult> ProcessAsync(
         Message message,
         string preferredLanguage = "tr",
         byte[]? imageData = null,
         string? imageMimeType = null,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(TriageResult.Ok(
+    {
+        ProcessCallCount++;
+        return Task.FromResult(TriageResult.Ok(
             new List<Ticket>(),
             replyText: preferredLanguage == "en"
                 ? "✅ Your request has been received and recorded."
                 : "✅ Talebinizi aldık. Sorununuzu sistemimize kaydettik; yöneticiniz en kısa sürede bilgilendirilecektir."));
+    }
 
     public Task<TriageResult> ReclassifyTicketAsync(
         Ticket ticket,
@@ -219,4 +258,21 @@ internal sealed class FakeTriageOrchestrator : ITriageOrchestrator
             replyText: preferredLanguage == "en"
                 ? "✅ Your issue has been re-classified and recorded."
                 : "✅ Talebiniz yeniden sınıflandırıldı ve kaydedildi."));
+}
+
+internal sealed class FakeOtpService : IOtpService
+{
+    public List<(string Identifier, ChannelType Channel)> GenerateRequests { get; } = new();
+
+    public Task<OtpSendStatus> GenerateAndSendAsync(
+        string identifier,
+        ChannelType channel,
+        CancellationToken cancellationToken = default)
+    {
+        GenerateRequests.Add((identifier, channel));
+        return Task.FromResult(OtpSendStatus.Sent);
+    }
+
+    public Task<OtpVerifyResult> VerifyAsync(string code, CancellationToken cancellationToken = default)
+        => Task.FromResult(OtpVerifyResult.Invalid);
 }

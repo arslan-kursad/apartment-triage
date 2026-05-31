@@ -5,6 +5,7 @@ using ApartmentTriage.Infrastructure.Persistence;
 using ApartmentTriage.Infrastructure.Services;
 using ApartmentTriage.Web.Endpoints;
 using ApartmentTriage.Web.Jobs;
+using ApartmentTriage.Web.Security;
 using Hangfire;
 using Hangfire.Common;
 using Hangfire.Dashboard;
@@ -73,14 +74,19 @@ try
             options.LoginPath = "/login";
             options.LogoutPath = "/logout";
             options.AccessDeniedPath = "/login";   // GRUP B: friendly "panel atanmadı" message
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                context.Response.Redirect("/login?reason=denied");
+                return Task.CompletedTask;
+            };
             options.ExpireTimeSpan = TimeSpan.FromHours(8);
             options.SlidingExpiration = true;
             options.Cookie.Name = "hanwas_auth";
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            // GRUP D hardening will force CookieSecurePolicy.Always for prod;
-            // SameAsRequest keeps local http dev working in the meantime.
-            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+                ? CookieSecurePolicy.SameAsRequest
+                : CookieSecurePolicy.Always;
         });
 
     // Role-ready policy: today Manager only; future roles extend via RequireRole(...).
@@ -102,6 +108,7 @@ try
     builder.Services.AddTransient<ChannelConsumerJob>();
     builder.Services.AddTransient<WhatsAppConsumerJob>();
     builder.Services.AddHostedService<TelegramConsumerHostedService>();
+    builder.Services.AddSingleton<LoginAttemptLimiter>();
 
     var app = builder.Build();
 
@@ -110,9 +117,14 @@ try
     if (app.Environment.IsDevelopment())
         app.UseDeveloperExceptionPage();
 
+    app.UseAuthentication();
+    app.UseAuthorization();
+
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
     {
-        Authorization = Array.Empty<IDashboardAuthorizationFilter>()
+        Authorization = authEnabled
+            ? [new HangfireDashboardAuthorizationFilter()]
+            : Array.Empty<IDashboardAuthorizationFilter>()
     });
 
     // Remove stale Telegram recurring jobs from previous deployments.
@@ -159,9 +171,6 @@ try
             Log.Information("Deleted stale Hangfire scheduled job '{JobId}'", scheduledJob.Key);
         }
     }
-
-    app.UseAuthentication();
-    app.UseAuthorization();
 
     app.MapGet("/", () => Results.Redirect("/overview"));
     app.MapRazorPages();
