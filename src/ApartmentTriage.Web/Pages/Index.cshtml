@@ -1,520 +1,555 @@
 @page "/overview"
 @model ApartmentTriage.Web.Pages.IndexModel
 @using ApartmentTriage.Domain.Enums
+@using ApartmentTriage.Web.Helpers
 @{
     ViewData["Title"]       = "Genel Bakış";
     ViewData["PageTitleTR"] = "Genel Bakış";
     ViewData["PageTitleEN"] = "Overview";
+
+    string Pct(double? v) => v.HasValue ? $"%{(v.Value * 100).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}" : "—";
 }
 
-@* ── KPI Grid ─────────────────────────────────────────────────────────────────── *@
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
-    @* Total tickets *@
-    <a href="/tickets" class="bg-white rounded-xl border border-gray-200 p-5 flex items-start justify-between cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all">
-        <div>
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                <span class="lang-tr">Toplam Ticket</span>
-                <span class="lang-en">Total Tickets</span>
-            </p>
-            <p class="text-3xl font-bold text-gray-900">@Model.TotalTickets</p>
-        </div>
-        <span class="p-2 bg-blue-50 rounded-lg">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-        </span>
-    </a>
-
-    @* Emergency *@
-    <a href="/tickets?emergency=true" class="bg-white rounded-xl border border-red-200 p-5 flex items-start justify-between cursor-pointer hover:border-red-400 hover:shadow-sm transition-all">
-        <div>
-            <p class="text-xs font-medium text-red-500 uppercase tracking-wide mb-1">
-                <span class="lang-tr">Acil Durum</span>
-                <span class="lang-en">Emergency</span>
-            </p>
-            <p class="text-3xl font-bold text-red-600">@Model.EmergencyCount</p>
-            @if (Model.TotalTickets > 0)
-            {
-                var pct = Math.Round((double)Model.EmergencyCount / Model.TotalTickets * 100, 1);
-                <p class="text-xs text-red-400 mt-1">%@pct
-                    <span class="lang-tr"> oran</span>
-                    <span class="lang-en"> rate</span>
-                </p>
-            }
-        </div>
-        <span class="p-2 bg-red-50 rounded-lg">
-            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-        </span>
-    </a>
-
-    @* Avg AI confidence *@
-    <div class="bg-white rounded-xl border border-gray-200 p-5 flex items-start justify-between">
-        <div>
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                <span class="lang-tr">Ort. AI Güven</span>
-                <span class="lang-en">Avg. AI Confidence</span>
-            </p>
-            <p class="text-3xl font-bold text-gray-900">
-                @if (Model.TotalTickets > 0) { @($"%{Model.AvgConfidence:F0}") } else { <span class="text-gray-300">—</span> }
-            </p>
-            <p class="text-xs text-gray-400 mt-1">
-                <span class="lang-tr">AI öz-güven skoru</span>
-                <span class="lang-en">AI self-confidence score</span>
-            </p>
-        </div>
-        <span class="p-2 bg-purple-50 rounded-lg">
-            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-        </span>
-    </div>
-
-    @* Active channels *@
-    <div class="bg-white rounded-xl border border-gray-200 p-5 flex items-start justify-between">
-        <div>
-            <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                <span class="lang-tr">Aktif Kanal</span>
-                <span class="lang-en">Active Channels</span>
-            </p>
-            <p class="text-3xl font-bold text-gray-900">
-                @((Model.WaCount > 0 ? 1 : 0) + (Model.TgCount > 0 ? 1 : 0))
-            </p>
-            <div class="flex items-center gap-2 mt-1">
-                @if (Model.WaCount > 0)
-                {
-                    <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-                        <span class="w-2 h-2 rounded-full bg-[#25D366]"></span>
-                        WA @Model.WaCount
-                    </span>
-                }
-                @if (Model.TgCount > 0)
-                {
-                    <span class="inline-flex items-center gap-1 text-xs text-gray-500">
-                        <span class="w-2 h-2 rounded-full bg-[#229ED9]"></span>
-                        TG @Model.TgCount
-                    </span>
-                }
-            </div>
-        </div>
-        <span class="p-2 bg-green-50 rounded-lg">
-            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-        </span>
-    </div>
-
+@* ── Tab navigation ──────────────────────────────────────────────────────────── *@
+<div class="border-b border-slate-200 mb-6">
+    <nav class="flex gap-6 -mb-px text-sm" id="ov-tab-nav">
+        <button type="button" data-tab="perf" class="ov-tab py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">
+            <span class="lang-tr">Performans</span><span class="lang-en">Performance</span>
+        </button>
+        <button type="button" data-tab="finops" class="ov-tab py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">
+            FinOps
+        </button>
+        <button type="button" data-tab="ops" class="ov-tab py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">
+            <span class="lang-tr">Operasyon</span><span class="lang-en">Operations</span>
+        </button>
+    </nav>
 </div>
 
-@* ── Middle row: Feed + Category chart ───────────────────────────────────────── *@
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+@* ═══════════════ TAB 1 — PERFORMANS ═══════════════ *@
+<div data-panel="perf">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
-    @* Live triage feed (2 cols) *@
-    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200">
-        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 class="font-semibold text-gray-900 text-sm">
-                <span class="lang-tr">Canlı Triage Akışı</span>
-                <span class="lang-en">Live Triage Feed</span>
-            </h2>
-            <a href="/tickets" class="text-xs text-blue-600 hover:underline">
-                <span class="lang-tr">Tümünü gör →</span>
-                <span class="lang-en">View all →</span>
-            </a>
+        @* Category accuracy *@
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Kategori Doğruluğu</span>
+                <span class="lang-en">Category Accuracy</span>
+            </p>
+            <p class="text-2xl font-bold text-emerald-600">@Pct(Model.CategoryAccuracy)</p>
+            <p class="text-xs text-slate-400 mt-0.5">@Model.EvalTotalCases
+                <span class="lang-tr">vaka</span><span class="lang-en">cases</span>
+                @if (Model.EvalRunDate is not null) { <text>· @Model.EvalRunDate</text> }
+            </p>
         </div>
 
-        @if (!Model.RecentTickets.Any())
-        {
-            <div class="px-5 py-8 text-center text-gray-400 text-sm">
-                <span class="lang-tr">Henüz ticket yok.</span>
-                <span class="lang-en">No tickets yet.</span>
-            </div>
-        }
-        else
-        {
-            <ul class="divide-y divide-gray-50">
-                @foreach (var item in Model.RecentTickets)
-                {
-                    var sevColor = item.Severity switch
-                    {
-                        TicketSeverity.Urgent => "bg-red-100 text-red-700",
-                        TicketSeverity.High   => "bg-orange-100 text-orange-700",
-                        TicketSeverity.Medium => "bg-blue-100 text-blue-700",
-                        _                     => "bg-gray-100 text-gray-600"
-                    };
+        @* Emergency recall *@
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Acil Recall</span>
+                <span class="lang-en">Emergency Recall</span>
+            </p>
+            <p class="text-2xl font-bold text-emerald-600">@Pct(Model.EmergencyRecall)</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+                <span class="lang-tr">hiçbir acil kaçmıyor</span>
+                <span class="lang-en">no emergency missed</span>
+            </p>
+        </div>
 
-                    <li class="hover:bg-gray-50 transition-colors">
-                        <a href="/tickets/@item.Id" class="block px-5 py-3 cursor-pointer">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-start gap-2 min-w-0">
-                                @* Channel icon *@
-                                <span class="mt-0.5 shrink-0 w-4 text-center">
-                                    @if (item.Channel == ChannelType.WhatsApp)
-                                    {
-                                        <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:13px"></i>
-                                    }
-                                    else if (item.Channel == ChannelType.Telegram)
-                                    {
-                                        <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:13px"></i>
-                                    }
-                                    else
-                                    {
-                                        <span class="inline-block w-2 h-2 rounded-full bg-gray-400 mt-1"></span>
-                                    }
-                                </span>
-                                <div class="min-w-0">
-                                    <div class="flex items-center gap-2 flex-wrap">
-                                        <span class="text-xs font-medium text-gray-700">@item.Category</span>
-                                        @if (item.IsEmergency)
-                                        {
-                                            <span class="px-1.5 py-0.5 rounded text-xs font-bold bg-red-600 text-white">
-                                                <span class="lang-tr">ACİL</span>
-                                                <span class="lang-en">EMRG</span>
-                                            </span>
-                                        }
-                                    </div>
-                                    <p class="text-xs text-gray-400 mt-0.5 truncate">@item.Preview</p>
-                                    <p class="text-xs text-gray-400 mt-0.5">@item.Resident</p>
-                                </div>
-                            </div>
-                            <div class="shrink-0 flex flex-col items-end gap-1">
-                                <span class="px-2 py-0.5 rounded-full text-xs font-medium @sevColor">@item.Severity</span>
-                                <span class="text-xs text-gray-400">@item.TimeIst</span>
-                            </div>
-                        </div>
-                        </a>
-                    </li>
-                }
-            </ul>
-        }
+        @* Emergency precision — the honest trade-off *@
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Acil Precision</span>
+                <span class="lang-en">Emergency Precision</span>
+            </p>
+            <p class="text-2xl font-bold text-amber-600">@Pct(Model.EmergencyPrecision)</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+                <span class="lang-tr">bilinçli temkinli</span>
+                <span class="lang-en">deliberately cautious</span>
+            </p>
+        </div>
+
+        @* AI confidence distribution (replaces the old fake average) *@
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">
+                <span class="lang-tr">AI Güven Dağılımı</span>
+                <span class="lang-en">AI Confidence</span>
+            </p>
+            @if (Model.ConfTotal > 0)
+            {
+                <div class="flex h-2.5 rounded-full overflow-hidden bg-slate-100">
+                    <div class="bg-emerald-500" style="width:@(Model.ConfPct(Model.ConfHigh))%"   title="High @Model.ConfHigh"></div>
+                    <div class="bg-amber-400"   style="width:@(Model.ConfPct(Model.ConfMedium))%" title="Medium @Model.ConfMedium"></div>
+                    <div class="bg-rose-400"    style="width:@(Model.ConfPct(Model.ConfLow))%"    title="Low @Model.ConfLow"></div>
+                </div>
+                <div class="flex justify-between text-xs text-slate-500 mt-2">
+                    <span><span class="lang-tr">Yüksek</span><span class="lang-en">High</span> @Model.ConfHigh</span>
+                    <span><span class="lang-tr">Orta</span><span class="lang-en">Med</span> @Model.ConfMedium</span>
+                    <span><span class="lang-tr">Düşük</span><span class="lang-en">Low</span> @Model.ConfLow</span>
+                </div>
+            }
+            else
+            {
+                <p class="text-2xl font-bold text-slate-300">—</p>
+            }
+        </div>
     </div>
 
-    @* Category + channel charts (1 col) *@
-    <div class="flex flex-col gap-4">
-        <div class="bg-white rounded-xl border border-gray-200 flex-1">
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h2 class="font-semibold text-gray-900 text-sm">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-900 text-sm">
                     <span class="lang-tr">Kategori Dağılımı</span>
                     <span class="lang-en">Category Distribution</span>
                 </h2>
             </div>
+            <div class="p-4"><canvas id="categoryChart" height="260"></canvas></div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-900 text-sm">
+                    <span class="lang-tr">Şiddet Dağılımı</span>
+                    <span class="lang-en">Severity Distribution</span>
+                </h2>
+            </div>
+            <div class="p-4 flex items-center justify-center"><canvas id="severityChart" height="240"></canvas></div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-900 text-sm">
+                    <span class="lang-tr">Yönlendirme Dağılımı</span>
+                    <span class="lang-en">Routing Distribution</span>
+                </h2>
+            </div>
+            <div class="p-4"><canvas id="routingChart" height="240"></canvas></div>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════ TAB 2 — FINOPS ═══════════════ *@
+<div data-panel="finops" class="hidden">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Toplam API Maliyeti</span>
+                <span class="lang-en">Total API Cost</span>
+            </p>
+            <p class="text-2xl font-bold text-slate-900">@Model.TotalApiCostUsd</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+                <span class="lang-tr">Anthropic Console · manuel</span>
+                <span class="lang-en">Anthropic Console · manual</span>
+            </p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Haiku / Sonnet Oranı</span>
+                <span class="lang-en">Haiku / Sonnet Ratio</span>
+            </p>
+            @{
+                var modelTotal = Model.HaikuCount + Model.SonnetCount;
+                var haikuPct = modelTotal > 0 ? (int)Math.Round((double)Model.HaikuCount / modelTotal * 100) : 0;
+            }
+            <p class="text-2xl font-bold text-slate-900">@haikuPct% / @(100 - haikuPct)%</p>
+            <p class="text-xs text-slate-400 mt-0.5">@Model.HaikuCount Haiku · @Model.SonnetCount Sonnet</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Barındırma</span>
+                <span class="lang-en">Hosting</span>
+            </p>
+            <p class="text-2xl font-bold text-slate-900">Fly.io + Neon</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+                <span class="lang-tr">Free tier (her ikisi)</span>
+                <span class="lang-en">Free tier (both)</span>
+            </p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-900 text-sm">
+                    <span class="lang-tr">Model Dağılımı</span>
+                    <span class="lang-en">Model Mix</span>
+                </h2>
+            </div>
+            <div class="p-4 flex items-center justify-center"><canvas id="modelChart" height="240"></canvas></div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-5">
+            <h2 class="font-semibold text-slate-900 text-sm mb-2">
+                <span class="lang-tr">Maliyet Notu</span>
+                <span class="lang-en">Cost Note</span>
+            </h2>
+            <p class="text-xs text-slate-500 leading-relaxed">
+                <span class="lang-tr">Varsayılan Haiku 4.5; yalnız düşük güvenli sınıflandırmalar Sonnet 4.6'ya yükseltiliyor. Maliyetin büyük kısmı bu nedenle Haiku tarafında kalıyor.</span>
+                <span class="lang-en">Haiku 4.5 by default; only low-confidence classifications escalate to Sonnet 4.6. That keeps the bulk of spend on the Haiku side.</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+@* ═══════════════ TAB 3 — OPERASYON ═══════════════ *@
+<div data-panel="ops" class="hidden">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+
+        @* Total tickets — cross-link *@
+        <a href="/tickets" class="bg-white rounded-xl border border-slate-200 p-4 hover:border-amber-600 hover:shadow-sm transition-all">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Toplam Ticket</span>
+                <span class="lang-en">Total Tickets</span>
+            </p>
+            <p class="text-2xl font-bold text-slate-900">@Model.TotalTickets</p>
+        </a>
+
+        @* Emergency — cross-link *@
+        <a href="/tickets?emergency=true" class="bg-white rounded-xl border border-rose-200 p-4 hover:border-rose-400 hover:shadow-sm transition-all">
+            <p class="text-xs font-medium text-rose-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Acil Durum</span>
+                <span class="lang-en">Emergency</span>
+            </p>
+            <p class="text-2xl font-bold text-rose-600">@Model.EmergencyCount</p>
+        </a>
+
+        @* Active residents *@
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Aktif Sakin</span>
+                <span class="lang-en">Active Residents</span>
+            </p>
+            <p class="text-2xl font-bold text-slate-900">@Model.ActiveResidents</p>
+            <p class="text-xs text-slate-400 mt-0.5">/ @Model.TotalResidents
+                <span class="lang-tr">toplam</span><span class="lang-en">total</span>
+            </p>
+        </div>
+
+        @* Total messages *@
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Toplam Mesaj</span>
+                <span class="lang-en">Total Messages</span>
+            </p>
+            <p class="text-2xl font-bold text-slate-900">@Model.TotalMessages</p>
+        </div>
+
+        @* Daily average *@
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">Günlük Ort.</span>
+                <span class="lang-en">Daily Avg.</span>
+            </p>
+            <p class="text-2xl font-bold text-slate-900">@Model.DailyAvgTickets.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+                <span class="lang-tr">ticket / aktif gün</span>
+                <span class="lang-en">tickets / active day</span>
+            </p>
+        </div>
+    </div>
+
+    @* Row: live feed + status *@
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        @* Live triage feed (preserved, prominent) *@
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+                <h2 class="font-semibold text-slate-900 text-sm flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="lang-tr">Canlı Triage Akışı</span>
+                    <span class="lang-en">Live Triage Feed</span>
+                </h2>
+                <a href="/tickets" class="text-xs text-amber-600 hover:underline">
+                    <span class="lang-tr">Tümünü gör →</span>
+                    <span class="lang-en">View all →</span>
+                </a>
+            </div>
+            @if (!Model.RecentTickets.Any())
+            {
+                <div class="px-5 py-8 text-center text-slate-400 text-sm">
+                    <span class="lang-tr">Henüz ticket yok.</span>
+                    <span class="lang-en">No tickets yet.</span>
+                </div>
+            }
+            else
+            {
+                <ul class="divide-y divide-slate-50">
+                    @foreach (var item in Model.RecentTickets)
+                    {
+                        var sevColor = item.Severity switch
+                        {
+                            TicketSeverity.Urgent => "bg-rose-100 text-rose-700",
+                            TicketSeverity.High   => "bg-orange-100 text-orange-700",
+                            TicketSeverity.Medium => "bg-blue-100 text-blue-700",
+                            _                     => "bg-slate-100 text-slate-600"
+                        };
+                        var catLbl = EnumLabels.For(item.Category);
+                        var svLbl  = EnumLabels.For(item.Severity);
+                        <li class="hover:bg-slate-50 transition-colors">
+                            <a href="/tickets/@item.Id" class="block px-5 py-3">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-start gap-2 min-w-0">
+                                        <span class="mt-0.5 shrink-0 w-4 text-center">
+                                            @if (item.Channel == ChannelType.WhatsApp)
+                                            {
+                                                <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:13px"></i>
+                                            }
+                                            else if (item.Channel == ChannelType.Telegram)
+                                            {
+                                                <i class="fa-brands fa-telegram" style="color:#229ED9;font-size:13px"></i>
+                                            }
+                                            else
+                                            {
+                                                <span class="inline-block w-2 h-2 rounded-full bg-slate-400 mt-1"></span>
+                                            }
+                                        </span>
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-xs font-medium text-slate-700" data-i18n-tr="@catLbl.Tr" data-i18n-en="@catLbl.En">@catLbl.Tr</span>
+                                                @if (item.IsEmergency)
+                                                {
+                                                    <span class="px-1.5 py-0.5 rounded text-xs font-bold bg-rose-600 text-white">
+                                                        <span class="lang-tr">ACİL</span><span class="lang-en">EMRG</span>
+                                                    </span>
+                                                }
+                                            </div>
+                                            <p class="text-xs text-slate-400 mt-0.5 truncate">@item.Preview</p>
+                                            <p class="text-xs text-slate-400 mt-0.5">@if (string.IsNullOrEmpty(item.Resident)) { <span data-i18n-tr="Sakin" data-i18n-en="Resident">Sakin</span> } else { @item.Resident }</p>
+                                        </div>
+                                    </div>
+                                    <div class="shrink-0 flex flex-col items-end gap-1">
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium @sevColor" data-i18n-tr="@svLbl.Tr" data-i18n-en="@svLbl.En">@svLbl.Tr</span>
+                                        <span class="text-xs text-slate-400">@item.TimeIst</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        @* Ticket status distribution (cards + donut) *@
+        <div class="bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-900 text-sm">
+                    <span class="lang-tr">Ticket Durumu</span>
+                    <span class="lang-en">Ticket Status</span>
+                </h2>
+            </div>
             <div class="p-4">
-                <canvas id="categoryChart" height="200"></canvas>
+                <div id="ov-status-cards" class="flex flex-wrap gap-2 mb-4"></div>
+                <div class="flex items-center justify-center"><canvas id="statusChart" height="180"></canvas></div>
             </div>
         </div>
-        <div class="bg-white rounded-xl border border-gray-200">
-            <div class="px-5 py-4 border-b border-gray-100">
-                <h2 class="font-semibold text-gray-900 text-sm">
+    </div>
+
+    @* Row: trend + channel *@
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-900 text-sm">
+                    <span class="lang-tr">Günlük Ticket Trendi</span>
+                    <span class="lang-en">Daily Ticket Trend</span>
+                </h2>
+            </div>
+            <div class="p-4"><canvas id="trendChart" height="200"></canvas></div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-900 text-sm">
                     <span class="lang-tr">Kanal Dağılımı</span>
                     <span class="lang-en">Channel Distribution</span>
                 </h2>
             </div>
-            <div class="p-4 flex items-center justify-center">
-                <canvas id="channelChart" width="160" height="120" class="max-w-[160px]"></canvas>
-            </div>
+            <div class="p-4 flex items-center justify-center"><canvas id="channelChart" height="200"></canvas></div>
         </div>
     </div>
 
-</div>
-
-@* ── Bottom row: Severity + Routing + Model Quality ──────────────────────────── *@
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-
-    @* Severity chart *@
-    <div class="bg-white rounded-xl border border-gray-200">
-        <div class="px-5 py-4 border-b border-gray-100">
-            <h2 class="font-semibold text-gray-900 text-sm">
-                <span class="lang-tr">Şiddet Dağılımı</span>
-                <span class="lang-en">Severity Distribution</span>
+    @* Row: hourly *@
+    <div class="bg-white rounded-xl border border-slate-200">
+        <div class="px-5 py-3.5 border-b border-slate-100">
+            <h2 class="font-semibold text-slate-900 text-sm">
+                <span class="lang-tr">Saat Bazlı Yoğunluk (İstanbul)</span>
+                <span class="lang-en">Hourly Intensity (Istanbul)</span>
             </h2>
         </div>
-        <div class="p-4 flex justify-center">
-            <canvas id="severityChart" width="200" height="160" class="max-w-[200px]"></canvas>
-        </div>
-    </div>
-
-    @* Routing chart *@
-    <div class="bg-white rounded-xl border border-gray-200">
-        <div class="px-5 py-4 border-b border-gray-100">
-            <h2 class="font-semibold text-gray-900 text-sm">
-                <span class="lang-tr">Yönlendirme Dağılımı</span>
-                <span class="lang-en">Routing Distribution</span>
-            </h2>
-        </div>
-        <div class="p-4">
-            <canvas id="routingChart" height="160"></canvas>
-        </div>
-    </div>
-
-    @* Model quality card *@
-    <div class="bg-white rounded-xl border border-gray-200">
-        <div class="px-5 py-4 border-b border-gray-100">
-            <h2 class="font-semibold text-gray-900 text-sm">
-                <span class="lang-tr">Model Kalitesi</span>
-                <span class="lang-en">Model Quality</span>
-            </h2>
-        </div>
-        <div class="p-5 space-y-4" id="eval-panel">
-            <div class="text-xs text-gray-400 italic">
-                <span class="lang-tr">Eval yükleniyor…</span>
-                <span class="lang-en">Loading eval…</span>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-@* ── FinOps card (full width) ─────────────────────────────────────────────────── *@
-<div class="bg-white rounded-xl border border-gray-200">
-    <div class="px-5 py-4 border-b border-gray-100">
-        <h2 class="font-semibold text-gray-900 text-sm">
-            <span class="lang-tr">FinOps</span>
-            <span class="lang-en">FinOps</span>
-        </h2>
-    </div>
-    <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-6" id="finops-panel">
-        <div class="text-xs text-gray-400 italic col-span-2">
-            <span class="lang-tr">Yükleniyor…</span>
-            <span class="lang-en">Loading…</span>
-        </div>
+        <div class="p-4"><canvas id="hourlyChart" height="200"></canvas></div>
     </div>
 </div>
 
 @section Scripts {
 <script>
 (function () {
+    var ACCENT = '#d97706', SLATE = '#64748b';
 
-    // ── Fetch helpers ──────────────────────────────────────────────────────────
-    function fetchJSON(url, cb) {
-        fetch(url).then(function(r) { return r.json(); }).then(cb).catch(function(e) {
-            console.warn('Stats fetch failed:', url, e);
+    function lang() { return window.atriageLang ? window.atriageLang() : 'tr'; }
+    function pick(pair) { return lang() === 'en' ? pair[1] : pair[0]; }
+
+    // Label maps mirror Web/Helpers/EnumLabels.cs (server side).
+    var CAT = {
+        Plumbing:['Tesisat','Plumbing'], Electrical:['Elektrik','Electrical'], Gas:['Doğalgaz','Gas'],
+        HeatingCooling:['Isıtma/Soğutma','Heating/Cooling'], Elevator:['Asansör','Elevator'],
+        Structural:['Yapısal','Structural'], CommonArea:['Ortak Alan','Common Area'], Pest:['Haşere','Pest'],
+        Noise:['Gürültü','Noise'], NeighborDispute:['Komşu Anlaş.','Neighbor Disp.'], Billing:['Aidat/Fatura','Billing'],
+        Security:['Güvenlik','Security'], Announcement:['Duyuru','Announcement'], Other:['Diğer','Other']
+    };
+    var SEV = { Low:['Düşük','Low'], Medium:['Orta','Medium'], High:['Yüksek','High'], Urgent:['Acil','Urgent'] };
+    var ROUTE = {
+        NotifyResident:['Sakine Bildir','Notify Resident'], AssignTechnician:['Teknisyen Ata','Assign Technician'],
+        EscalateToManager:['Yön. Yükselt','Escalate'], TriggerEmergency:['Acil Müdahale','Emergency'],
+        Defer:['Ertele','Defer'], Archive:['Arşivle','Archive']
+    };
+    var STATUS = {
+        Open:       { l:['Açık','Open'],            cls:'border-blue-200 bg-blue-50 text-blue-700',    dot:'#3B82F6' },
+        InProgress: { l:['İşlemde','In Progress'],  cls:'border-amber-200 bg-amber-50 text-amber-700', dot:'#F59E0B' },
+        Resolved:   { l:['Çözüldü','Resolved'],     cls:'border-green-200 bg-green-50 text-green-700', dot:'#22C55E' },
+        Closed:     { l:['Kapalı','Closed'],        cls:'border-slate-200 bg-slate-50 text-slate-600', dot:'#6B7280' }
+    };
+    var SEV_COLOR = { Low:'#9CA3AF', Medium:'#60A5FA', High:'#FB923C', Urgent:'#EF4444' };
+    var ROUTE_COLOR = { TriggerEmergency:'#EF4444', EscalateToManager:'#F97316', AssignTechnician:'#3B82F6', NotifyResident:'#8B5CF6', Defer:'#6B7280', Archive:'#374151' };
+
+    function getJSON(url) { return fetch(url).then(function (r) { return r.json(); }).catch(function (e) { console.warn('fetch failed', url, e); return null; }); }
+
+    var charts = {};
+    function set(id, cfg) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (charts[id]) charts[id].destroy();
+        charts[id] = new Chart(el, cfg);
+    }
+
+    // ── Tab 1: Performans ───────────────────────────────────────────────────
+    function buildPerf() {
+        getJSON('/api/stats/categories').then(function (d) {
+            if (!d) return;
+            set('categoryChart', {
+                type: 'bar',
+                data: { labels: d.map(function (x) { return pick(CAT[x.category] || [x.category, x.category]); }),
+                        datasets: [{ data: d.map(function (x) { return x.count; }), backgroundColor: ACCENT, borderRadius: 4 }] },
+                options: { indexAxis: 'y', plugins: { legend: { display: false } },
+                           scales: { x: { grid: { display: false }, ticks: { font: { size: 11 }, precision: 0 } },
+                                     y: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+            });
+        });
+        getJSON('/api/stats/severity').then(function (d) {
+            if (!d) return;
+            set('severityChart', {
+                type: 'doughnut',
+                data: { labels: d.map(function (x) { return pick(SEV[x.severity] || [x.severity, x.severity]); }),
+                        datasets: [{ data: d.map(function (x) { return x.count; }), backgroundColor: d.map(function (x) { return SEV_COLOR[x.severity] || SLATE; }), borderWidth: 0 }] },
+                options: { cutout: '58%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } } } }
+            });
+        });
+        getJSON('/api/stats/routing').then(function (d) {
+            if (!d) return;
+            set('routingChart', {
+                type: 'bar',
+                data: { labels: d.map(function (x) { return pick(ROUTE[x.action] || [x.action, x.action]); }),
+                        datasets: [{ data: d.map(function (x) { return x.count; }), backgroundColor: d.map(function (x) { return ROUTE_COLOR[x.action] || SLATE; }), borderRadius: 4 }] },
+                options: { indexAxis: 'y', plugins: { legend: { display: false } },
+                           scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, precision: 0 } },
+                                     y: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+            });
         });
     }
 
-    // ── Category chart (horizontal bar) ───────────────────────────────────────
-    fetchJSON('/api/stats/categories', function(data) {
-        if (!data || !data.length) return;
-        var ctx = document.getElementById('categoryChart');
-        if (!ctx) return;
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.map(function(d) { return d.category; }),
-                datasets: [{
-                    data: data.map(function(d) { return d.count; }),
-                    backgroundColor: 'rgba(59,130,246,0.7)',
-                    borderRadius: 4,
-                    borderSkipped: false
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
-                }
-            }
-        });
-    });
-
-    // ── Channel chart (doughnut) ───────────────────────────────────────────────
-    (function() {
-        var wa = @Model.WaCount;
-        var tg = @Model.TgCount;
-        if (wa + tg === 0) return;
-        var ctx = document.getElementById('channelChart');
-        if (!ctx) return;
-        new Chart(ctx, {
+    // ── Tab 2: FinOps ───────────────────────────────────────────────────────
+    function buildFinops() {
+        var haiku = @Model.HaikuCount, sonnet = @Model.SonnetCount;
+        if (haiku + sonnet === 0) return;
+        set('modelChart', {
             type: 'doughnut',
-            data: {
-                labels: ['WhatsApp', 'Telegram'],
-                datasets: [{
-                    data: [wa, tg],
-                    backgroundColor: ['#25D366', '#229ED9'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: false,
-                cutout: '60%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { font: { size: 10 }, boxWidth: 10, padding: 8 }
-                    }
-                }
+            data: { labels: ['Haiku 4.5', 'Sonnet 4.6'], datasets: [{ data: [haiku, sonnet], backgroundColor: ['#d97706', '#818CF8'], borderWidth: 0 }] },
+            options: { cutout: '58%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10, padding: 10 } } } }
+        });
+    }
+
+    // ── Tab 3: Operasyon ────────────────────────────────────────────────────
+    function buildOps() {
+        // Status cards + donut
+        getJSON('/api/stats/ticket-status').then(function (d) {
+            var el = document.getElementById('ov-status-cards');
+            if (el && d && d.length) {
+                el.innerHTML = d.map(function (x) {
+                    var s = STATUS[x.status] || { l: [x.status, x.status], cls: 'border-slate-200 bg-slate-50 text-slate-600', dot: SLATE };
+                    return '<a href="/tickets?FilterStatus=' + encodeURIComponent(x.status) + '" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border ' + s.cls + ' hover:shadow-sm transition-all">' +
+                           '<span class="w-2 h-2 rounded-full" style="background:' + s.dot + '"></span>' +
+                           '<span class="text-xs font-medium" data-i18n-tr="' + s.l[0] + '" data-i18n-en="' + s.l[1] + '">' + pick(s.l) + '</span>' +
+                           '<span class="text-sm font-bold">' + x.count + '</span></a>';
+                }).join('');
+                if (window.applyLang) window.applyLang(lang());
+            }
+            if (d && d.length) {
+                set('statusChart', {
+                    type: 'doughnut',
+                    data: { labels: d.map(function (x) { return pick((STATUS[x.status] || { l: [x.status, x.status] }).l); }),
+                            datasets: [{ data: d.map(function (x) { return x.count; }), backgroundColor: d.map(function (x) { return (STATUS[x.status] || { dot: SLATE }).dot; }), borderWidth: 0 }] },
+                    options: { cutout: '58%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } } } }
+                });
             }
         });
-    })();
-
-    // ── Severity chart (doughnut) ──────────────────────────────────────────────
-    fetchJSON('/api/stats/severity', function(data) {
-        if (!data || !data.length) return;
-        var colors = { Low: '#9CA3AF', Medium: '#60A5FA', High: '#FB923C', Urgent: '#EF4444' };
-        var ctx = document.getElementById('severityChart');
-        if (!ctx) return;
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: data.map(function(d) { return d.severity; }),
-                datasets: [{
-                    data: data.map(function(d) { return d.count; }),
-                    backgroundColor: data.map(function(d) { return colors[d.severity] || '#6B7280'; }),
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: false,
-                cutout: '55%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { font: { size: 10 }, boxWidth: 10, padding: 6 }
-                    }
-                }
-            }
+        // Daily trend (line)
+        getJSON('/api/stats/trends').then(function (d) {
+            if (!d) return;
+            set('trendChart', {
+                type: 'line',
+                data: { labels: d.map(function (x) { return x.date; }),
+                        datasets: [{ data: d.map(function (x) { return x.count; }), borderColor: ACCENT, backgroundColor: 'rgba(217,119,6,0.1)', fill: true, tension: 0.3, pointRadius: 2 }] },
+                options: { plugins: { legend: { display: false } },
+                           scales: { x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true } },
+                                     y: { grid: { color: '#f1f5f9' }, ticks: { precision: 0, font: { size: 10 } }, beginAtZero: true } } }
+            });
         });
-    });
-
-    // ── Routing chart (horizontal bar) ────────────────────────────────────────
-    fetchJSON('/api/stats/routing', function(data) {
-        if (!data || !data.length) return;
-        var ctx = document.getElementById('routingChart');
-        if (!ctx) return;
-        var actionColors = {
-            TriggerEmergency:  '#EF4444',
-            EscalateToManager: '#F97316',
-            AssignTechnician:  '#3B82F6',
-            NotifyResident:    '#8B5CF6',
-            Defer:             '#6B7280',
-            Archive:           '#374151'
-        };
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.map(function(d) { return d.action; }),
-                datasets: [{
-                    data: data.map(function(d) { return d.count; }),
-                    backgroundColor: data.map(function(d) { return actionColors[d.action] || '#6B7280'; }),
-                    borderRadius: 4,
-                    borderSkipped: false
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
-                }
-            }
+        // Hourly intensity (bar)
+        getJSON('/api/stats/hourly').then(function (d) {
+            if (!d) return;
+            set('hourlyChart', {
+                type: 'bar',
+                data: { labels: d.map(function (x) { return x.label; }),
+                        datasets: [{ data: d.map(function (x) { return x.count; }), backgroundColor: '#94a3b8', borderRadius: 3 }] },
+                options: { plugins: { legend: { display: false } },
+                           scales: { x: { grid: { display: false }, ticks: { font: { size: 9 }, autoSkip: true, maxRotation: 0 } },
+                                     y: { grid: { color: '#f1f5f9' }, ticks: { precision: 0, font: { size: 10 } }, beginAtZero: true } } }
+            });
         });
-    });
-
-    // ── Eval summary ───────────────────────────────────────────────────────────
-    fetchJSON('/api/eval/summary', function(data) {
-        var panel = document.getElementById('eval-panel');
-        if (!panel) return;
-
-        var lang = localStorage.getItem('atriage_lang') || 'tr';
-
-        function pct(v) { return v != null ? '%' + Math.round(v * 100) : '—'; }
-
-        var html = '';
-        html += '<div class="space-y-3">';
-
-        // Category accuracy
-        var accColor = data.categoryAccuracy != null && data.categoryAccuracy >= 0.8 ? 'text-green-600' : 'text-gray-400';
-        html += '<div>';
-        html += '<div class="flex justify-between items-center mb-1">';
-        html += '<span class="text-xs text-gray-600">' + (lang === 'tr' ? 'Kategori Doğruluğu' : 'Category Accuracy') + '</span>';
-        html += '<span class="text-sm font-semibold ' + accColor + '">' + pct(data.categoryAccuracy) + '</span>';
-        html += '</div>';
-        if (data.categoryAccuracy != null) {
-            var accW = Math.round(data.categoryAccuracy * 100);
-            html += '<div class="w-full bg-gray-100 rounded-full h-1.5">';
-            html += '<div class="bg-green-500 h-1.5 rounded-full" style="width:' + accW + '%"></div>';
-            html += '</div>';
+        // Channel donut (server counts)
+        var wa = @Model.WaCount, tg = @Model.TgCount;
+        if (wa + tg > 0) {
+            set('channelChart', {
+                type: 'doughnut',
+                data: { labels: ['WhatsApp', 'Telegram'], datasets: [{ data: [wa, tg], backgroundColor: ['#25D366', '#229ED9'], borderWidth: 0 }] },
+                options: { cutout: '58%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10, padding: 8 } } } }
+            });
         }
-        html += '</div>';
+    }
 
-        // Emergency recall
-        var recColor = data.emergencyRecall != null && data.emergencyRecall >= 0.95 ? 'text-green-600' : 'text-gray-400';
-        html += '<div>';
-        html += '<div class="flex justify-between items-center mb-1">';
-        html += '<span class="text-xs text-gray-600">' + (lang === 'tr' ? 'Acil Recall' : 'Emergency Recall') + '</span>';
-        html += '<span class="text-sm font-semibold ' + recColor + '">' + pct(data.emergencyRecall) + '</span>';
-        html += '</div>';
-        if (data.emergencyRecall != null) {
-            var recW = Math.round(data.emergencyRecall * 100);
-            html += '<div class="w-full bg-gray-100 rounded-full h-1.5">';
-            html += '<div class="bg-blue-500 h-1.5 rounded-full" style="width:' + recW + '%"></div>';
-            html += '</div>';
-        }
-        html += '</div>';
+    // ── Tab machinery (lazy build per tab) ──────────────────────────────────
+    var built = { perf: false, finops: false, ops: false };
+    var builders = { perf: buildPerf, finops: buildFinops, ops: buildOps };
 
-        // Note
-        var note = data.runDate
-            ? (lang === 'tr' ? data.totalCases + ' etiketli case · ' + data.runDate : data.totalCases + ' labeled cases · ' + data.runDate)
-            : (lang === 'tr' ? data.totalCases + ' etiketli case · Eval bekleniyor' : data.totalCases + ' labeled cases · Awaiting eval run');
-        html += '<p class="text-xs text-gray-400 italic">' + note + '</p>';
-
-        html += '</div>';
-        panel.innerHTML = html;
-    });
-
-    // ── FinOps ─────────────────────────────────────────────────────────────────
-    fetchJSON('/api/eval/summary', function(evalData) {
-        fetchJSON('/api/stats', function(statsData) {
-            var panel = document.getElementById('finops-panel');
-            if (!panel) return;
-            var lang = localStorage.getItem('atriage_lang') || 'tr';
-
-            function card(label, value, note) {
-                return '<div><p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">' + label + '</p>' +
-                       '<p class="text-xl font-bold text-gray-900">' + value + '</p>' +
-                       (note ? '<p class="text-xs text-gray-400 mt-1">' + note + '</p>' : '') + '</div>';
-            }
-
-            var haiku  = statsData.haikuCount  || 0;
-            var sonnet = statsData.sonnetCount  || 0;
-            var total  = haiku + sonnet;
-            var ratioValue, ratioNote;
-            if (total === 0) {
-                ratioValue = '—';
-                ratioNote  = lang === 'tr' ? 'Henüz ticket yok' : 'No tickets yet';
-            } else {
-                var haikuPct  = Math.round(haiku  / total * 100);
-                var sonnetPct = 100 - haikuPct;
-                ratioValue = 'Haiku ' + haikuPct + '% · Sonnet ' + sonnetPct + '%';
-                ratioNote  = haiku + ' Haiku · ' + sonnet + ' Sonnet · ' + total + (lang === 'tr' ? ' toplam' : ' total');
-            }
-
-            var totalCost = evalData.totalApiCostUsd || '$0.00';
-
-            var html = '';
-            html += card(
-                lang === 'tr' ? 'Haiku / Sonnet Oranı' : 'Haiku / Sonnet Ratio',
-                ratioValue, ratioNote
-            );
-            html += card(
-                lang === 'tr' ? 'Toplam API Maliyeti' : 'Total API Cost',
-                totalCost,
-                lang === 'tr' ? 'Anthropic Console · manuel güncellenir' : 'Anthropic Console · updated manually'
-            );
-
-            panel.innerHTML = html;
+    function activate(name) {
+        document.querySelectorAll('[data-panel]').forEach(function (p) {
+            p.classList.toggle('hidden', p.getAttribute('data-panel') !== name);
         });
+        document.querySelectorAll('.ov-tab').forEach(function (b) {
+            var on = b.getAttribute('data-tab') === name;
+            b.classList.toggle('border-amber-600', on);
+            b.classList.toggle('text-amber-600', on);
+            b.classList.toggle('font-semibold', on);
+            b.classList.toggle('border-transparent', !on);
+            b.classList.toggle('text-slate-500', !on);
+        });
+        if (!built[name]) { built[name] = true; builders[name](); }
+    }
+
+    document.querySelectorAll('.ov-tab').forEach(function (b) {
+        b.addEventListener('click', function () { activate(b.getAttribute('data-tab')); });
     });
 
+    activate('perf');
+
+    // Re-render charts (labels) when language toggles.
+    var origToggle = window.toggleLang;
+    window.toggleLang = function () {
+        if (origToggle) origToggle();
+        Object.keys(built).forEach(function (k) { if (built[k]) builders[k](); });
+    };
 })();
 </script>
 }
