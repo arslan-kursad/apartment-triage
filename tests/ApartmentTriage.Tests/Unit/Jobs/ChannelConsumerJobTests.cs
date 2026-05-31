@@ -190,6 +190,7 @@ internal sealed class FakeTicketRepository : ITicketRepository
         ApartmentTriage.Domain.Enums.TicketStatus? status,
         ApartmentTriage.Domain.Enums.TicketCategory? category,
         bool? isEmergency, Guid? residentId, int page, int pageSize,
+        DateTime? fromUtc = null, DateTime? toUtc = null,
         CancellationToken cancellationToken = default)
         => Task.FromResult<(IReadOnlyList<Ticket>, int)>((Array.Empty<Ticket>(), 0));
 }

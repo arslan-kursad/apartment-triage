@@ -1,6 +1,7 @@
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Web.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -19,6 +20,7 @@ public sealed class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public TicketStatus?   FilterStatus      { get; set; }
     [BindProperty(SupportsGet = true)] public TicketCategory? FilterCategory    { get; set; }
     [BindProperty(SupportsGet = true)] public bool?           FilterIsEmergency { get; set; }
+    [BindProperty(SupportsGet = true)] public string?         Range             { get; set; }
     [BindProperty(SupportsGet = true)] public int             CurrentPage       { get; set; } = 1;
 
     // ── Cross-link query params (overview / residents deep-links) ──────────────
@@ -41,9 +43,30 @@ public sealed class IndexModel : PageModel
     public IEnumerable<TicketStatus>   AllStatuses    => Enum.GetValues<TicketStatus>();
     public IEnumerable<TicketCategory> AllCategories  => Enum.GetValues<TicketCategory>();
 
+    public string EffectiveRange => DateFilter.Normalize(Range);
+
+    /// <summary>Builds a /tickets URL preserving every active filter; optionally overrides the date range.</summary>
+    public string BuildUrl(int page, string? range = null)
+    {
+        var qs = new List<string>();
+        if (FilterStatus.HasValue)      qs.Add($"FilterStatus={FilterStatus}");
+        if (FilterCategory.HasValue)    qs.Add($"FilterCategory={FilterCategory}");
+        if (FilterIsEmergency.HasValue) qs.Add($"FilterIsEmergency={(FilterIsEmergency.Value ? "true" : "false")}");
+        if (Emergency.HasValue)         qs.Add($"emergency={(Emergency.Value ? "true" : "false")}");
+        if (Resident.HasValue)          qs.Add($"resident={Resident}");
+        var r = DateFilter.Normalize(range ?? Range);
+        if (r != DateFilter.All)        qs.Add($"Range={r}");
+        qs.Add($"CurrentPage={page}");
+        return "/tickets?" + string.Join("&", qs);
+    }
+
+    public string PresetUrl(string range) => BuildUrl(1, range);
+
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         if (CurrentPage < 1) CurrentPage = 1;
+
+        var (fromUtc, toUtc) = DateFilter.Resolve(Range);
 
         var (items, total) = await _tickets.GetPagedAsync(
             FilterStatus,
@@ -52,6 +75,8 @@ public sealed class IndexModel : PageModel
             Resident,
             CurrentPage,
             PageSize,
+            fromUtc,
+            toUtc,
             cancellationToken);
 
         Tickets    = items;

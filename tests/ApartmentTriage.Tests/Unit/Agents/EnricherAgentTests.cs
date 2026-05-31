@@ -84,6 +84,8 @@ public sealed class EnricherAgentTests
             Guid? residentId,
             int page,
             int pageSize,
+            DateTime? fromUtc = null,
+            DateTime? toUtc = null,
             CancellationToken cancellationToken = default)
             => Task.FromResult<(IReadOnlyList<Ticket>, int)>(([], 0));
     }

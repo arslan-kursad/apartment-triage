@@ -19,7 +19,9 @@ public interface ITicketRepository
 
     /// <summary>
     /// Returns a sorted (CreatedAt desc) page with total count for pagination.
-    /// All filter params are optional — null means "no filter".
+    /// All filter params are optional — null means "no filter". The optional
+    /// <paramref name="fromUtc"/>/<paramref name="toUtc"/> bound CreatedAt
+    /// (inclusive lower, exclusive upper).
     /// </summary>
     Task<(IReadOnlyList<Ticket> Items, int TotalCount)> GetPagedAsync(
         TicketStatus? status,
@@ -28,5 +30,7 @@ public interface ITicketRepository
         Guid? residentId,
         int page,
         int pageSize,
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
         CancellationToken cancellationToken = default);
 }

@@ -71,6 +71,8 @@ public sealed class TicketRepository : ITicketRepository
         Guid? residentId,
         int page,
         int pageSize,
+        DateTime? fromUtc = null,
+        DateTime? toUtc = null,
         CancellationToken cancellationToken = default)
     {
         var query = _db.Tickets.AsQueryable();
@@ -83,6 +85,10 @@ public sealed class TicketRepository : ITicketRepository
             query = query.Where(t => t.IsEmergency == isEmergency.Value);
         if (residentId.HasValue)
             query = query.Where(t => t.ResidentId == residentId.Value);
+        if (fromUtc.HasValue)
+            query = query.Where(t => t.CreatedAt >= fromUtc.Value);
+        if (toUtc.HasValue)
+            query = query.Where(t => t.CreatedAt < toUtc.Value);
 
         var total = await query.CountAsync(cancellationToken);
 
