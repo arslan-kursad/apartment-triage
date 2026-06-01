@@ -9,11 +9,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>
-        <span class="lang-tr">Giriş</span>
-        <span class="lang-en hidden">Sign In</span>
-        — Hanwas
-    </title>
+    <title>Giriş — Hanwas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 </head>
@@ -111,6 +107,9 @@
             document.querySelectorAll('.lang-en').forEach(function (el) {
                 el.classList.toggle('hidden', lang !== 'en');
             });
+
+            // Browser tab title — <title> can't host HTML elements, update via JS instead.
+            document.title = (lang === 'tr' ? 'Giriş' : 'Sign In') + ' — Hanwas';
 
             var trBtn = document.getElementById('lang-tr-btn');
             var enBtn = document.getElementById('lang-en-btn');
