@@ -11,6 +11,7 @@ using Hangfire.Common;
 using Hangfire.Dashboard;
 using Hangfire.Storage;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -94,6 +95,14 @@ try
         options.AddPolicy("DashboardAccess", policy =>
             policy.RequireRole(nameof(ResidentRole.Manager))));
 
+    // Reverse proxy header configuration for Fly.io compatibility
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+
     // Razor Pages (dashboard UI) — protected as a folder unless the flag is off.
     builder.Services.AddRazorPages(options =>
     {
@@ -117,6 +126,9 @@ try
     if (app.Environment.IsDevelopment())
         app.UseDeveloperExceptionPage();
 
+    app.UseForwardedHeaders();
+    app.UseStaticFiles();
+
     app.UseAuthentication();
     app.UseAuthorization();
 
@@ -127,7 +139,10 @@ try
             : Array.Empty<IDashboardAuthorizationFilter>()
     });
 
-    app.MapGet("/", () => Results.Redirect("/overview"));
+    var rootApi = app.MapGet("/", () => Results.Redirect("/overview"));
+    if (authEnabled)
+        rootApi.RequireAuthorization("DashboardAccess");
+
     app.MapRazorPages();
 
     // Dashboard data/mutation APIs — gated behind the same policy as the pages when auth
@@ -141,11 +156,7 @@ try
     dashboardApi.MapResidentEndpoints();
     dashboardApi.MapTicketEndpoints();
 
-    static bool IsChannelConsumerJob(Job? job)
-    {
-        return job?.Type == typeof(ChannelConsumerJob) &&
-               job.Method.Name == nameof(ChannelConsumerJob.RunAsync);
-    }
+
     app.MapWhatsAppWebhook();
 
     // Health check endpoint
@@ -162,47 +173,11 @@ try
         await bootstrapper.RunAsync();
 
         // Configure recurring jobs (after migrations, Hangfire storage is ready)
-        var recurringJobs = JobStorage.Current.GetConnection().GetRecurringJobs();
-        foreach (var recurringJob in recurringJobs)
+        var residentsList = await db.Residents.ToListAsync();
+        foreach (var r in residentsList)
         {
-            if (recurringJob.Job?.Type == typeof(ChannelConsumerJob) &&
-                recurringJob.Job.Method.Name == nameof(ChannelConsumerJob.RunAsync))
-            {
-                RecurringJob.RemoveIfExists(recurringJob.Id);
-                Log.Information("Removed stale Hangfire recurring job '{JobId}' for ChannelConsumerJob.RunAsync", recurringJob.Id);
-            }
-        }
-
-        var monitoringApi = JobStorage.Current.GetMonitoringApi();
-        var allQueueNames = monitoringApi.Queues().Select(q => q.Name).Distinct();
-        foreach (var queueName in allQueueNames)
-        {
-            foreach (var enqueuedJob in monitoringApi.EnqueuedJobs(queueName, 0, int.MaxValue))
-            {
-                if (IsChannelConsumerJob(enqueuedJob.Value.Job))
-                {
-                    BackgroundJob.Delete(enqueuedJob.Key);
-                    Log.Information("Deleted stale Hangfire enqueued job '{JobId}' from queue '{Queue}'", enqueuedJob.Key, queueName);
-                }
-            }
-        }
-
-        foreach (var processingJob in monitoringApi.ProcessingJobs(0, int.MaxValue))
-        {
-            if (IsChannelConsumerJob(processingJob.Value.Job))
-            {
-                BackgroundJob.Delete(processingJob.Key);
-                Log.Information("Deleted stale Hangfire processing job '{JobId}'", processingJob.Key);
-            }
-        }
-
-        foreach (var scheduledJob in monitoringApi.ScheduledJobs(0, int.MaxValue))
-        {
-            if (IsChannelConsumerJob(scheduledJob.Value.Job))
-            {
-                BackgroundJob.Delete(scheduledJob.Key);
-                Log.Information("Deleted stale Hangfire scheduled job '{JobId}'", scheduledJob.Key);
-            }
+            Log.Information("RESIDENT: Id={Id}, Telegram={Tg}, Role={Role}, Name={Name}",
+                r.Id, r.TelegramId, r.Role, r.DisplayName);
         }
 
         // WhatsApp consumer: 1-minute CRON
