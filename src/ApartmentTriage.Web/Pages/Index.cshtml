@@ -185,35 +185,42 @@
     </div>
 
     <div id="fin-charts">
-    <div class="bg-white rounded-xl border border-slate-200 mb-4">
-        <div class="px-5 py-3.5 border-b border-slate-100">
-            <h2 class="font-semibold text-slate-900 text-sm">
-                <span class="lang-tr">Günlük Maliyet Trendi</span>
-                <span class="lang-en">Daily Cost Trend</span>
-            </h2>
-        </div>
-        <div class="p-4"><canvas id="costTrendChart" height="90"></canvas></div>
-    </div>
+    @* 2/3 trend + 1/3 model & agent stacked *@
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 items-start">
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div class="bg-white rounded-xl border border-slate-200">
+        @* Daily Cost Trend — 2/3 width *@
+        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 h-full">
             <div class="px-5 py-3.5 border-b border-slate-100">
                 <h2 class="font-semibold text-slate-900 text-sm">
-                    <span class="lang-tr">Modele Göre Maliyet</span>
-                    <span class="lang-en">Cost by Model</span>
+                    <span class="lang-tr">Günlük Maliyet Trendi</span>
+                    <span class="lang-en">Daily Cost Trend</span>
                 </h2>
             </div>
-            <div class="p-4 flex items-center justify-center"><canvas id="modelChart" height="240"></canvas></div>
+            <div class="p-4"><canvas id="costTrendChart" height="180"></canvas></div>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200">
-            <div class="px-5 py-3.5 border-b border-slate-100">
-                <h2 class="font-semibold text-slate-900 text-sm">
-                    <span class="lang-tr">Agent'a Göre Maliyet</span>
-                    <span class="lang-en">Cost by Agent</span>
-                </h2>
+
+        @* Cost by Model + Cost by Agent — 1/3 width, stacked *@
+        <div class="flex flex-col gap-4">
+            <div class="bg-white rounded-xl border border-slate-200">
+                <div class="px-5 py-3.5 border-b border-slate-100">
+                    <h2 class="font-semibold text-slate-900 text-sm">
+                        <span class="lang-tr">Modele Göre</span>
+                        <span class="lang-en">Cost by Model</span>
+                    </h2>
+                </div>
+                <div class="p-3 flex items-center justify-center"><canvas id="modelChart" height="160"></canvas></div>
             </div>
-            <div class="p-4"><canvas id="agentCostChart" height="240"></canvas></div>
+            <div class="bg-white rounded-xl border border-slate-200">
+                <div class="px-5 py-3.5 border-b border-slate-100">
+                    <h2 class="font-semibold text-slate-900 text-sm">
+                        <span class="lang-tr">Agent'a Göre</span>
+                        <span class="lang-en">Cost by Agent</span>
+                    </h2>
+                </div>
+                <div class="p-3"><canvas id="agentCostChart" height="160"></canvas></div>
+            </div>
         </div>
+
     </div>
     </div>@* /#fin-charts *@
 

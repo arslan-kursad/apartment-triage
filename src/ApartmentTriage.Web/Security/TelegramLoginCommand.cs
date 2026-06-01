@@ -17,7 +17,7 @@ public static class TelegramLoginCommand
         if (trimmed.Length == 6)
             return true;
 
-        // "/login@apartman_triage_bot" or "/login@bot extra" — suffix must start with @
+        // "/login@HanwasBot" or "/login@bot extra" — suffix must start with @
         return trimmed[6] == '@';
     }
 }

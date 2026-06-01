@@ -23,7 +23,7 @@ public sealed class LoginModel(
     public LoginMessage? Message { get; private set; }
 
     /// <summary>Telegram bot username without @ (for login instructions).</summary>
-    public string TelegramBotUsername { get; private set; } = "apartman_triage_bot";
+    public string TelegramBotUsername { get; private set; } = "HanwasBot";
 
     public IActionResult OnGet(string? reason = null)
     {
@@ -99,7 +99,7 @@ public sealed class LoginModel(
     private string ResolveTelegramBotUsername()
     {
         var configured = configuration["TelegramBot:Username"]?.Trim().TrimStart('@');
-        return string.IsNullOrWhiteSpace(configured) ? "apartman_triage_bot" : configured;
+        return string.IsNullOrWhiteSpace(configured) ? "HanwasBot" : configured;
     }
 
     private string GetAttemptKey()
