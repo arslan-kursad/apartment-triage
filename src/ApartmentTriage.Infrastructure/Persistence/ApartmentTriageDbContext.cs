@@ -12,6 +12,7 @@ public sealed class ApartmentTriageDbContext : DbContext
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Ticket> Tickets => Set<Ticket>();
     public DbSet<OtpChallenge> OtpChallenges => Set<OtpChallenge>();
+    public DbSet<ApiUsageRecord> ApiUsageRecords => Set<ApiUsageRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

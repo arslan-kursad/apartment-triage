@@ -1,4 +1,5 @@
 using System.Globalization;
+using ApartmentTriage.Application.Agents.Anthropic;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Infrastructure.Persistence;
@@ -20,8 +21,98 @@ public static class StatsEndpoints
         app.MapGet("/api/stats/ticket-status", GetTicketStatus);
         app.MapGet("/api/stats/hourly", GetHourly);
         app.MapGet("/api/stats/trends", GetTrends);
+        app.MapGet("/api/stats/cost-summary", GetCostSummary);
+        app.MapGet("/api/stats/cost-trend", GetCostTrend);
         app.MapGet("/api/tickets/recent", GetRecentTickets);
         app.MapGet("/api/eval/summary", GetEvalSummary);
+    }
+
+    // ── FinOps: self-instrumented cost (derived from real token usage) ───────────
+
+    /// <summary>Live cost totals + per-model and per-agent breakdown, derived from token usage.</summary>
+    private static async Task<IResult> GetCostSummary(ApartmentTriageDbContext db, IModelCostCalculator cost)
+    {
+        // DB-side token sums per (model, agent) — a tiny result set we price in memory.
+        var groups = await db.ApiUsageRecords
+            .GroupBy(r => new { r.Model, r.AgentId })
+            .Select(g => new
+            {
+                g.Key.Model,
+                g.Key.AgentId,
+                In = g.Sum(x => (long)x.InputTokens),
+                Out = g.Sum(x => (long)x.OutputTokens),
+                CacheRead = g.Sum(x => (long)x.CacheReadTokens),
+                CacheCreate = g.Sum(x => (long)x.CacheCreationTokens),
+                Calls = g.Count()
+            })
+            .ToListAsync();
+
+        decimal Usd(string model, long i, long o, long cr, long cc) => cost.CostUsd(model, i, o, cr, cc);
+
+        var byModel = groups
+            .GroupBy(x => cost.Family(x.Model))
+            .Select(g => new
+            {
+                model = g.Key,
+                usd = Math.Round(g.Sum(x => Usd(x.Model, x.In, x.Out, x.CacheRead, x.CacheCreate)), 4),
+                calls = g.Sum(x => x.Calls)
+            })
+            .OrderByDescending(x => x.usd).ToList();
+
+        var byAgent = groups
+            .GroupBy(x => x.AgentId)
+            .Select(g => new
+            {
+                agent = g.Key,
+                usd = Math.Round(g.Sum(x => Usd(x.Model, x.In, x.Out, x.CacheRead, x.CacheCreate)), 4),
+                calls = g.Sum(x => x.Calls)
+            })
+            .OrderByDescending(x => x.usd).ToList();
+
+        var totalUsd = Math.Round(groups.Sum(x => Usd(x.Model, x.In, x.Out, x.CacheRead, x.CacheCreate)), 4);
+        var totalCalls = groups.Sum(x => x.Calls);
+
+        var sinceUtc = await db.ApiUsageRecords
+            .OrderBy(r => r.CreatedAt).Select(r => (DateTime?)r.CreatedAt).FirstOrDefaultAsync();
+
+        return Results.Ok(new
+        {
+            totalUsd,
+            totalCalls,
+            byModel,
+            byAgent,
+            sinceIst = sinceUtc.HasValue ? IstanbulTime.Format(sinceUtc.Value) : null
+        });
+    }
+
+    /// <summary>Daily USD cost over the trailing window (Istanbul calendar date).</summary>
+    private static async Task<IResult> GetCostTrend(
+        ApartmentTriageDbContext db, IModelCostCalculator cost, int days = 30)
+    {
+        var since = DateTime.UtcNow.AddDays(-Math.Clamp(days, 1, 90));
+
+        var rows = await db.ApiUsageRecords
+            .Where(r => r.CreatedAt >= since)
+            .Select(r => new
+            {
+                r.CreatedAt, r.Model,
+                r.InputTokens, r.OutputTokens, r.CacheReadTokens, r.CacheCreationTokens
+            })
+            .ToListAsync();
+
+        var trend = rows
+            .GroupBy(r => IstanbulTime.FromUtc(r.CreatedAt).Date)
+            .OrderBy(g => g.Key)
+            .Select(g => new
+            {
+                date = g.Key.ToString("MM-dd", CultureInfo.InvariantCulture),
+                usd = Math.Round(
+                    g.Sum(r => cost.CostUsd(
+                        r.Model, r.InputTokens, r.OutputTokens, r.CacheReadTokens, r.CacheCreationTokens)), 4)
+            })
+            .ToList();
+
+        return Results.Ok(trend);
     }
 
     // Demo realism (D2): dev/test Mock-channel tickets never count toward dashboard

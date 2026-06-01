@@ -1,6 +1,7 @@
 using ApartmentTriage.Application.Agents.Anthropic;
 using ApartmentTriage.Infrastructure.Anthropic;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ApartmentTriage.Infrastructure;
 
@@ -21,7 +22,12 @@ public static class AnthropicClientExtensions
             client.Timeout = TimeSpan.FromSeconds(60);
         });
 
-        services.AddSingleton<IAnthropicClient, AnthropicClient>();
+        // Real client + usage-recording decorator (self-instrumented FinOps).
+        services.AddSingleton<AnthropicClient>();
+        services.AddSingleton<IAnthropicClient>(sp => new UsageRecordingAnthropicClient(
+            sp.GetRequiredService<AnthropicClient>(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            sp.GetRequiredService<ILogger<UsageRecordingAnthropicClient>>()));
 
         return services;
     }

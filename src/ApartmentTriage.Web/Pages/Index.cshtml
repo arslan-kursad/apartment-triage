@@ -127,16 +127,24 @@
 
 @* ═══════════════ TAB 2 — FINOPS ═══════════════ *@
 <div data-panel="finops" class="hidden">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-xl border border-slate-200 p-4">
             <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
-                <span class="lang-tr">Toplam API Maliyeti</span>
-                <span class="lang-en">Total API Cost</span>
+                <span class="lang-tr">Ölçülen API Maliyeti</span>
+                <span class="lang-en">Measured API Cost</span>
             </p>
-            <p class="text-2xl font-bold text-slate-900">@Model.TotalApiCostUsd</p>
+            <p id="fin-total-cost" class="text-2xl font-bold text-slate-900">—</p>
+            <p id="fin-since" class="text-xs text-slate-400 mt-0.5">&nbsp;</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                <span class="lang-tr">API Çağrısı</span>
+                <span class="lang-en">API Calls</span>
+            </p>
+            <p id="fin-total-calls" class="text-2xl font-bold text-slate-900">—</p>
             <p class="text-xs text-slate-400 mt-0.5">
-                <span class="lang-tr">Anthropic Console · manuel</span>
-                <span class="lang-en">Anthropic Console · manual</span>
+                <span class="lang-tr">canlı kullanımdan</span>
+                <span class="lang-en">from live usage</span>
             </p>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-4">
@@ -164,26 +172,46 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white rounded-xl border border-slate-200 mb-4">
+        <div class="px-5 py-3.5 border-b border-slate-100">
+            <h2 class="font-semibold text-slate-900 text-sm">
+                <span class="lang-tr">Günlük Maliyet Trendi</span>
+                <span class="lang-en">Daily Cost Trend</span>
+            </h2>
+        </div>
+        <div class="p-4"><canvas id="costTrendChart" height="90"></canvas></div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <div class="bg-white rounded-xl border border-slate-200">
             <div class="px-5 py-3.5 border-b border-slate-100">
                 <h2 class="font-semibold text-slate-900 text-sm">
-                    <span class="lang-tr">Model Dağılımı</span>
-                    <span class="lang-en">Model Mix</span>
+                    <span class="lang-tr">Modele Göre Maliyet</span>
+                    <span class="lang-en">Cost by Model</span>
                 </h2>
             </div>
             <div class="p-4 flex items-center justify-center"><canvas id="modelChart" height="240"></canvas></div>
         </div>
-        <div class="bg-white rounded-xl border border-slate-200 p-5">
-            <h2 class="font-semibold text-slate-900 text-sm mb-2">
-                <span class="lang-tr">Maliyet Notu</span>
-                <span class="lang-en">Cost Note</span>
-            </h2>
-            <p class="text-xs text-slate-500 leading-relaxed">
-                <span class="lang-tr">Varsayılan Haiku 4.5; yalnız düşük güvenli sınıflandırmalar Sonnet 4.6'ya yükseltiliyor. Maliyetin büyük kısmı bu nedenle Haiku tarafında kalıyor.</span>
-                <span class="lang-en">Haiku 4.5 by default; only low-confidence classifications escalate to Sonnet 4.6. That keeps the bulk of spend on the Haiku side.</span>
-            </p>
+        <div class="bg-white rounded-xl border border-slate-200">
+            <div class="px-5 py-3.5 border-b border-slate-100">
+                <h2 class="font-semibold text-slate-900 text-sm">
+                    <span class="lang-tr">Agent'a Göre Maliyet</span>
+                    <span class="lang-en">Cost by Agent</span>
+                </h2>
+            </div>
+            <div class="p-4"><canvas id="agentCostChart" height="240"></canvas></div>
         </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 p-5">
+        <h2 class="font-semibold text-slate-900 text-sm mb-2">
+            <span class="lang-tr">Maliyet Notu</span>
+            <span class="lang-en">Cost Note</span>
+        </h2>
+        <p class="text-xs text-slate-500 leading-relaxed">
+            <span class="lang-tr">Maliyet, her API çağrısının gerçek token kullanımından (self-instrumented) türetilir; oranlar yapılandırılabilir. Haiku 4.5 varsayılan; yalnız düşük güvenli sınıflandırmalar Sonnet 4.6'ya yükseltilir, böylece harcamanın büyük kısmı Haiku tarafında kalır.</span>
+            <span class="lang-en">Cost is derived from each call's real token usage (self-instrumented); rates are configurable. Haiku 4.5 is the default; only low-confidence classifications escalate to Sonnet 4.6, keeping the bulk of spend on the Haiku side.</span>
+        </p>
     </div>
 </div>
 
@@ -452,14 +480,58 @@
         });
     }
 
-    // ── Tab 2: FinOps ───────────────────────────────────────────────────────
+    // ── Tab 2: FinOps (self-instrumented cost) ──────────────────────────────
+    function usdTip(suffix) {
+        return { callbacks: { label: function (ctx) {
+            var v = ctx.parsed && ctx.parsed.y != null ? ctx.parsed.y
+                  : (ctx.parsed && ctx.parsed.x != null ? ctx.parsed.x : ctx.parsed);
+            return '$' + Number(v).toFixed(4) + (suffix || '');
+        } } };
+    }
+    function agentLabel(a) {
+        var m = { classifier: 'Classifier', enricher: 'Enricher', router: 'Router', system: 'System' };
+        return m[a] || (a ? a.charAt(0).toUpperCase() + a.slice(1) : a);
+    }
+
     function buildFinops() {
-        var haiku = @Model.HaikuCount, sonnet = @Model.SonnetCount;
-        if (haiku + sonnet === 0) return;
-        set('modelChart', {
-            type: 'doughnut',
-            data: { labels: ['Haiku 4.5', 'Sonnet 4.6'], datasets: [{ data: [haiku, sonnet], backgroundColor: ['#d97706', '#818CF8'], borderWidth: 0 }] },
-            options: { cutout: '58%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10, padding: 10 } } } }
+        getJSON('/api/stats/cost-summary').then(function (d) {
+            if (!d) return;
+            var t = document.getElementById('fin-total-cost');
+            if (t) t.textContent = '$' + Number(d.totalUsd || 0).toFixed(4);
+            var c = document.getElementById('fin-total-calls');
+            if (c) c.textContent = (d.totalCalls || 0).toLocaleString();
+            var s = document.getElementById('fin-since');
+            if (s) s.textContent = d.sinceIst ? pick(['ölçüm: ', 'since ']) + d.sinceIst : pick(['henüz veri yok', 'no data yet']);
+
+            if (d.byModel && d.byModel.length) {
+                set('modelChart', {
+                    type: 'doughnut',
+                    data: { labels: d.byModel.map(function (x) { return x.model; }),
+                            datasets: [{ data: d.byModel.map(function (x) { return x.usd; }), backgroundColor: ['#d97706', '#818CF8', '#10b981'], borderWidth: 0 }] },
+                    options: { cutout: '58%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10, padding: 10 } }, tooltip: usdTip() } }
+                });
+            }
+            if (d.byAgent && d.byAgent.length) {
+                set('agentCostChart', {
+                    type: 'bar',
+                    data: { labels: d.byAgent.map(function (x) { return agentLabel(x.agent); }),
+                            datasets: [{ data: d.byAgent.map(function (x) { return x.usd; }), backgroundColor: '#0ea5e9', borderRadius: 4 }] },
+                    options: { indexAxis: 'y', plugins: { legend: { display: false }, tooltip: usdTip() },
+                               scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, callback: function (v) { return '$' + v; } } },
+                                         y: { grid: { display: false }, ticks: { font: { size: 11 } } } } }
+                });
+            }
+        });
+        getJSON('/api/stats/cost-trend').then(function (d) {
+            if (!d || !d.length) return;
+            set('costTrendChart', {
+                type: 'line',
+                data: { labels: d.map(function (x) { return x.date; }),
+                        datasets: [{ data: d.map(function (x) { return x.usd; }), borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,0.1)', fill: true, tension: 0.3, pointRadius: 2 }] },
+                options: { plugins: { legend: { display: false }, tooltip: usdTip() },
+                           scales: { x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true } },
+                                     y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 }, callback: function (v) { return '$' + v; } }, beginAtZero: true } } }
+            });
         });
     }
 

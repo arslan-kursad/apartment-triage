@@ -34,6 +34,11 @@ public abstract class AgentBase<TIn, TOut> : IAgent<TIn, TOut>
             ["MessageId"] = context.MessageId
         });
 
+        // Attribute any Anthropic calls made inside ExecuteCoreAsync to this agent (FinOps).
+        var previousAgentId = AgentExecutionContext.CurrentAgentId;
+        AgentExecutionContext.CurrentAgentId = AgentId;
+        try
+        {
         AgentResult<TOut>? lastResult = null;
 
         for (int attempt = 1; attempt <= MaxRetries; attempt++)
@@ -73,5 +78,10 @@ public abstract class AgentBase<TIn, TOut> : IAgent<TIn, TOut>
 
         Logger.LogError("Agent {AgentId} exhausted {MaxRetries} retries", AgentId, MaxRetries);
         return lastResult!;
+        }
+        finally
+        {
+            AgentExecutionContext.CurrentAgentId = previousAgentId;
+        }
     }
 }

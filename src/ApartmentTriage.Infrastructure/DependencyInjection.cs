@@ -1,8 +1,10 @@
+using ApartmentTriage.Application.Agents.Anthropic;
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Application.Embeddings;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Infrastructure.Anthropic;
 using ApartmentTriage.Infrastructure.Channels;
 using ApartmentTriage.Infrastructure.Embeddings;
 using ApartmentTriage.Infrastructure.Persistence;
@@ -38,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IAnonymizationService, AnonymizationService>();
         services.AddScoped<IOtpService, OtpService>();
         services.AddScoped<ManagerBootstrapper>();
+        services.AddSingleton<IModelCostCalculator, ModelCostCalculator>();
 
         // Hangfire — PostgreSQL storage (no Redis)
         services.AddHangfire(cfg => cfg
