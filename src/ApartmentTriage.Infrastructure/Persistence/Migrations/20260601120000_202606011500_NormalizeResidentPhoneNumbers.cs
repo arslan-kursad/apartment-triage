@@ -15,41 +15,38 @@ namespace ApartmentTriage.Infrastructure.Persistence.Migrations
     /// </summary>
     public partial class _202606011500_NormalizeResidentPhoneNumbers : Migration
     {
+        private const string CanonicalWhatsAppSql = """
+            CASE
+                WHEN whats_app_number IS NULL OR whats_app_number LIKE '%*%' OR whats_app_number = '[redacted]' THEN NULL
+                WHEN whats_app_number ~ '^\+90[0-9]{10}$' THEN whats_app_number
+                WHEN regexp_replace(whats_app_number, '[\s\-().]', '', 'g') ~ '^90[0-9]{10}$'
+                    THEN '+' || regexp_replace(whats_app_number, '[\s\-().]', '', 'g')
+                WHEN regexp_replace(whats_app_number, '[\s\-().]', '', 'g') ~ '^5[0-9]{9}$'
+                    THEN '+90' || regexp_replace(whats_app_number, '[\s\-().]', '', 'g')
+                WHEN regexp_replace(whats_app_number, '[\s\-().]', '', 'g') ~ '^05[0-9]{9}$'
+                    THEN '+90' || substring(regexp_replace(whats_app_number, '[\s\-().]', '', 'g') from 2)
+                ELSE whats_app_number
+            END
+            """;
+
+        private const string CanonicalContactPhoneSql = """
+            CASE
+                WHEN contact_phone IS NULL OR contact_phone LIKE '%*%' THEN NULL
+                WHEN contact_phone ~ '^\+90[0-9]{10}$' THEN contact_phone
+                WHEN regexp_replace(contact_phone, '[\s\-().]', '', 'g') ~ '^90[0-9]{10}$'
+                    THEN '+' || regexp_replace(contact_phone, '[\s\-().]', '', 'g')
+                WHEN regexp_replace(contact_phone, '[\s\-().]', '', 'g') ~ '^5[0-9]{9}$'
+                    THEN '+90' || regexp_replace(contact_phone, '[\s\-().]', '', 'g')
+                WHEN regexp_replace(contact_phone, '[\s\-().]', '', 'g') ~ '^05[0-9]{9}$'
+                    THEN '+90' || substring(regexp_replace(contact_phone, '[\s\-().]', '', 'g') from 2)
+                ELSE contact_phone
+            END
+            """;
+
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // ── 1. Normalize whats_app_number and contact_phone (skip masked/redacted) ──
-            migrationBuilder.Sql("""
-                UPDATE residents
-                SET whats_app_number = CASE
-                    WHEN whats_app_number IS NULL OR whats_app_number LIKE '%*%' OR whats_app_number = '[redacted]' THEN whats_app_number
-                    WHEN whats_app_number ~ '^\+90[0-9]{10}$' THEN whats_app_number
-                    WHEN regexp_replace(whats_app_number, '[\s\-().]', '', 'g') ~ '^90[0-9]{10}$'
-                        THEN '+' || regexp_replace(whats_app_number, '[\s\-().]', '', 'g')
-                    WHEN regexp_replace(whats_app_number, '[\s\-().]', '', 'g') ~ '^5[0-9]{9}$'
-                        THEN '+90' || regexp_replace(whats_app_number, '[\s\-().]', '', 'g')
-                    WHEN regexp_replace(whats_app_number, '[\s\-().]', '', 'g') ~ '^05[0-9]{9}$'
-                        THEN '+90' || substring(regexp_replace(whats_app_number, '[\s\-().]', '', 'g') from 2)
-                    ELSE whats_app_number
-                END
-                WHERE whats_app_number IS NOT NULL;
-
-                UPDATE residents
-                SET contact_phone = CASE
-                    WHEN contact_phone IS NULL OR contact_phone LIKE '%*%' THEN contact_phone
-                    WHEN contact_phone ~ '^\+90[0-9]{10}$' THEN contact_phone
-                    WHEN regexp_replace(contact_phone, '[\s\-().]', '', 'g') ~ '^90[0-9]{10}$'
-                        THEN '+' || regexp_replace(contact_phone, '[\s\-().]', '', 'g')
-                    WHEN regexp_replace(contact_phone, '[\s\-().]', '', 'g') ~ '^5[0-9]{9}$'
-                        THEN '+90' || regexp_replace(contact_phone, '[\s\-().]', '', 'g')
-                    WHEN regexp_replace(contact_phone, '[\s\-().]', '', 'g') ~ '^05[0-9]{9}$'
-                        THEN '+90' || substring(regexp_replace(contact_phone, '[\s\-().]', '', 'g') from 2)
-                    ELSE contact_phone
-                END
-                WHERE contact_phone IS NOT NULL;
-                """);
-
-            // ── 2. Merge duplicate whats_app_number (keep oldest created_at) ──
-            migrationBuilder.Sql("""
+            // ── 1. Merge duplicate whats_app_number by canonical form (before UPDATE) ──
+            migrationBuilder.Sql($"""
                 DO $$
                 DECLARE
                     r RECORD;
@@ -57,14 +54,15 @@ namespace ApartmentTriage.Infrastructure.Persistence.Migrations
                     drop_id uuid;
                 BEGIN
                     FOR r IN
-                        SELECT whats_app_number AS num,
+                        SELECT canon AS num,
                                (array_agg(id ORDER BY created_at))[1] AS keeper,
                                (array_agg(id ORDER BY created_at))[2:] AS losers
-                        FROM residents
-                        WHERE whats_app_number IS NOT NULL
-                          AND whats_app_number NOT LIKE '%*%'
-                          AND whats_app_number <> '[redacted]'
-                        GROUP BY whats_app_number
+                        FROM (
+                            SELECT id, created_at, {CanonicalWhatsAppSql} AS canon
+                            FROM residents
+                        ) normalized
+                        WHERE canon IS NOT NULL
+                        GROUP BY canon
                         HAVING count(*) > 1
                     LOOP
                         keep_id := r.keeper;
@@ -80,8 +78,8 @@ namespace ApartmentTriage.Infrastructure.Persistence.Migrations
                 END $$;
                 """);
 
-            // ── 3. Merge duplicate contact_phone (keep oldest; null out loser phone only) ──
-            migrationBuilder.Sql("""
+            // ── 2. Merge duplicate contact_phone by canonical form (before UPDATE) ──
+            migrationBuilder.Sql($"""
                 DO $$
                 DECLARE
                     r RECORD;
@@ -89,13 +87,15 @@ namespace ApartmentTriage.Infrastructure.Persistence.Migrations
                     drop_id uuid;
                 BEGIN
                     FOR r IN
-                        SELECT contact_phone AS num,
+                        SELECT canon AS num,
                                (array_agg(id ORDER BY created_at))[1] AS keeper,
                                (array_agg(id ORDER BY created_at))[2:] AS losers
-                        FROM residents
-                        WHERE contact_phone IS NOT NULL
-                          AND contact_phone NOT LIKE '%*%'
-                        GROUP BY contact_phone
+                        FROM (
+                            SELECT id, created_at, {CanonicalContactPhoneSql} AS canon
+                            FROM residents
+                        ) normalized
+                        WHERE canon IS NOT NULL
+                        GROUP BY canon
                         HAVING count(*) > 1
                     LOOP
                         keep_id := r.keeper;
@@ -109,6 +109,17 @@ namespace ApartmentTriage.Infrastructure.Persistence.Migrations
                         END LOOP;
                     END LOOP;
                 END $$;
+                """);
+
+            // ── 3. Normalize whats_app_number and contact_phone (skip masked/redacted) ──
+            migrationBuilder.Sql($"""
+                UPDATE residents
+                SET whats_app_number = {CanonicalWhatsAppSql}
+                WHERE whats_app_number IS NOT NULL;
+
+                UPDATE residents
+                SET contact_phone = {CanonicalContactPhoneSql}
+                WHERE contact_phone IS NOT NULL;
                 """);
 
             migrationBuilder.CreateIndex(
