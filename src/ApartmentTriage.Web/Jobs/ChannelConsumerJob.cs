@@ -4,6 +4,7 @@ using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Entities;
+using ApartmentTriage.Infrastructure.Services;
 using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Web.Security;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ public sealed class ChannelConsumerJob(
     IMessageRepository messageRepository,
     ITicketRepository ticketRepository,
     IOtpService otpService,
+    ManagerBootstrapper managerBootstrapper,
     ITriageOrchestrator orchestrator,
     ILogger<ChannelConsumerJob> logger)
 {
@@ -218,6 +220,11 @@ public sealed class ChannelConsumerJob(
 
     private async Task HandleLoginCommandAsync(IncomingMessage incoming, CancellationToken ct)
     {
+        if (long.TryParse(incoming.SenderId, out var telegramId))
+            await EnsureTelegramResidentForLoginAsync(telegramId, incoming, ct);
+
+        await managerBootstrapper.RunAsync(ct);
+
         var result = await otpService.GenerateAndSendAsync(incoming.SenderId, channel.ChannelType, ct);
         logger.LogInformation(
             "Telegram /login handled for {SenderId} with status {Status}",
@@ -276,6 +283,22 @@ public sealed class ChannelConsumerJob(
           ⚠️ Bu hesap için panel girişi açık değil.
           Yönetici iseniz erişim atanmasını isteyin, ardından tekrar /login yazın.
           """;
+
+    private async Task EnsureTelegramResidentForLoginAsync(
+        long telegramId, IncomingMessage incoming, CancellationToken ct)
+    {
+        if (await residentRepository.FindByTelegramIdAsync(telegramId, ct) is not null)
+            return;
+
+        var preferredLanguage = DetectLanguage(incoming.LanguageCode, incoming.Text);
+        var resident = Resident.Create(telegramId: telegramId, preferredLanguage: preferredLanguage);
+        await residentRepository.AddAsync(resident, ct);
+        await residentRepository.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Created resident {ResidentId} for Telegram {TelegramId} on /login (no welcome message)",
+            resident.Id, telegramId);
+    }
 
     private async Task<Resident> CreateResidentAsync(long telegramId, string preferredLanguage, CancellationToken ct)
     {

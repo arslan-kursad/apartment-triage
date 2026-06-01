@@ -1,4 +1,5 @@
 using ApartmentTriage.Application.Channels;
+using ApartmentTriage.Domain;
 using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -80,7 +81,9 @@ public static class ReplyEndpoints
         return channelType switch
         {
             ChannelType.Telegram  => resident.TelegramId?.ToString(),
-            ChannelType.WhatsApp  => resident.WhatsAppNumber,
+            ChannelType.WhatsApp  => resident.WhatsAppNumber is { } wa
+                ? PhoneNumberNormalizer.ToWhatsAppApiRecipient(wa)
+                : null,
             _                     => null
         };
     }

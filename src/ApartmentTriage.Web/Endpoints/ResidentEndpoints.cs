@@ -1,3 +1,4 @@
+using ApartmentTriage.Domain;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -71,12 +72,12 @@ public static class ResidentEndpoints
         var resident = Resident.Create(
             displayName:      req.DisplayName?.Trim(),
             apartmentNumber:  NormalizeUnit(req.ApartmentNumber),
-            whatsAppNumber:   NormalizePhone(req.WhatsAppNumber),
+            whatsAppNumber:   PhoneNumberNormalizer.Normalize(req.WhatsAppNumber),
             telegramId:       req.TelegramId,
             preferredLanguage: req.PreferredLanguage is "tr" or "en" ? req.PreferredLanguage : "tr");
 
         resident.UpdateContactInfo(
-            contactPhone:     NormalizePhone(req.ContactPhone));
+            contactPhone:     PhoneNumberNormalizer.Normalize(req.ContactPhone));
 
         await db.Residents.AddAsync(resident, ct);
         await db.SaveChangesAsync(ct);
@@ -101,7 +102,7 @@ public static class ResidentEndpoints
         // FLAG 3 guard: never overwrite WhatsApp with a masked value ("+90***1234").
         // Masked strings originate from the list-view display; persisting one would
         // corrupt the channel identity. Pass null → UpdateContactInfo keeps existing.
-        var whatsApp = NormalizePhone(req.WhatsAppNumber);
+        var whatsApp = PhoneNumberNormalizer.Normalize(req.WhatsAppNumber);
         if (whatsApp is not null && whatsApp.Contains('*'))
             whatsApp = null;
 
@@ -110,7 +111,7 @@ public static class ResidentEndpoints
             apartmentNumber:  NormalizeUnit(req.ApartmentNumber),
             whatsAppNumber:   whatsApp,
             telegramId:       req.TelegramId,
-            contactPhone:     NormalizePhone(req.ContactPhone));
+            contactPhone:     PhoneNumberNormalizer.Normalize(req.ContactPhone));
 
         if (req.PreferredLanguage is "tr" or "en")
             resident.SetPreferredLanguage(req.PreferredLanguage);
@@ -142,10 +143,10 @@ public static class ResidentEndpoints
         if (string.IsNullOrWhiteSpace(req.DisplayName) || req.DisplayName.Trim().Length < 2)
             return "Ad Soyad en az 2 karakter olmalıdır.";
         // Validate the normalized number — input may carry spaces/dashes the user typed.
-        var wa = NormalizePhone(req.WhatsAppNumber);
+        var wa = PhoneNumberNormalizer.Normalize(req.WhatsAppNumber);
         if (wa is not null && !wa.Contains('*') && !E164Regex.IsMatch(wa))
             return "WhatsApp numarası E.164 formatında olmalıdır (+905xxxxxxxxx).";
-        var contact = NormalizePhone(req.ContactPhone);
+        var contact = PhoneNumberNormalizer.Normalize(req.ContactPhone);
         if (contact is not null && !contact.Contains('*') && !E164Regex.IsMatch(contact))
             return "İletişim telefonu E.164 formatında olmalıdır (+905xxxxxxxxx).";
         return null;
@@ -164,13 +165,6 @@ public static class ResidentEndpoints
         return collapsed.ToUpper(TrCulture);
     }
 
-    /// <summary>Phone/WhatsApp → strip spaces, dashes, dots, parentheses (E.164 digits only).</summary>
-    private static string? NormalizePhone(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s)) return null;
-        var cleaned = Regex.Replace(s.Trim(), @"[\s\-().]", "");
-        return cleaned.Length == 0 ? null : cleaned;
-    }
 }
 
 public sealed record ResidentUpsertRequest(

@@ -3,6 +3,7 @@ using System.Text;
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Application.Services;
+using ApartmentTriage.Domain;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +23,7 @@ public sealed class OtpService : IOtpService
     private readonly IMessageChannel _telegram;
     private readonly IMessageChannel _whatsApp;
     private readonly ILogger<OtpService> _logger;
+    private readonly IConfiguration _configuration;
 
     private readonly int _expiryMinutes;
     private readonly int _maxAttempts;
@@ -41,6 +43,7 @@ public sealed class OtpService : IOtpService
         _telegram = telegram;
         _whatsApp = whatsApp;
         _logger = logger;
+        _configuration = configuration;
 
         _expiryMinutes = configuration.GetValue("Auth:OtpExpiryMinutes", 5);
         _maxAttempts = configuration.GetValue("Auth:MaxAttempts", 5);
@@ -140,15 +143,41 @@ public sealed class OtpService : IOtpService
         return OtpVerifyResult.Success(resident);
     }
 
-    private Task<Resident?> ResolveResidentAsync(string identifier, ChannelType channel, CancellationToken ct)
-        => channel switch
-        {
-            ChannelType.Telegram => long.TryParse(identifier, out var tgId)
-                ? _residents.FindByTelegramIdAsync(tgId, ct)
-                : Task.FromResult<Resident?>(null),
-            ChannelType.WhatsApp => _residents.FindByWhatsAppNumberAsync(identifier, ct),
-            _ => Task.FromResult<Resident?>(null)
-        };
+    private async Task<Resident?> ResolveResidentAsync(string identifier, ChannelType channel, CancellationToken ct)
+    {
+        if (channel == ChannelType.WhatsApp)
+            return await _residents.FindByWhatsAppNumberAsync(identifier, ct);
+
+        if (channel != ChannelType.Telegram || !long.TryParse(identifier, out var tgId))
+            return null;
+
+        var byTelegram = await _residents.FindByTelegramIdAsync(tgId, ct);
+        if (byTelegram is not null && IsAuthorizedForLogin(byTelegram))
+            return byTelegram;
+
+        // Manager may live on the WhatsApp row while /login uses Telegram ID (split after phone merge).
+        var phoneManager = await TryResolveBootstrapPhoneManagerAsync(tgId, ct);
+        if (phoneManager is not null)
+            return phoneManager;
+
+        return byTelegram;
+    }
+
+    private async Task<Resident?> TryResolveBootstrapPhoneManagerAsync(long telegramId, CancellationToken ct)
+    {
+        var bootstrapId = _configuration["Auth:BootstrapManagerIdentifier"]?.Trim();
+        if (bootstrapId != telegramId.ToString())
+            return null;
+
+        var phone = PhoneNumberNormalizer.Normalize(_configuration["Auth:BootstrapManagerPhone"]);
+        if (phone is null)
+            return null;
+
+        var resident = await _residents.FindByWhatsAppNumberAsync(phone, ct)
+            ?? await _residents.FindByContactPhoneAsync(phone, ct);
+
+        return resident is not null && IsAuthorizedForLogin(resident) ? resident : null;
+    }
 
     private Task SendAsync(ChannelType channel, string recipientId, string text, CancellationToken ct)
     {

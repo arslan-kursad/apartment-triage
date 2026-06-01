@@ -4,8 +4,10 @@ using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Infrastructure.Services;
 using ApartmentTriage.Web.Jobs;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Generic;
@@ -32,6 +34,7 @@ public class ChannelConsumerJobTests
             messageRepository,
             new FakeTicketRepository(),
             new FakeOtpService(),
+            NoOpBootstrapper(),
             orchestrator,
             NullLogger<ChannelConsumerJob>.Instance);
 
@@ -65,6 +68,7 @@ public class ChannelConsumerJobTests
             messageRepository,
             new FakeTicketRepository(),
             new FakeOtpService(),
+            NoOpBootstrapper(),
             orchestrator,
             NullLogger<ChannelConsumerJob>.Instance);
 
@@ -97,6 +101,7 @@ public class ChannelConsumerJobTests
             messageRepository,
             new FakeTicketRepository(),
             otpService,
+            NoOpBootstrapper(),
             orchestrator,
             NullLogger<ChannelConsumerJob>.Instance);
 
@@ -123,6 +128,7 @@ public class ChannelConsumerJobTests
             new FakeMessageRepository(),
             new FakeTicketRepository(),
             otpService,
+            NoOpBootstrapper(),
             new FakeTriageOrchestrator(),
             NullLogger<ChannelConsumerJob>.Instance);
 
@@ -132,6 +138,38 @@ public class ChannelConsumerJobTests
         sentMessages.Should().ContainSingle();
         sentMessages[0].Text.Should().Contain("panel girişi");
     }
+
+    [Fact]
+    public async Task RunAsync_LoginCommand_NoResidentYet_CreatesResidentBeforeOtp()
+    {
+        var sentMessages = new List<(string RecipientId, string Text)>();
+        var channel = new FakeTelegramChannel(sentMessages, text: "/login");
+        var residentRepository = new FakeResidentRepository();
+        var otpService = new FakeOtpService();
+
+        var job = new ChannelConsumerJob(
+            channel,
+            residentRepository,
+            new FakeMessageRepository(),
+            new FakeTicketRepository(),
+            otpService,
+            NoOpBootstrapper(),
+            new FakeTriageOrchestrator(),
+            NullLogger<ChannelConsumerJob>.Instance);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await job.RunAsync(cts.Token);
+
+        residentRepository.AddedResidents.Should().ContainSingle(r => r.TelegramId == 8013067042);
+        otpService.GenerateRequests.Should().ContainSingle();
+        sentMessages.Should().BeEmpty();
+    }
+
+    private static ManagerBootstrapper NoOpBootstrapper()
+        => new(
+            new FakeResidentRepository(),
+            new ConfigurationBuilder().Build(),
+            NullLogger<ManagerBootstrapper>.Instance);
 }
 
 public class ClarificationTemplatesTests
@@ -207,6 +245,9 @@ internal sealed class FakeResidentRepository : IResidentRepository
         => Task.FromResult(_existingResident?.TelegramId == telegramId ? _existingResident : null);
 
     public Task<Resident?> FindByWhatsAppNumberAsync(string number, CancellationToken cancellationToken = default)
+        => Task.FromResult<Resident?>(null);
+
+    public Task<Resident?> FindByContactPhoneAsync(string number, CancellationToken cancellationToken = default)
         => Task.FromResult<Resident?>(null);
 
     public Task AddAsync(Resident resident, CancellationToken cancellationToken = default)

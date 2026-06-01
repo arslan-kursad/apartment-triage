@@ -210,6 +210,11 @@ namespace ApartmentTriage.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_residents_telegram_id")
                         .HasFilter("telegram_id IS NOT NULL");
 
+                    b.HasIndex("ContactPhone")
+                        .IsUnique()
+                        .HasDatabaseName("ix_residents_contact_phone")
+                        .HasFilter("contact_phone IS NOT NULL");
+
                     b.HasIndex("WhatsAppNumber")
                         .IsUnique()
                         .HasDatabaseName("ix_residents_whats_app_number")

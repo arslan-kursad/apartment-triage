@@ -74,6 +74,36 @@ public class OtpServiceTests
     }
 
     [Fact]
+    public async Task GenerateAndSend_SplitRecord_BootstrapPhoneManager_SendsOtp()
+    {
+        const long kursadTelegramId = 100000001;
+        const string phone = "+905550001234";
+        var ghost = Resident.Create(telegramId: kursadTelegramId, displayName: "Kürşad");
+        var manager = Resident.Create(whatsAppNumber: phone, displayName: "Kürşad");
+        manager.SetRole(ResidentRole.Manager);
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:BootstrapManagerIdentifier"] = kursadTelegramId.ToString(),
+                ["Auth:BootstrapManagerPhone"] = phone,
+                ["Auth:OtpExpiryMinutes"] = "5",
+                ["Auth:MaxAttempts"] = "5",
+                ["Auth:MaxChallengesPerWindow"] = "3",
+                ["Auth:ChallengeWindowMinutes"] = "15"
+            })
+            .Build();
+
+        var (svc, otp, _, sent) = CreateService(config, ghost, manager);
+
+        var status = await svc.GenerateAndSendAsync(kursadTelegramId.ToString(), ChannelType.Telegram);
+
+        status.Should().Be(OtpSendStatus.Sent);
+        otp.Challenges.Should().ContainSingle();
+        sent.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task GenerateAndSend_InactiveManager_Unauthorized()
     {
         var manager = Manager(ManagerTelegramId, "tr");
@@ -276,6 +306,9 @@ internal sealed class FakeResidentStore(IEnumerable<Resident> residents) : IResi
 
     public Task<Resident?> FindByWhatsAppNumberAsync(string number, CancellationToken cancellationToken = default)
         => Task.FromResult(_residents.FirstOrDefault(r => r.WhatsAppNumber == number));
+
+    public Task<Resident?> FindByContactPhoneAsync(string number, CancellationToken cancellationToken = default)
+        => Task.FromResult(_residents.FirstOrDefault(r => r.ContactPhone == number));
 
     public Task AddAsync(Resident resident, CancellationToken cancellationToken = default)
     {

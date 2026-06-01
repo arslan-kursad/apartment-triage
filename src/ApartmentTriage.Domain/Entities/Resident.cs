@@ -1,5 +1,6 @@
 using System.Globalization;
 using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Domain;
 
 namespace ApartmentTriage.Domain.Entities;
 
@@ -75,7 +76,7 @@ public sealed class Resident
             Id = Guid.NewGuid(),
             ApartmentNumber = apartmentNumber?.Trim(),
             DisplayName = NormalizeDisplayName(displayName),
-            WhatsAppNumber = whatsAppNumber?.Trim(),
+            WhatsAppNumber = PhoneNumberNormalizer.Normalize(whatsAppNumber),
             TelegramId = telegramId,
             PreferredLanguage = preferredLanguage is "tr" or "en" ? preferredLanguage : "tr",
             IsActive = true,
@@ -101,9 +102,9 @@ public sealed class Resident
     {
         if (displayName is not null) DisplayName = NormalizeDisplayName(displayName);
         if (apartmentNumber is not null) ApartmentNumber = apartmentNumber.Trim();
-        if (whatsAppNumber is not null) WhatsAppNumber = whatsAppNumber.Trim();
+        if (whatsAppNumber is not null) WhatsAppNumber = PhoneNumberNormalizer.Normalize(whatsAppNumber);
         if (telegramId.HasValue) TelegramId = telegramId;
-        if (contactPhone is not null) ContactPhone = contactPhone.Trim();
+        if (contactPhone is not null) ContactPhone = PhoneNumberNormalizer.Normalize(contactPhone);
     }
 
     public void Deactivate() => IsActive = false;
@@ -112,6 +113,9 @@ public sealed class Resident
 
     /// <summary>Assigns the authorization role. Used by bootstrap and admin role management.</summary>
     public void SetRole(ResidentRole role) => Role = role;
+
+    /// <summary>Clears Telegram channel identity (e.g. when merging a ghost row into the WhatsApp manager record).</summary>
+    public void ClearTelegramId() => TelegramId = null;
 
     /// <summary>KVKK anonymization — irreversible. Call only from AnonymizationService.</summary>
     public void Anonymize()

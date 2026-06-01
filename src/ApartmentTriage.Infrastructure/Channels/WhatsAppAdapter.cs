@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using ApartmentTriage.Application.Channels;
+using ApartmentTriage.Domain;
 using ApartmentTriage.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -69,6 +70,10 @@ public sealed class WhatsAppAdapter : IMessageChannel
 
     public async Task SendAsync(string recipientId, string text, CancellationToken cancellationToken = default)
     {
+        var to = PhoneNumberNormalizer.Normalize(recipientId) is { } normalized
+            ? PhoneNumberNormalizer.ToWhatsAppApiRecipient(normalized)
+            : recipientId.TrimStart('+');
+
         var client = _httpClientFactory.CreateClient("whatsapp");
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _accessToken);
@@ -78,7 +83,7 @@ public sealed class WhatsAppAdapter : IMessageChannel
         var payload = new
         {
             messaging_product = "whatsapp",
-            to = recipientId,
+            to,
             type = "text",
             text = new { body = text }
         };

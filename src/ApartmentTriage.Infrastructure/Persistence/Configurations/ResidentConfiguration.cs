@@ -51,5 +51,9 @@ internal sealed class ResidentConfiguration : IEntityTypeConfiguration<Resident>
         b.HasIndex(r => r.TelegramId)
             .IsUnique()
             .HasFilter("telegram_id IS NOT NULL");
+
+        b.HasIndex(r => r.ContactPhone)
+            .IsUnique()
+            .HasFilter("contact_phone IS NOT NULL");
     }
 }

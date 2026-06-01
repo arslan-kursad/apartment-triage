@@ -1,3 +1,4 @@
+using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Infrastructure.Services;
@@ -69,18 +70,64 @@ public class ManagerBootstrapperTests
         someone.Role.Should().Be(ResidentRole.None);
     }
 
-    private static ManagerBootstrapper Build(string? bootstrapIdentifier, params Resident[] residents)
+    [Fact]
+    public async Task SplitWhatsAppManager_LinksTelegramAndDeactivatesGhost()
+    {
+        const string phone = "+905550001234";
+        var ghost = Resident.Create(telegramId: KursadTelegramId, displayName: "Kürşad");
+        var manager = Resident.Create(whatsAppNumber: phone, displayName: "KÜRŞAD");
+        manager.SetRole(ResidentRole.Manager);
+
+        var bootstrapper = Build(KursadTelegramId.ToString(), phone, ghost, manager);
+
+        await bootstrapper.RunAsync();
+
+        manager.TelegramId.Should().Be(KursadTelegramId);
+        manager.Role.Should().Be(ResidentRole.Manager);
+        ghost.TelegramId.Should().BeNull();
+        ghost.IsActive.Should().BeFalse();
+    }
+
+    private static ManagerBootstrapper Build(
+        string? bootstrapIdentifier,
+        params Resident[] residents)
+        => Build(bootstrapIdentifier, bootstrapPhone: null, residents);
+
+    private static ManagerBootstrapper Build(
+        string? bootstrapIdentifier,
+        string? bootstrapPhone,
+        params Resident[] residents)
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Auth:BootstrapManagerIdentifier"] = bootstrapIdentifier
+                ["Auth:BootstrapManagerIdentifier"] = bootstrapIdentifier,
+                ["Auth:BootstrapManagerPhone"] = bootstrapPhone
             })
             .Build();
 
         return new ManagerBootstrapper(
-            new FakeResidentStore(residents),
+            new BootstrapFakeResidentStore(residents),
             config,
             NullLogger<ManagerBootstrapper>.Instance);
     }
+}
+
+internal sealed class BootstrapFakeResidentStore(IEnumerable<Resident> residents) : IResidentRepository
+{
+    private readonly List<Resident> _residents = residents.ToList();
+
+    public Task<Resident?> FindByTelegramIdAsync(long telegramId, CancellationToken cancellationToken = default)
+        => Task.FromResult(_residents.FirstOrDefault(r => r.TelegramId == telegramId && r.IsActive));
+
+    public Task<Resident?> FindByWhatsAppNumberAsync(string number, CancellationToken cancellationToken = default)
+        => Task.FromResult(_residents.FirstOrDefault(r => r.WhatsAppNumber == number));
+
+    public Task<Resident?> FindByContactPhoneAsync(string number, CancellationToken cancellationToken = default)
+        => Task.FromResult(_residents.FirstOrDefault(r => r.ContactPhone == number));
+
+    public Task AddAsync(Resident resident, CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
