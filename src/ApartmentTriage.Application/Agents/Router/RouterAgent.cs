@@ -202,7 +202,7 @@ public sealed class RouterAgent : AgentBase<RouterInput, RouterOutput>
         {
             dto = JsonSerializer.Deserialize<LlmOutput>(json, ParseOptions);
         }
-        catch (JsonException ex)
+        catch (JsonException)
         {
             Logger.LogWarning(
                 "RouterAgent [{TicketId}] LLM JSON parse error — defaulting to AssignTechnician. Json: {Json}",
