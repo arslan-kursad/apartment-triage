@@ -45,38 +45,38 @@ Infrastructure implements the interfaces the Application layer declares (Depende
 
 ```mermaid
 flowchart TB
-    subgraph Channels["Channels"]
-        WA["WhatsApp Cloud API"]
-        TG["Telegram Bot API"]
+    subgraph Channels
+        WA[WhatsApp Cloud API]
+        TG[Telegram Bot API]
     end
 
-    subgraph Web["ASP.NET Core 8 — Web"]
-        WH["Webhook endpoint / long-poll"]
-        JOB["Hangfire background job"]
-        DASH["Razor Pages dashboard"]
+    subgraph Web[ASP.NET Core 8]
+        WH[Webhook / long-poll]
+        JOB[Hangfire job]
+        DASH[Razor Pages dashboard]
     end
 
-    subgraph App["Application — orchestration & agents"]
-        ORCH["TriageOrchestrator"]
-        CLS["ClassifierAgent"]
-        ENR["EnricherAgent"]
-        RTR["RouterAgent"]
+    subgraph App[Application Layer]
+        ORCH[TriageOrchestrator]
+        CLS[ClassifierAgent]
+        ENR[EnricherAgent]
+        RTR[RouterAgent]
     end
 
-    subgraph Infra["Infrastructure"]
-        ANT["Anthropic API client (Haiku / Sonnet)"]
-        ONNX["ONNX embeddings (multilingual-e5-small)"]
-        REPO["EF Core repositories"]
+    subgraph Infra[Infrastructure]
+        ANT[Anthropic API - Haiku / Sonnet]
+        ONNX[ONNX embeddings]
+        REPO[EF Core repositories]
     end
 
-    DB[("PostgreSQL 16 + pgvector")]
+    DB[(PostgreSQL + pgvector)]
 
     WA --> WH
     TG --> WH
     WH --> JOB
     JOB --> ORCH
     ORCH --> CLS --> ENR --> RTR
-    ENR -.->|semantic search| ONNX
+    ENR -.->|similarity| ONNX
     CLS -.->|LLM| ANT
     ENR -.->|LLM| ANT
     RTR -.->|LLM| ANT
@@ -179,37 +179,35 @@ sequenceDiagram
 erDiagram
     RESIDENT ||--o{ MESSAGE : sends
     RESIDENT ||--o{ TICKET : owns
-    MESSAGE  ||--o| TICKET : "triaged into"
+    MESSAGE  ||--o| TICKET : source
 
     RESIDENT {
-        guid Id
+        string Id
         string DisplayName
         string WhatsAppNumber
-        long TelegramId
-        enum Role
+        int TelegramId
+        string Role
         bool IsActive
     }
     MESSAGE {
-        guid Id
-        enum ChannelType
+        string Id
+        string ChannelType
         string RawText
-        bytea ImageData
-        datetime ReceivedAt
+        string ReceivedAt
     }
     TICKET {
-        guid Id
-        enum Category
-        enum Severity
+        string Id
+        string Category
+        string Severity
         bool IsEmergency
-        enum RoutingAction
-        vector EmbeddingVector
+        string RoutingAction
     }
     OTP_CHALLENGE {
-        guid Id
+        string Id
         string Identifier
         string CodeHash
-        datetime ExpiresAt
-        datetime ConsumedAt
+        string ExpiresAt
+        string ConsumedAt
     }
 ```
 
