@@ -79,11 +79,13 @@ public class ChannelConsumerJobTests
         messageRepository.AddedMessages.Should().ContainSingle();
     }
 
-    [Fact]
-    public async Task RunAsync_LoginCommand_RequestsOtpAndSkipsTriage()
+    [Theory]
+    [InlineData("/login")]
+    [InlineData("/login@apartman_triage_bot")]
+    public async Task RunAsync_LoginCommand_RequestsOtpAndSkipsTriage(string loginText)
     {
         var sentMessages = new List<(string RecipientId, string Text)>();
-        var channel = new FakeTelegramChannel(sentMessages, text: "/login");
+        var channel = new FakeTelegramChannel(sentMessages, text: loginText);
         var residentRepository = new FakeResidentRepository(existingResident: Resident.Create(telegramId: 8013067042));
         var messageRepository = new FakeMessageRepository();
         var orchestrator = new FakeTriageOrchestrator();
@@ -106,6 +108,29 @@ public class ChannelConsumerJobTests
         messageRepository.AddedMessages.Should().BeEmpty();
         orchestrator.ProcessCallCount.Should().Be(0);
         sentMessages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task RunAsync_LoginCommand_Unauthorized_SendsGuidanceMessage()
+    {
+        var sentMessages = new List<(string RecipientId, string Text)>();
+        var channel = new FakeTelegramChannel(sentMessages, text: "/login", languageCode: "tr");
+        var otpService = new FakeOtpService { NextSendStatus = OtpSendStatus.Unauthorized };
+
+        var job = new ChannelConsumerJob(
+            channel,
+            new FakeResidentRepository(),
+            new FakeMessageRepository(),
+            new FakeTicketRepository(),
+            otpService,
+            new FakeTriageOrchestrator(),
+            NullLogger<ChannelConsumerJob>.Instance);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await job.RunAsync(cts.Token);
+
+        sentMessages.Should().ContainSingle();
+        sentMessages[0].Text.Should().Contain("panel girişi");
     }
 }
 
@@ -135,10 +160,16 @@ internal sealed class FakeTelegramChannel : IMessageChannel
     private readonly List<(string RecipientId, string Text)> _sentMessages;
     private readonly string _text;
 
-    public FakeTelegramChannel(List<(string RecipientId, string Text)> sentMessages, string text = "Merhaba, asansör bozuk.")
+    private readonly string? _languageCode;
+
+    public FakeTelegramChannel(
+        List<(string RecipientId, string Text)> sentMessages,
+        string text = "Merhaba, asansör bozuk.",
+        string? languageCode = null)
     {
         _sentMessages = sentMessages;
         _text = text;
+        _languageCode = languageCode;
     }
 
     public ChannelType ChannelType => ChannelType.Telegram;
@@ -149,7 +180,8 @@ internal sealed class FakeTelegramChannel : IMessageChannel
             ExternalId: "mock-001",
             SenderId: "8013067042",
             Text: _text,
-            ReceivedAt: DateTime.UtcNow);
+            ReceivedAt: DateTime.UtcNow,
+            LanguageCode: _languageCode);
         await Task.CompletedTask;
     }
 
@@ -262,6 +294,8 @@ internal sealed class FakeTriageOrchestrator : ITriageOrchestrator
 
 internal sealed class FakeOtpService : IOtpService
 {
+    public OtpSendStatus NextSendStatus { get; init; } = OtpSendStatus.Sent;
+
     public List<(string Identifier, ChannelType Channel)> GenerateRequests { get; } = new();
 
     public Task<OtpSendStatus> GenerateAndSendAsync(
@@ -270,7 +304,7 @@ internal sealed class FakeOtpService : IOtpService
         CancellationToken cancellationToken = default)
     {
         GenerateRequests.Add((identifier, channel));
-        return Task.FromResult(OtpSendStatus.Sent);
+        return Task.FromResult(NextSendStatus);
     }
 
     public Task<OtpVerifyResult> VerifyAsync(string code, CancellationToken cancellationToken = default)

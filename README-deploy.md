@@ -30,6 +30,7 @@ fly secrets set \
   WhatsApp__WebhookVerifyToken="<your-webhook-verify-token>" \
   WhatsApp__AppSecret="<meta-app-secret>" \
   TelegramBot__Token="<telegram-bot-token>" \
+  Auth__BootstrapManagerIdentifier="<your-telegram-user-id>" \
   Embeddings__ModelPath="/app/models/multilingual-e5-small/model.onnx" \
   --app hanwas-ai
 ```
@@ -48,8 +49,17 @@ fly secrets set \
 | `WhatsApp__AccessToken` | Meta permanent access token |
 | `WhatsApp__WebhookVerifyToken` | Webhook verification token (self-chosen) |
 | `WhatsApp__AppSecret` | Meta App Secret (HMAC signature verification) |
-| `TelegramBot__Token` | Telegram Bot token |
+| `TelegramBot__Token` | Telegram Bot token (test phase: **Uygulama Test Bot** `@apartman_triage_bot`) |
+| `Auth__BootstrapManagerIdentifier` | Your Telegram numeric user ID — promoted to Manager on boot after you have messaged the bot once |
 | `Embeddings__ModelPath` | Path to ONNX model inside container |
+
+> **Test bot auth:** `TelegramBot__Token` must match the bot users message (`@apartman_triage_bot` during test).
+> `TelegramBot:Username` in `appsettings.json` drives the login page hint (default `apartman_triage_bot`).
+> Send any message to the bot first, set `Auth__BootstrapManagerIdentifier`, redeploy — then `/login` issues a code.
+
+## Canonical domain
+
+Public URL: **https://hanwas.digital**. Requests to `hanwas-ai.fly.dev` receive a **308** redirect to the same path on `hanwas.digital` (configured in `Hosting` section of `appsettings.json`).
 
 ## Database migrations
 
@@ -64,7 +74,7 @@ dotnet ef database update \
 ## Health check
 
 ```
-GET https://hanwas-ai.fly.dev/health
+GET https://hanwas.digital/health
 → { "status": "healthy", "timestamp": "..." }
 ```
 

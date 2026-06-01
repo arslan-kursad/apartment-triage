@@ -5,6 +5,7 @@ using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Web.Security;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ApartmentTriage.Web.Jobs;
@@ -221,6 +222,12 @@ public sealed class ChannelConsumerJob(
         logger.LogInformation(
             "Telegram /login handled for {SenderId} with status {Status}",
             incoming.SenderId, result);
+
+        if (result != OtpSendStatus.Unauthorized)
+            return;
+
+        var lang = DetectLanguage(incoming.LanguageCode, incoming.Text);
+        await channel.SendAsync(incoming.SenderId, GetLoginUnauthorizedMessage(lang), ct);
     }
 
     private static string GetWelcomeMessage(string lang) => lang == "en" ? """
@@ -258,8 +265,17 @@ public sealed class ChannelConsumerJob(
         return "en";
     }
 
-    private static bool IsLoginCommand(string text)
-        => text.Trim().Equals("/login", StringComparison.OrdinalIgnoreCase);
+    private static bool IsLoginCommand(string text) => TelegramLoginCommand.IsLoginCommand(text);
+
+    private static string GetLoginUnauthorizedMessage(string lang) => lang == "en"
+        ? """
+          ⚠️ Dashboard login is not available for this account.
+          If you are a building manager, ask your administrator to grant access, then send /login again.
+          """
+        : """
+          ⚠️ Bu hesap için panel girişi açık değil.
+          Yönetici iseniz erişim atanmasını isteyin, ardından tekrar /login yazın.
+          """;
 
     private async Task<Resident> CreateResidentAsync(long telegramId, string preferredLanguage, CancellationToken ct)
     {

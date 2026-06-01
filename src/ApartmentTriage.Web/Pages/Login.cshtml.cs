@@ -3,13 +3,17 @@ using System.Security.Claims;
 using ApartmentTriage.Application.Services;
 using ApartmentTriage.Web.Security;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ApartmentTriage.Web.Pages;
 
-public sealed class LoginModel(IOtpService otpService, LoginAttemptLimiter attemptLimiter) : PageModel
+public sealed class LoginModel(
+    IOtpService otpService,
+    LoginAttemptLimiter attemptLimiter,
+    IConfiguration configuration) : PageModel
 {
     [BindProperty]
     [Required(ErrorMessage = "Kod gereklidir.")]
@@ -18,10 +22,15 @@ public sealed class LoginModel(IOtpService otpService, LoginAttemptLimiter attem
 
     public LoginMessage? Message { get; private set; }
 
+    /// <summary>Telegram bot username without @ (for login instructions).</summary>
+    public string TelegramBotUsername { get; private set; } = "apartman_triage_bot";
+
     public IActionResult OnGet(string? reason = null)
     {
         if (User.Identity?.IsAuthenticated == true)
             return RedirectToPage("/Index");
+
+        TelegramBotUsername = ResolveTelegramBotUsername();
 
         Message = reason switch
         {
@@ -34,6 +43,8 @@ public sealed class LoginModel(IOtpService otpService, LoginAttemptLimiter attem
 
     public async Task<IActionResult> OnPostAsync(CancellationToken ct)
     {
+        TelegramBotUsername = ResolveTelegramBotUsername();
+
         if (!ModelState.IsValid)
         {
             Message = LoginMessage.InvalidFormat;
@@ -84,6 +95,12 @@ public sealed class LoginModel(IOtpService otpService, LoginAttemptLimiter attem
             OtpVerifyStatus.TooManyMatches => LoginMessage.TryAgain,
             _ => LoginMessage.InvalidCode
         };
+
+    private string ResolveTelegramBotUsername()
+    {
+        var configured = configuration["TelegramBot:Username"]?.Trim().TrimStart('@');
+        return string.IsNullOrWhiteSpace(configured) ? "apartman_triage_bot" : configured;
+    }
 
     private string GetAttemptKey()
     {

@@ -2,21 +2,25 @@
 @model ApartmentTriage.Web.Pages.LoginModel
 @{
     Layout = null;
-    var title = "Giriş";
+    var botHandle = "@" + Model.TelegramBotUsername;
 }
 <!DOCTYPE html>
 <html lang="tr" class="h-full">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@title — Hanwas</title>
+    <title>
+        <span class="lang-tr">Giriş</span>
+        <span class="lang-en hidden">Sign In</span>
+        — Hanwas
+    </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
 </head>
 <body class="min-h-full bg-slate-50 text-slate-900">
     <main class="min-h-screen grid place-items-center px-4 py-8">
         <section class="w-full max-w-sm">
-            <div class="mb-6">
+            <div class="mb-6 flex items-start justify-between gap-3">
                 <div class="flex items-center gap-3">
                     <div class="grid h-10 w-10 place-items-center rounded-lg bg-slate-900 text-white">
                         <i class="fa-solid fa-building text-sm"></i>
@@ -29,17 +33,25 @@
                         </p>
                     </div>
                 </div>
+                <div class="flex rounded-md border border-slate-200 bg-white p-0.5 text-xs font-semibold shadow-sm" role="group" aria-label="Language">
+                    <button type="button" id="lang-tr-btn"
+                            class="rounded px-2.5 py-1.5 transition bg-slate-900 text-white"
+                            onclick="setLang('tr')">TR</button>
+                    <button type="button" id="lang-en-btn"
+                            class="rounded px-2.5 py-1.5 transition text-slate-600 hover:bg-slate-50"
+                            onclick="setLang('en')">EN</button>
+                </div>
             </div>
 
             <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="mb-4 rounded-md border border-sky-100 bg-sky-50 p-3 text-sm text-sky-900">
                     <p class="lang-tr">
-                        Telegram'da <span class="font-semibold">@@HanwasBot</span> hesabına
+                        Telegram'da <span class="font-semibold">@botHandle</span> hesabına
                         <span class="font-mono font-semibold">/login</span> yazın. Size 6 haneli bir kod göndereceğiz.
                     </p>
                     <p class="lang-en hidden">
                         Send <span class="font-mono font-semibold">/login</span> to
-                        <span class="font-semibold">@@HanwasBot</span> on Telegram. We will send you a 6-digit code.
+                        <span class="font-semibold">@botHandle</span> on Telegram. We will send you a 6-digit code.
                     </p>
                 </div>
 
@@ -80,13 +92,47 @@
 
     <script>
     (function () {
-        var current = localStorage.getItem('atriage_lang') || 'tr';
+        function detectBrowserLang() {
+            var nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
+            return nav.indexOf('tr') === 0 ? 'tr' : 'en';
+        }
+
+        function resolveLang() {
+            var stored = localStorage.getItem('atriage_lang');
+            if (stored === 'tr' || stored === 'en') return stored;
+            return detectBrowserLang();
+        }
+
         function applyLang(lang) {
             document.documentElement.lang = lang;
-            document.querySelectorAll('.lang-tr').forEach(function (el) { el.classList.toggle('hidden', lang !== 'tr'); });
-            document.querySelectorAll('.lang-en').forEach(function (el) { el.classList.toggle('hidden', lang !== 'en'); });
+            document.querySelectorAll('.lang-tr').forEach(function (el) {
+                el.classList.toggle('hidden', lang !== 'tr');
+            });
+            document.querySelectorAll('.lang-en').forEach(function (el) {
+                el.classList.toggle('hidden', lang !== 'en');
+            });
+
+            var trBtn = document.getElementById('lang-tr-btn');
+            var enBtn = document.getElementById('lang-en-btn');
+            if (trBtn && enBtn) {
+                var active = 'rounded px-2.5 py-1.5 transition bg-slate-900 text-white';
+                var idle = 'rounded px-2.5 py-1.5 transition text-slate-600 hover:bg-slate-50';
+                trBtn.className = lang === 'tr' ? active : idle;
+                enBtn.className = lang === 'en' ? active : idle;
+            }
         }
-        applyLang(current);
+
+        window.setLang = function (lang) {
+            if (lang !== 'tr' && lang !== 'en') return;
+            localStorage.setItem('atriage_lang', lang);
+            document.cookie = 'atriage_lang=' + lang + ';path=/;max-age=31536000;SameSite=Lax';
+            applyLang(lang);
+        };
+
+        var initial = resolveLang();
+        localStorage.setItem('atriage_lang', initial);
+        document.cookie = 'atriage_lang=' + initial + ';path=/;max-age=31536000;SameSite=Lax';
+        applyLang(initial);
     })();
     </script>
 </body>

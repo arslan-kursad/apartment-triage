@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -87,7 +88,14 @@ public class LoginModelTests
         var services = new ServiceCollection();
         services.AddSingleton<IAuthenticationService>(auth ?? new RecordingAuthService());
 
-        var model = new LoginModel(otpService, new LoginAttemptLimiter())
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["TelegramBot:Username"] = "apartman_triage_bot"
+            })
+            .Build();
+
+        var model = new LoginModel(otpService, new LoginAttemptLimiter(), config)
         {
             PageContext = new PageContext
             {

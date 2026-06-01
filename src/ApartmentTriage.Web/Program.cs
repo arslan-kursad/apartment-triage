@@ -11,6 +11,7 @@ using Hangfire.Common;
 using Hangfire.Dashboard;
 using Hangfire.Storage;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -130,6 +131,7 @@ try
         app.UseDeveloperExceptionPage();
 
     app.UseForwardedHeaders();
+    app.UseMiddleware<LegacyHostRedirectMiddleware>();
     app.UseStaticFiles();
 
     app.UseAuthentication();
