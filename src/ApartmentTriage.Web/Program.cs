@@ -127,51 +127,6 @@ try
             : Array.Empty<IDashboardAuthorizationFilter>()
     });
 
-    // Remove stale Telegram recurring jobs from previous deployments.
-    // The app now uses a hosted service for Telegram long polling.
-    var recurringJobs = JobStorage.Current.GetConnection().GetRecurringJobs();
-    foreach (var recurringJob in recurringJobs)
-    {
-        if (recurringJob.Job?.Type == typeof(ChannelConsumerJob) &&
-            recurringJob.Job.Method.Name == nameof(ChannelConsumerJob.RunAsync))
-        {
-            RecurringJob.RemoveIfExists(recurringJob.Id);
-            Log.Information("Removed stale Hangfire recurring job '{JobId}' for ChannelConsumerJob.RunAsync", recurringJob.Id);
-        }
-    }
-
-    var monitoringApi = JobStorage.Current.GetMonitoringApi();
-    var allQueueNames = monitoringApi.Queues().Select(q => q.Name).Distinct();
-    foreach (var queueName in allQueueNames)
-    {
-        foreach (var enqueuedJob in monitoringApi.EnqueuedJobs(queueName, 0, int.MaxValue))
-        {
-            if (IsChannelConsumerJob(enqueuedJob.Value.Job))
-            {
-                BackgroundJob.Delete(enqueuedJob.Key);
-                Log.Information("Deleted stale Hangfire enqueued job '{JobId}' from queue '{Queue}'", enqueuedJob.Key, queueName);
-            }
-        }
-    }
-
-    foreach (var processingJob in monitoringApi.ProcessingJobs(0, int.MaxValue))
-    {
-        if (IsChannelConsumerJob(processingJob.Value.Job))
-        {
-            BackgroundJob.Delete(processingJob.Key);
-            Log.Information("Deleted stale Hangfire processing job '{JobId}'", processingJob.Key);
-        }
-    }
-
-    foreach (var scheduledJob in monitoringApi.ScheduledJobs(0, int.MaxValue))
-    {
-        if (IsChannelConsumerJob(scheduledJob.Value.Job))
-        {
-            BackgroundJob.Delete(scheduledJob.Key);
-            Log.Information("Deleted stale Hangfire scheduled job '{JobId}'", scheduledJob.Key);
-        }
-    }
-
     app.MapGet("/", () => Results.Redirect("/overview"));
     app.MapRazorPages();
 
@@ -196,18 +151,6 @@ try
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
-    // WhatsApp consumer: 1-minute CRON, 10s drain window (push-based, no long-poll).
-    RecurringJob.AddOrUpdate<WhatsAppConsumerJob>(
-        recurringJobId: "whatsapp-consumer",
-        methodCall: job => job.RunAsync(CancellationToken.None),
-        cronExpression: Cron.Minutely());
-
-    // Telegram consumer: 1-minute CRON, distributed lock ensures single instance across machines.
-    RecurringJob.AddOrUpdate<ChannelConsumerJob>(
-        recurringJobId: "telegram-consumer",
-        methodCall: job => job.RunAsync(CancellationToken.None),
-        cronExpression: Cron.Minutely());
-
     // Apply pending EF Core migrations on startup. Boot fails (Fly rollback) if migration errors.
     using (var scope = app.Services.CreateScope())
     {
@@ -217,6 +160,64 @@ try
         // Bootstrap the first Manager (idempotent; no-op until the resident exists).
         var bootstrapper = scope.ServiceProvider.GetRequiredService<ManagerBootstrapper>();
         await bootstrapper.RunAsync();
+
+        // Configure recurring jobs (after migrations, Hangfire storage is ready)
+        var recurringJobs = JobStorage.Current.GetConnection().GetRecurringJobs();
+        foreach (var recurringJob in recurringJobs)
+        {
+            if (recurringJob.Job?.Type == typeof(ChannelConsumerJob) &&
+                recurringJob.Job.Method.Name == nameof(ChannelConsumerJob.RunAsync))
+            {
+                RecurringJob.RemoveIfExists(recurringJob.Id);
+                Log.Information("Removed stale Hangfire recurring job '{JobId}' for ChannelConsumerJob.RunAsync", recurringJob.Id);
+            }
+        }
+
+        var monitoringApi = JobStorage.Current.GetMonitoringApi();
+        var allQueueNames = monitoringApi.Queues().Select(q => q.Name).Distinct();
+        foreach (var queueName in allQueueNames)
+        {
+            foreach (var enqueuedJob in monitoringApi.EnqueuedJobs(queueName, 0, int.MaxValue))
+            {
+                if (IsChannelConsumerJob(enqueuedJob.Value.Job))
+                {
+                    BackgroundJob.Delete(enqueuedJob.Key);
+                    Log.Information("Deleted stale Hangfire enqueued job '{JobId}' from queue '{Queue}'", enqueuedJob.Key, queueName);
+                }
+            }
+        }
+
+        foreach (var processingJob in monitoringApi.ProcessingJobs(0, int.MaxValue))
+        {
+            if (IsChannelConsumerJob(processingJob.Value.Job))
+            {
+                BackgroundJob.Delete(processingJob.Key);
+                Log.Information("Deleted stale Hangfire processing job '{JobId}'", processingJob.Key);
+            }
+        }
+
+        foreach (var scheduledJob in monitoringApi.ScheduledJobs(0, int.MaxValue))
+        {
+            if (IsChannelConsumerJob(scheduledJob.Value.Job))
+            {
+                BackgroundJob.Delete(scheduledJob.Key);
+                Log.Information("Deleted stale Hangfire scheduled job '{JobId}'", scheduledJob.Key);
+            }
+        }
+
+        // WhatsApp consumer: 1-minute CRON
+        RecurringJob.AddOrUpdate<WhatsAppConsumerJob>(
+            recurringJobId: "whatsapp-consumer",
+            methodCall: job => job.RunAsync(CancellationToken.None),
+            cronExpression: Cron.Minutely());
+
+        // Telegram consumer: 1-minute CRON, distributed lock ensures single instance across N machines
+        RecurringJob.AddOrUpdate<ChannelConsumerJob>(
+            recurringJobId: "telegram-consumer",
+            methodCall: job => job.RunAsync(CancellationToken.None),
+            cronExpression: Cron.Minutely());
+
+        Log.Information("Recurring jobs configured: whatsapp-consumer, telegram-consumer");
     }
 
     app.Run();
