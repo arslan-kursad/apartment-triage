@@ -7,8 +7,12 @@ public sealed class LoginAttemptLimiter
     private sealed record AttemptWindow(DateTimeOffset WindowStart, int Count);
 
     private readonly ConcurrentDictionary<string, AttemptWindow> _attempts = new();
-    private readonly TimeSpan _window = TimeSpan.FromHours(1);
-    private const int MaxAttempts = 5;
+    // GRUP D — per-IP brute-force guard for the code-only verify endpoint (FLAG 1).
+    // The challenge's own AttemptCount can't guard a wrong code (it matches no row),
+    // so this IP window is the real protection. 10 tries / 15 min balances brute-force
+    // defense against legitimate mistyped-code retries.
+    private readonly TimeSpan _window = TimeSpan.FromMinutes(15);
+    private const int MaxAttempts = 10;
 
     public bool IsAllowed(string key, DateTimeOffset now)
     {
