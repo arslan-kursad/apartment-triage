@@ -103,11 +103,11 @@ try
         options.Conventions.AllowAnonymousToPage("/Logout");
     });
 
-    // Telegram consumer: run as a simple background service instead of Hangfire recurring job.
-    // This avoids distributed lock issues in local development and keeps polling reliable.
+    // Channel consumers: register as transient services for Hangfire to orchestrate
+    // Hangfire's distributed lock (Postgres-backed) guarantees 1 instance across N machines
     builder.Services.AddTransient<ChannelConsumerJob>();
     builder.Services.AddTransient<WhatsAppConsumerJob>();
-    builder.Services.AddHostedService<TelegramConsumerHostedService>();
+    // TelegramConsumerHostedService disabled: use Hangfire recurring job for distributed safety
     builder.Services.AddSingleton<LoginAttemptLimiter>();
 
     var app = builder.Build();
@@ -196,9 +196,15 @@ try
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
-    // WhatsApp consumer: same 1-minute CRON, 10s drain window (push-based, no long-poll).
+    // WhatsApp consumer: 1-minute CRON, 10s drain window (push-based, no long-poll).
     RecurringJob.AddOrUpdate<WhatsAppConsumerJob>(
         recurringJobId: "whatsapp-consumer",
+        methodCall: job => job.RunAsync(CancellationToken.None),
+        cronExpression: Cron.Minutely());
+
+    // Telegram consumer: 1-minute CRON, distributed lock ensures single instance across machines.
+    RecurringJob.AddOrUpdate<ChannelConsumerJob>(
+        recurringJobId: "telegram-consumer",
         methodCall: job => job.RunAsync(CancellationToken.None),
         cronExpression: Cron.Minutely());
 
