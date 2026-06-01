@@ -63,13 +63,14 @@ public class LoginModelTests
     }
 
     [Fact]
-    public async Task OnPostAsync_AfterFiveFailures_RateLimitsFurtherAttempts()
+    public async Task OnPostAsync_AfterTenFailures_RateLimitsFurtherAttempts()
     {
+        // GRUP D: per-IP verify limit is 10 attempts / 15 min.
         var otp = new LoginOtpService(OtpVerifyResult.Invalid);
         var model = BuildModel(otp);
         model.HttpContext.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("203.0.113.10");
 
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < 10; i++)
         {
             model.Code = "000000";
             (await model.OnPostAsync(CancellationToken.None)).Should().BeOfType<PageResult>();
