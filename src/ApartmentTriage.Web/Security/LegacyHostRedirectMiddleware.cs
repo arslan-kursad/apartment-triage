@@ -11,6 +11,17 @@ public sealed class LegacyHostRedirectMiddleware(RequestDelegate next, IConfigur
         var legacyHosts = configuration.GetSection("Hosting:LegacyHosts").Get<string[]>() ?? [];
         var canonicalHost = configuration["Hosting:CanonicalHost"]?.Trim();
 
+        var path = context.Request.Path;
+
+        // Never redirect infrastructure paths — the Fly health check hits the *.fly.dev hostname
+        // directly (port 8080 internal probe) and does not follow redirects.
+        if (path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/hangfire", StringComparison.OrdinalIgnoreCase))
+        {
+            await next(context);
+            return;
+        }
+
         if (string.IsNullOrEmpty(canonicalHost)
             || legacyHosts.Length == 0
             || !legacyHosts.Contains(host, StringComparer.OrdinalIgnoreCase))
@@ -19,9 +30,9 @@ public sealed class LegacyHostRedirectMiddleware(RequestDelegate next, IConfigur
             return;
         }
 
-        var path = context.Request.Path.HasValue ? context.Request.Path.Value! : "/";
+        var pathStr = context.Request.Path.HasValue ? context.Request.Path.Value! : "/";
         var query = context.Request.QueryString.HasValue ? context.Request.QueryString.Value! : string.Empty;
-        var target = $"https://{canonicalHost}{path}{query}";
+        var target = $"https://{canonicalHost}{pathStr}{query}";
 
         context.Response.StatusCode = StatusCodes.Status308PermanentRedirect;
         context.Response.Headers.Location = target;
