@@ -95,9 +95,14 @@ try
     builder.Services.AddAuthorization(options =>
     {
         options.AddPolicy("DashboardAccess", policy => policy.RequireAuthenticatedUser());
-        options.FallbackPolicy = new AuthorizationPolicyBuilder()
-            .RequireAuthenticatedUser()
-            .Build();
+        // Secure-by-default: every endpoint requires auth unless explicitly AllowAnonymous
+        // (/health, webhook, login/logout). Gated by the flag so Auth:Enabled=false is a true bypass.
+        if (authEnabled)
+        {
+            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+        }
     });
     // Reverse proxy header configuration for Fly.io compatibility
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -162,10 +167,11 @@ try
     dashboardApi.MapTicketEndpoints();
 
 
-    app.MapWhatsAppWebhook();
-
-    // Health check endpoint
-    app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+    // Public endpoints — must bypass the FallbackPolicy. The WhatsApp webhook is called by
+    // Meta (no cookie), and /health is probed internally by Fly (no cookie, no redirect-follow).
+    var publicApi = app.MapGroup("").AllowAnonymous();
+    publicApi.MapWhatsAppWebhook();
+    publicApi.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
     // Apply pending EF Core migrations on startup. Boot fails (Fly rollback) if migration errors.
     using (var scope = app.Services.CreateScope())
