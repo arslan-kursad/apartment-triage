@@ -172,6 +172,19 @@
         </div>
     </div>
 
+    <div id="fin-empty" class="hidden bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center mb-4">
+        <i class="fa-solid fa-chart-line text-slate-300 text-2xl mb-2"></i>
+        <p class="text-sm font-medium text-slate-600">
+            <span class="lang-tr">Henüz maliyet verisi yok</span>
+            <span class="lang-en">No cost data yet</span>
+        </p>
+        <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            <span class="lang-tr">Maliyet, yalnızca yayına alındıktan sonra triage edilen mesajlardan ölçülür (geçmişe dönük değil). Bota bir bakım mesajı işlendiğinde grafikler dolar.</span>
+            <span class="lang-en">Cost is measured only from messages triaged after deployment (not retroactive). The charts populate once a maintenance message is processed.</span>
+        </p>
+    </div>
+
+    <div id="fin-charts">
     <div class="bg-white rounded-xl border border-slate-200 mb-4">
         <div class="px-5 py-3.5 border-b border-slate-100">
             <h2 class="font-semibold text-slate-900 text-sm">
@@ -202,6 +215,7 @@
             <div class="p-4"><canvas id="agentCostChart" height="240"></canvas></div>
         </div>
     </div>
+    </div>@* /#fin-charts *@
 
     <div class="bg-white rounded-xl border border-slate-200 p-5">
         <h2 class="font-semibold text-slate-900 text-sm mb-2">
@@ -502,6 +516,14 @@
             if (c) c.textContent = (d.totalCalls || 0).toLocaleString();
             var s = document.getElementById('fin-since');
             if (s) s.textContent = d.sinceIst ? pick(['ölçüm: ', 'since ']) + d.sinceIst : pick(['henüz veri yok', 'no data yet']);
+
+            // No usage recorded yet → show the explanatory empty state instead of blank charts.
+            var hasData = (d.totalCalls || 0) > 0;
+            var empty = document.getElementById('fin-empty');
+            var charts = document.getElementById('fin-charts');
+            if (empty) empty.classList.toggle('hidden', hasData);
+            if (charts) charts.classList.toggle('hidden', !hasData);
+            if (!hasData) return;
 
             if (d.byModel && d.byModel.length) {
                 set('modelChart', {
