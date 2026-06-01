@@ -92,7 +92,7 @@ try
 
     // Role-ready policy: today Manager only; future roles extend via RequireRole(...).
     builder.Services.AddAuthorization(options =>
-        options.AddPolicy("DashboardAccess", policy => policy.RequireAuthenticatedUser());
+        options.AddPolicy("DashboardAccess", policy => policy.RequireAuthenticatedUser()));
 
     // Reverse proxy header configuration for Fly.io compatibility
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
