@@ -6,6 +6,7 @@ using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Infrastructure.Services;
 using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Web.Helpers;
 using ApartmentTriage.Web.Security;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -64,12 +65,16 @@ public sealed class ChannelConsumerJob(
             return;
         }
 
-        var preferredLanguage = DetectLanguage(incoming.LanguageCode, incoming.Text);
+        var messageLang = DetectLanguage(incoming.LanguageCode, incoming.Text);
         var resident = await residentRepository.FindByTelegramIdAsync(telegramId, ct)
-            ?? await CreateResidentAsync(telegramId, preferredLanguage, ct);
+            ?? await CreateResidentAsync(telegramId, messageLang, ct);
 
         if (incoming.SenderName is not null && resident.DisplayName is null)
             resident.UpdateContactInfo(displayName: incoming.SenderName);
+
+        // Reply in the language of THIS message — a Turkish-locale user may write in English.
+        if (resident.PreferredLanguage != messageLang)
+            resident.SetPreferredLanguage(messageLang);
 
         if (resident.PendingClarificationTicketId.HasValue)
         {
@@ -265,12 +270,9 @@ public sealed class ChannelConsumerJob(
         Talebinizi yazabilirsiniz 👇
         """;
 
+    // Content-first detection (see LanguageDetector): the channel language_code is only a tiebreak.
     private static string DetectLanguage(string? languageCode, string text)
-    {
-        if (languageCode == "tr") return "tr";
-        if (text.Any(c => "çğıöşüÇĞİÖŞÜ".Contains(c))) return "tr";
-        return "en";
-    }
+        => LanguageDetector.Detect(text, languageCode);
 
     private static bool IsLoginCommand(string text) => TelegramLoginCommand.IsLoginCommand(text);
 

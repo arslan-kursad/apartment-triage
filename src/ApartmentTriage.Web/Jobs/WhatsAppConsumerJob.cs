@@ -3,6 +3,7 @@ using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Web.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ApartmentTriage.Web.Jobs;
@@ -46,11 +47,18 @@ public sealed class WhatsAppConsumerJob(
             return;
         }
 
+        // WhatsApp carries no app-language code → detect purely from message content.
+        var messageLang = LanguageDetector.Detect(incoming.Text, incoming.LanguageCode);
+
         var resident = await residentRepository.FindByWhatsAppNumberAsync(incoming.SenderId, ct)
-            ?? await CreateResidentAsync(incoming.SenderId, ct);
+            ?? await CreateResidentAsync(incoming.SenderId, messageLang, ct);
 
         if (incoming.SenderName is not null && resident.DisplayName is null)
             resident.UpdateContactInfo(displayName: incoming.SenderName);
+
+        // Reply in the language of THIS message.
+        if (resident.PreferredLanguage != messageLang)
+            resident.SetPreferredLanguage(messageLang);
 
         var message = Message.Create(
             residentId: resident.Id,
@@ -86,9 +94,9 @@ public sealed class WhatsAppConsumerJob(
         }
     }
 
-    private async Task<Resident> CreateResidentAsync(string whatsAppNumber, CancellationToken ct)
+    private async Task<Resident> CreateResidentAsync(string whatsAppNumber, string preferredLanguage, CancellationToken ct)
     {
-        var resident = Resident.Create(whatsAppNumber: whatsAppNumber);
+        var resident = Resident.Create(whatsAppNumber: whatsAppNumber, preferredLanguage: preferredLanguage);
         await residentRepository.AddAsync(resident, ct);
         await residentRepository.SaveChangesAsync(ct);
 
