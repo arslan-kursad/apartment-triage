@@ -185,55 +185,56 @@
     </div>
 
     <div id="fin-charts">
-    @* 2/3 trend + 1/3 model & agent stacked *@
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 items-start">
+    @* 1/2 (trend + note) + 1/2 (model + agent stacked) *@
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-start">
 
-        @* Daily Cost Trend — 2/3 width *@
-        <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 h-full">
-            <div class="px-5 py-3.5 border-b border-slate-100">
-                <h2 class="font-semibold text-slate-900 text-sm">
-                    <span class="lang-tr">Günlük Maliyet Trendi</span>
-                    <span class="lang-en">Daily Cost Trend</span>
-                </h2>
-            </div>
-            <div class="p-4"><canvas id="costTrendChart" height="180"></canvas></div>
-        </div>
-
-        @* Cost by Model + Cost by Agent — 1/3 width, stacked *@
+        @* Sol: Daily Cost Trend + Cost Note *@
         <div class="flex flex-col gap-4">
             <div class="bg-white rounded-xl border border-slate-200">
                 <div class="px-5 py-3.5 border-b border-slate-100">
                     <h2 class="font-semibold text-slate-900 text-sm">
-                        <span class="lang-tr">Modele Göre</span>
+                        <span class="lang-tr">Günlük Maliyet Trendi</span>
+                        <span class="lang-en">Daily Cost Trend</span>
+                    </h2>
+                </div>
+                <div class="p-4"><canvas id="costTrendChart" height="190"></canvas></div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-5">
+                <h2 class="font-semibold text-slate-900 text-sm mb-2">
+                    <span class="lang-tr">Maliyet Notu</span>
+                    <span class="lang-en">Cost Note</span>
+                </h2>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    <span class="lang-tr">Maliyet, her API çağrısının gerçek token kullanımından (self-instrumented) türetilir; oranlar yapılandırılabilir. Haiku 4.5 varsayılan; yalnız düşük güvenli sınıflandırmalar Sonnet 4.6'ya yükseltilir, böylece harcamanın büyük kısmı Haiku tarafında kalır.</span>
+                    <span class="lang-en">Cost is derived from each call's real token usage (self-instrumented); rates are configurable. Haiku 4.5 is the default; only low-confidence classifications escalate to Sonnet 4.6, keeping the bulk of spend on the Haiku side.</span>
+                </p>
+            </div>
+        </div>
+
+        @* Sağ: Cost by Model + Cost by Agent stacked *@
+        <div class="flex flex-col gap-4">
+            <div class="bg-white rounded-xl border border-slate-200">
+                <div class="px-5 py-3.5 border-b border-slate-100">
+                    <h2 class="font-semibold text-slate-900 text-sm">
+                        <span class="lang-tr">Modele Göre Maliyet</span>
                         <span class="lang-en">Cost by Model</span>
                     </h2>
                 </div>
-                <div class="p-3 flex items-center justify-center"><canvas id="modelChart" height="160"></canvas></div>
+                <div class="p-3 flex items-center justify-center"><canvas id="modelChart" height="170"></canvas></div>
             </div>
             <div class="bg-white rounded-xl border border-slate-200">
                 <div class="px-5 py-3.5 border-b border-slate-100">
                     <h2 class="font-semibold text-slate-900 text-sm">
-                        <span class="lang-tr">Agent'a Göre</span>
+                        <span class="lang-tr">Agent'a Göre Maliyet</span>
                         <span class="lang-en">Cost by Agent</span>
                     </h2>
                 </div>
-                <div class="p-3"><canvas id="agentCostChart" height="160"></canvas></div>
+                <div class="p-3"><canvas id="agentCostChart" height="170"></canvas></div>
             </div>
         </div>
 
     </div>
     </div>@* /#fin-charts *@
-
-    <div class="bg-white rounded-xl border border-slate-200 p-5">
-        <h2 class="font-semibold text-slate-900 text-sm mb-2">
-            <span class="lang-tr">Maliyet Notu</span>
-            <span class="lang-en">Cost Note</span>
-        </h2>
-        <p class="text-xs text-slate-500 leading-relaxed">
-            <span class="lang-tr">Maliyet, her API çağrısının gerçek token kullanımından (self-instrumented) türetilir; oranlar yapılandırılabilir. Haiku 4.5 varsayılan; yalnız düşük güvenli sınıflandırmalar Sonnet 4.6'ya yükseltilir, böylece harcamanın büyük kısmı Haiku tarafında kalır.</span>
-            <span class="lang-en">Cost is derived from each call's real token usage (self-instrumented); rates are configurable. Haiku 4.5 is the default; only low-confidence classifications escalate to Sonnet 4.6, keeping the bulk of spend on the Haiku side.</span>
-        </p>
-    </div>
 </div>
 
 @* ═══════════════ TAB 3 — OPERASYON ═══════════════ *@
