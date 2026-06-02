@@ -13,9 +13,11 @@ public sealed class LegacyHostRedirectMiddleware(RequestDelegate next, IConfigur
 
         var path = context.Request.Path;
 
-        // Never redirect infrastructure paths — the Fly health check hits the *.fly.dev hostname
-        // directly (port 8080 internal probe) and does not follow redirects.
+        // Never redirect infrastructure / machine-to-machine paths — these callers do not follow
+        // redirects: the Fly health probe (/health), and the Meta WhatsApp webhook (/api/webhook),
+        // which silently drops delivery on a 3xx. (/hangfire kept local too.)
         if (path.StartsWithSegments("/health", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/api/webhook", StringComparison.OrdinalIgnoreCase)
             || path.StartsWithSegments("/hangfire", StringComparison.OrdinalIgnoreCase))
         {
             await next(context);
