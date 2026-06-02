@@ -29,9 +29,8 @@ public sealed class IndexModel : PageModel
     public int    TgCount         { get; private set; }
 
     // ── FinOps ──────────────────────────────────────────────────────────────────
-    public int    HaikuCount      { get; private set; }
-    public int    SonnetCount     { get; private set; }
-    public string TotalApiCostUsd { get; private set; } = "—";
+    public int HaikuCount  { get; private set; }
+    public int SonnetCount { get; private set; }
 
     // ── Performance / eval (manually maintained in appsettings) ─────────────────
     public double? CategoryAccuracy   { get; private set; }
@@ -90,7 +89,6 @@ public sealed class IndexModel : PageModel
         EmergencyPrecision = ParseDouble(eval["EmergencyPrecision"]);
         EvalTotalCases     = eval.GetValue<int?>("TotalCases") ?? 48;
         EvalRunDate        = eval["RunDate"];
-        TotalApiCostUsd    = _config["Dashboard:TotalApiCostUsd"] ?? "—";
 
         var raw = await tickets
             .Include(t => t.SourceMessage)

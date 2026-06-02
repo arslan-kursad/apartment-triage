@@ -344,8 +344,7 @@ public static class StatsEndpoints
             totalCases        = totalCases ?? 48,
             runDate,
             haikuSonnetRatioAvailable = true,
-            evalCostEstimateUsd = section.GetValue<double?>("EvalCostEstimateUsd"),
-            totalApiCostUsd = config.GetValue<string>("Dashboard:TotalApiCostUsd")
+            evalCostEstimateUsd = section.GetValue<double?>("EvalCostEstimateUsd")
         });
     }
 
