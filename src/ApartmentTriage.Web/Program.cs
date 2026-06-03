@@ -197,7 +197,8 @@ try
             methodCall: job => job.RunAsync(CancellationToken.None),
             cronExpression: Cron.Minutely());
 
-        // Telegram consumer: 1-minute CRON, distributed lock ensures single instance across N machines
+        // Telegram consumer: 1-minute CRON. [DisableConcurrentExecution] on RunAsync provides the
+        // distributed lock that serializes getUpdates to a single instance across N machines (avoids 409).
         RecurringJob.AddOrUpdate<ChannelConsumerJob>(
             recurringJobId: "telegram-consumer",
             methodCall: job => job.RunAsync(CancellationToken.None),

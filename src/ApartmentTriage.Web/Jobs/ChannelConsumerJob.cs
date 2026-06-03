@@ -25,6 +25,11 @@ public sealed class ChannelConsumerJob(
     // 55s budget caps each polling iteration; BackgroundService sleeps 10s between runs.
     private static readonly TimeSpan JobBudget = TimeSpan.FromSeconds(55);
 
+    // Telegram allows only one active getUpdates long-poll per bot token. Without this lock,
+    // overlapping recurring executions (or a rolling deploy's two instances sharing this
+    // Postgres-backed Hangfire storage) issue concurrent getUpdates → 409 Conflict.
+    // Timeout > JobBudget so a held lock always outlives a single execution.
+    [Hangfire.DisableConcurrentExecution(timeoutInSeconds: 90)]
     public async Task RunAsync(CancellationToken hangfireCt = default)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(hangfireCt);
