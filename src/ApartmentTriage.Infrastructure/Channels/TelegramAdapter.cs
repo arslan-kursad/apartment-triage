@@ -1,17 +1,25 @@
 using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
-using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types;
 
 namespace ApartmentTriage.Infrastructure.Channels;
 
+/// <summary>
+/// Telegram channel adapter. Like WhatsApp, this is push-based: Telegram calls our webhook
+/// endpoint with a JSON Update. The webhook handler enqueues the raw Update here; ReadMessagesAsync
+/// drains the queue and runs the per-update logic (text/photo/document/voice/start, file download,
+/// rejection replies). Raw Updates are buffered (not pre-parsed IncomingMessages) because parsing a
+/// photo/document requires async CDN downloads — kept off the webhook request thread to return 200 fast.
+/// </summary>
 public sealed class TelegramAdapter : IMessageChannel
 {
+    private readonly Channel<Update> _queue;
     private readonly ITelegramBotClient _bot;
     private readonly ILogger<TelegramAdapter> _logger;
-    private int _offset;
 
     // Max download size for images (Telegram compresses photos to JPEG; ~10 MB upper bound).
     private const int MaxImageBytes = 10 * 1024 * 1024;
@@ -28,26 +36,37 @@ public sealed class TelegramAdapter : IMessageChannel
     {
         _bot = bot;
         _logger = logger;
+
+        // Bounded to prevent unbounded memory growth under load (mirrors WhatsAppAdapter).
+        _queue = Channel.CreateBounded<Update>(new BoundedChannelOptions(1000)
+        {
+            FullMode = BoundedChannelFullMode.DropOldest,
+            SingleWriter = false,
+            SingleReader = false
+        });
     }
 
     public ChannelType ChannelType => ChannelType.Telegram;
 
+    /// <summary>
+    /// Called by the webhook endpoint for each incoming Telegram Update.
+    /// Returns false if the queue is full and the Update was dropped.
+    /// </summary>
+    public bool TryEnqueue(Update update)
+    {
+        if (_queue.Writer.TryWrite(update))
+            return true;
+
+        _logger.LogWarning("Telegram queue full — dropped update {UpdateId}", update.Id);
+        return false;
+    }
+
     public async IAsyncEnumerable<IncomingMessage> ReadMessagesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        await foreach (var upd in _queue.Reader.ReadAllAsync(cancellationToken))
         {
-            var updates = await _bot.GetUpdates(
-                offset: _offset,
-                limit: 100,
-                timeout: 30,
-                allowedUpdates: [UpdateType.Message],
-                cancellationToken: cancellationToken);
-
-            foreach (var upd in updates)
             {
-                _offset = upd.Id + 1;
-
                 if (upd.Message is not { } msg)
                     continue;
 

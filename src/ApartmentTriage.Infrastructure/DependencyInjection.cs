@@ -85,7 +85,13 @@ public static class DependencyInjection
             return new TelegramBotClient(token, factory.CreateClient("telegram"));
         });
 
-        services.AddKeyedSingleton<IMessageChannel, TelegramAdapter>(ChannelType.Telegram);
+        // Single instance registered under two keys (mirrors AddWhatsAppChannel):
+        //   IMessageChannel (ChannelType.Telegram) — consumed by ChannelConsumerJob (drain)
+        //   TelegramAdapter (ChannelType.Telegram)  — consumed by webhook endpoint (TryEnqueue)
+        services.AddKeyedSingleton<TelegramAdapter>(ChannelType.Telegram);
+        services.AddKeyedSingleton<IMessageChannel>(
+            ChannelType.Telegram,
+            (sp, key) => sp.GetRequiredKeyedService<TelegramAdapter>((ChannelType)key!));
 
         return services;
     }

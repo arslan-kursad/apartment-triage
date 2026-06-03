@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Formatting.Compact;
+using Telegram.Bot;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -171,6 +172,7 @@ try
     // Meta (no cookie), and /health is probed internally by Fly (no cookie, no redirect-follow).
     var publicApi = app.MapGroup("").AllowAnonymous();
     publicApi.MapWhatsAppWebhook();
+    publicApi.MapTelegramWebhook();
     publicApi.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 
     // Apply pending EF Core migrations on startup. Boot fails (Fly rollback) if migration errors.
@@ -197,14 +199,35 @@ try
             methodCall: job => job.RunAsync(CancellationToken.None),
             cronExpression: Cron.Minutely());
 
-        // Telegram consumer: 1-minute CRON. [DisableConcurrentExecution] on RunAsync provides the
-        // distributed lock that serializes getUpdates to a single instance across N machines (avoids 409).
+        // Telegram consumer: 1-minute CRON. Now a pure drain of the webhook-fed BoundedChannel
+        // (push model) — no getUpdates long-poll, so no 409 Conflict and no DisableConcurrentExecution.
         RecurringJob.AddOrUpdate<ChannelConsumerJob>(
             recurringJobId: "telegram-consumer",
             methodCall: job => job.RunAsync(CancellationToken.None),
             cronExpression: Cron.Minutely());
 
         Log.Information("Recurring jobs configured: whatsapp-consumer, telegram-consumer");
+
+        // Register the Telegram webhook (push model). Guarded by config so dev environments
+        // without a public HTTPS URL skip it — a dev bot must use a SEPARATE token (a bot can
+        // have only one active webhook; sharing a token across envs would hijack delivery).
+        var telegramWebhookUrl = builder.Configuration["TelegramBot:WebhookUrl"]?.Trim();
+        if (!string.IsNullOrEmpty(telegramWebhookUrl))
+        {
+            var bot = scope.ServiceProvider.GetRequiredService<Telegram.Bot.ITelegramBotClient>();
+            var webhookSecret = builder.Configuration["TelegramBot:WebhookSecret"]?.Trim();
+            await bot.SetWebhook(
+                url: telegramWebhookUrl,
+                allowedUpdates: [Telegram.Bot.Types.Enums.UpdateType.Message],
+                secretToken: string.IsNullOrEmpty(webhookSecret) ? null : webhookSecret,
+                cancellationToken: CancellationToken.None);
+            Log.Information("Telegram webhook set to {Url} (secret={HasSecret})",
+                telegramWebhookUrl, !string.IsNullOrEmpty(webhookSecret));
+        }
+        else
+        {
+            Log.Information("TelegramBot:WebhookUrl not configured — webhook registration skipped (dev mode)");
+        }
     }
 
     app.Run();

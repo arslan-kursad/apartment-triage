@@ -22,14 +22,13 @@ public sealed class ChannelConsumerJob(
     ITriageOrchestrator orchestrator,
     ILogger<ChannelConsumerJob> logger)
 {
-    // 55s budget caps each polling iteration; BackgroundService sleeps 10s between runs.
+    // 55s drain window: long enough to clear backlog accumulated between minute ticks,
+    // short enough not to stall the Hangfire worker thread. (Mirrors WhatsAppConsumerJob.)
     private static readonly TimeSpan JobBudget = TimeSpan.FromSeconds(55);
 
-    // Telegram allows only one active getUpdates long-poll per bot token. Without this lock,
-    // overlapping recurring executions (or a rolling deploy's two instances sharing this
-    // Postgres-backed Hangfire storage) issue concurrent getUpdates → 409 Conflict.
-    // Timeout > JobBudget so a held lock always outlives a single execution.
-    [Hangfire.DisableConcurrentExecution(timeoutInSeconds: 90)]
+    // Telegram is now push-based (webhook → BoundedChannel). This job only drains the in-memory
+    // queue, so there is no getUpdates long-poll and therefore no 409 Conflict risk — the former
+    // [DisableConcurrentExecution] lock (Tier 1, commit e4a7c54) is no longer needed.
     public async Task RunAsync(CancellationToken hangfireCt = default)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(hangfireCt);
@@ -42,7 +41,7 @@ public sealed class ChannelConsumerJob(
         }
         catch (OperationCanceledException) when (!hangfireCt.IsCancellationRequested)
         {
-            // Normal: 55s budget exhausted. Next execution starts in ~5s.
+            // Normal: 55s drain window exhausted (channel empty or budget hit).
         }
     }
 
