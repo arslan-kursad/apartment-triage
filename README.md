@@ -238,9 +238,9 @@ channel details swappable and the core logic testable in isolation.
 Key trade-offs are documented as **14 Architecture Decision Records** in
 [`docs/decisions/`](docs/decisions/). A few representative ones:
 
-- [ADR-0001](docs/decisions/0001-custom-orchestrator-over-semantic-kernel.md) — a ~500-LOC custom orchestrator over a general agent framework, for transparency and control.
-- [ADR-0002](docs/decisions/0002-anthropic-direct-http-over-official-sdk.md) — calling the Anthropic API over direct `HttpClient` instead of an SDK.
-- [ADR-0005](docs/decisions/0005-two-layer-emergency-architecture.md) — a two-layer emergency architecture so a misclassification can never silently drop an emergency.
+- [ADR-0001](docs/decisions/ADR-0001-custom-orchestrator-over-semantic-kernel.md) — a ~500-LOC custom orchestrator over a general agent framework, for transparency and control.
+- [ADR-0002](docs/decisions/ADR-0002-anthropic-direct-http-over-official-sdk.md) — calling the Anthropic API over direct `HttpClient` instead of an SDK.
+- [ADR-0005](docs/decisions/ADR-0005-two-layer-emergency-architecture.md) — a two-layer emergency architecture so a misclassification can never silently drop an emergency.
 
 ---
 

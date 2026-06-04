@@ -2,7 +2,7 @@
 
 Bu dizin projeyi şekillendiren mimari kararları tutar. ADR'lar Architect agent (kurulum: Day 5) tarafından oluşturulur, PM (project chat) tarafından onaylanır.
 
-Format: `NNNN-short-title.md` (4-digit zero-padded sequence).
+Format: `ADR-NNNN-short-title.md` (4-digit zero-padded sequence).
 
 ## İlk ADR'lar (Day 5+ retroactive olarak yazılacak):
 - 0001: Neon Postgres choice (Day 3 kararı — retroactive)
