@@ -76,16 +76,16 @@ public class OtpServiceTests
     [Fact]
     public async Task GenerateAndSend_SplitRecord_BootstrapPhoneManager_SendsOtp()
     {
-        const long kursadTelegramId = 100000001;
+        const long managerTelegramId = 100000001;
         const string phone = "+905550001234";
-        var ghost = Resident.Create(telegramId: kursadTelegramId, displayName: "Kürşad");
-        var manager = Resident.Create(whatsAppNumber: phone, displayName: "Kürşad");
+        var ghost = Resident.Create(telegramId: managerTelegramId, displayName: "Test Manager");
+        var manager = Resident.Create(whatsAppNumber: phone, displayName: "Test Manager");
         manager.SetRole(ResidentRole.Manager);
 
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Auth:BootstrapManagerIdentifier"] = kursadTelegramId.ToString(),
+                ["Auth:BootstrapManagerIdentifier"] = managerTelegramId.ToString(),
                 ["Auth:BootstrapManagerPhone"] = phone,
                 ["Auth:OtpExpiryMinutes"] = "5",
                 ["Auth:MaxAttempts"] = "5",
@@ -96,7 +96,7 @@ public class OtpServiceTests
 
         var (svc, otp, _, sent) = CreateService(config, ghost, manager);
 
-        var status = await svc.GenerateAndSendAsync(kursadTelegramId.ToString(), ChannelType.Telegram);
+        var status = await svc.GenerateAndSendAsync(managerTelegramId.ToString(), ChannelType.Telegram);
 
         status.Should().Be(OtpSendStatus.Sent);
         otp.Challenges.Should().ContainSingle();

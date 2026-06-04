@@ -19,7 +19,7 @@ Bu dosya özettir. Detaylı bağlam:
 - Hangfire (Postgres-backed, Redis YOK)
 - Anthropic API direct (HttpClient + System.Text.Json) — SDK YOK
 - Haiku 4.5 default, Sonnet 4.6 sadece Enricher escalation
-- Custom `IAgent<TIn,TOut>` orchestrator (~300 LOC) — Semantic Kernel / AutoGen / Microsoft.Extensions.AI YOK
+- Custom `IAgent<TIn,TOut>` orchestrator (~500 LOC) — Semantic Kernel / AutoGen / Microsoft.Extensions.AI YOK
 - ONNX Runtime + multilingual-e5-small (local embedding)
 - WhatsApp Cloud API direct (Meta) — Twilio BSP YOK
 - Razor Pages — Blazor YOK

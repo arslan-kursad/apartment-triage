@@ -20,7 +20,7 @@ public class LoginModelTests
     [Fact]
     public async Task OnPostAsync_Success_SignsInWithDashboardRoleClaims()
     {
-        var resident = Resident.Create(displayName: "Kürşad", telegramId: 100000001);
+        var resident = Resident.Create(displayName: "Test Manager", telegramId: 100000001);
         resident.SetRole(ResidentRole.Manager);
         var auth = new RecordingAuthService();
         var model = BuildModel(new LoginOtpService(OtpVerifyResult.Success(resident)), auth);
@@ -33,7 +33,7 @@ public class LoginModelTests
         auth.SignedInPrincipal.Should().NotBeNull();
         auth.SignedInPrincipal!.FindFirst(ClaimTypes.Role)?.Value.Should().Be("Manager");
         auth.SignedInPrincipal.FindFirst("residentId")?.Value.Should().Be(resident.Id.ToString());
-        auth.SignedInPrincipal.FindFirst("displayName")?.Value.Should().Be("KÜRŞAD");
+        auth.SignedInPrincipal.FindFirst("displayName")?.Value.Should().Be("TEST MANAGER");
     }
 
     [Fact]

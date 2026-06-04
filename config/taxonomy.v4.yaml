@@ -270,7 +270,7 @@ multi_issue:
         Swap uygulandıktan sonra, orijinal primary (artık effect_of_primary secondary)
         severity'si, yeni primary_severity'yi upgrade etmez.
       rationale_tr: |
-        Interpretation B kararı (2026-05-19, Kürşad onayı):
+        Interpretation B kararı (2026-05-19, reviewed):
         Classifier, swap öncesi tüm issue'ları görerek severity ataması yaptı.
         Swap sonrası aynı severity bilgisini tekrar yukarı çevirmek circular over-escalation
         riski taşır. Örnek: Medium electrical secondary, swap sonrası primary structural (high)

@@ -11,14 +11,14 @@ namespace ApartmentTriage.Tests.Unit.Services;
 
 public class ManagerBootstrapperTests
 {
-    private const long KursadTelegramId = 100000001;
+    private const long ManagerTelegramId = 100000001;
 
     [Fact]
     public async Task ConfiguredResidentExists_PromotedToManager()
     {
-        var resident = Resident.Create(telegramId: KursadTelegramId, displayName: "Kürşad");
+        var resident = Resident.Create(telegramId: ManagerTelegramId, displayName: "Test Manager");
         resident.Role.Should().Be(ResidentRole.None);
-        var bootstrapper = Build(KursadTelegramId.ToString(), resident);
+        var bootstrapper = Build(ManagerTelegramId.ToString(), resident);
 
         await bootstrapper.RunAsync();
 
@@ -28,9 +28,9 @@ public class ManagerBootstrapperTests
     [Fact]
     public async Task AlreadyManager_NoChange()
     {
-        var resident = Resident.Create(telegramId: KursadTelegramId);
+        var resident = Resident.Create(telegramId: ManagerTelegramId);
         resident.SetRole(ResidentRole.Manager);
-        var bootstrapper = Build(KursadTelegramId.ToString(), resident);
+        var bootstrapper = Build(ManagerTelegramId.ToString(), resident);
 
         await bootstrapper.RunAsync();
 
@@ -41,7 +41,7 @@ public class ManagerBootstrapperTests
     public async Task ResidentNotFound_NoThrow()
     {
         // Configured ID present, but no such resident yet (hasn't messaged the bot).
-        var bootstrapper = Build(KursadTelegramId.ToString() /* no residents */);
+        var bootstrapper = Build(ManagerTelegramId.ToString() /* no residents */);
 
         var act = async () => await bootstrapper.RunAsync();
 
@@ -51,7 +51,7 @@ public class ManagerBootstrapperTests
     [Fact]
     public async Task NotConfigured_NoOp_OtherResidentsUntouched()
     {
-        var someone = Resident.Create(telegramId: KursadTelegramId);
+        var someone = Resident.Create(telegramId: ManagerTelegramId);
         var bootstrapper = Build(bootstrapIdentifier: "", someone);
 
         await bootstrapper.RunAsync();
@@ -62,7 +62,7 @@ public class ManagerBootstrapperTests
     [Fact]
     public async Task InvalidIdentifier_NoOp()
     {
-        var someone = Resident.Create(telegramId: KursadTelegramId);
+        var someone = Resident.Create(telegramId: ManagerTelegramId);
         var bootstrapper = Build("@not-a-telegram-id", someone);
 
         await bootstrapper.RunAsync();
@@ -74,15 +74,15 @@ public class ManagerBootstrapperTests
     public async Task SplitWhatsAppManager_LinksTelegramAndDeactivatesGhost()
     {
         const string phone = "+905550001234";
-        var ghost = Resident.Create(telegramId: KursadTelegramId, displayName: "Kürşad");
-        var manager = Resident.Create(whatsAppNumber: phone, displayName: "KÜRŞAD");
+        var ghost = Resident.Create(telegramId: ManagerTelegramId, displayName: "Test Manager");
+        var manager = Resident.Create(whatsAppNumber: phone, displayName: "TEST MANAGER");
         manager.SetRole(ResidentRole.Manager);
 
-        var bootstrapper = Build(KursadTelegramId.ToString(), phone, ghost, manager);
+        var bootstrapper = Build(ManagerTelegramId.ToString(), phone, ghost, manager);
 
         await bootstrapper.RunAsync();
 
-        manager.TelegramId.Should().Be(KursadTelegramId);
+        manager.TelegramId.Should().Be(ManagerTelegramId);
         manager.Role.Should().Be(ResidentRole.Manager);
         ghost.TelegramId.Should().BeNull();
         ghost.IsActive.Should().BeFalse();
