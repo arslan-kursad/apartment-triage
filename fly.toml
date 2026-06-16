@@ -7,7 +7,7 @@ primary_region = "fra"
   auto_stop_machines = true
   auto_stop_machines_idle_seconds = 300
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
   processes = ["app"]
 
 [[vm]]
