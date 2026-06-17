@@ -13,7 +13,7 @@ primary_region = "fra"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory = "1gb"
+  memory = "1536mb"
   count = 1
 
 [[checks]]
