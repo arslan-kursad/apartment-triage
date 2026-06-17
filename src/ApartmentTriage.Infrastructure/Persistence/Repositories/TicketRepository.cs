@@ -48,7 +48,10 @@ public sealed class TicketRepository : ITicketRepository
 
         var results = await _db.Database
             .SqlQueryRaw<SimilarTicketRow>(sql,
-                new Npgsql.NpgsqlParameter("vector", pgVector),
+                // Raw SqlQueryRaw bypasses EF's UseVector() mapping, so the Pgvector.Vector
+                // parameter must declare its Postgres type explicitly or Npgsql rejects it
+                // ("no NpgsqlDbType or DataTypeName").
+                new Npgsql.NpgsqlParameter("vector", pgVector) { DataTypeName = "vector" },
                 new Npgsql.NpgsqlParameter("excludeId", excludeTicketId),
                 new Npgsql.NpgsqlParameter("topK", topK))
             .ToListAsync(cancellationToken);
