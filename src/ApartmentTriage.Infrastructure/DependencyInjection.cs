@@ -15,6 +15,8 @@ using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
+using Pgvector.Npgsql;
 using Telegram.Bot;
 
 namespace ApartmentTriage.Infrastructure;
@@ -25,11 +27,18 @@ public static class DependencyInjection
         this IServiceCollection services,
         string connectionString)
     {
-        // EF Core + Postgres + pgvector + snake_case
+        // EF Core + Postgres + pgvector + snake_case.
+        // Register the vector type on the ADO.NET data source (not just EF) so that raw
+        // SqlQueryRaw vector parameters — TicketRepository.FindSimilarAsync — can serialize.
+        // EF's UseVector() alone only wires LINQ mappings, not the raw-parameter serializer.
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+        dataSourceBuilder.UseVector();
+        var dataSource = dataSourceBuilder.Build();
+
         services.AddDbContext<ApartmentTriageDbContext>(options =>
             options
                 .UseNpgsql(
-                    connectionString,
+                    dataSource,
                     npgsql => npgsql.UseVector())
                 .UseSnakeCaseNamingConvention());
 
