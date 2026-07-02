@@ -57,7 +57,8 @@ public sealed class TicketRepository : ITicketRepository
             .ToListAsync(cancellationToken);
 
         return results
-            .Select(r => new SimilarTicket(r.Id, r.Category, r.CosineSimilarity, r.CreatedAt))
+            .Select(r => new SimilarTicket(
+                r.Id, Enum.Parse<TicketCategory>(r.Category), r.CosineSimilarity, r.CreatedAt))
             .ToList();
     }
 
@@ -107,10 +108,12 @@ public sealed class TicketRepository : ITicketRepository
     }
 
     // Projection type for SqlQueryRaw — not an entity, stays in Infrastructure.
+    // Category is read as string: SqlQueryRaw<T> doesn't apply the entity's
+    // HasConversion<string>() for this keyless type, and the column is stored as text.
     private sealed class SimilarTicketRow
     {
         public Guid Id { get; set; }
-        public Domain.Enums.TicketCategory Category { get; set; }
+        public string Category { get; set; } = null!;
         public double CosineSimilarity { get; set; }
         public DateTime CreatedAt { get; set; }
     }
