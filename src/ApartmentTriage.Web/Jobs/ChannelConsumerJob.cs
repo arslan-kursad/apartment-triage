@@ -4,16 +4,19 @@ using ApartmentTriage.Application.Orchestration;
 using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Entities;
+using ApartmentTriage.Infrastructure.Channels;
 using ApartmentTriage.Infrastructure.Services;
 using ApartmentTriage.Domain.Enums;
 using ApartmentTriage.Web.Helpers;
 using ApartmentTriage.Web.Security;
 using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot;
 
 namespace ApartmentTriage.Web.Jobs;
 
 public sealed class ChannelConsumerJob(
     [FromKeyedServices(ChannelType.Telegram)] IMessageChannel channel,
+    [FromKeyedServices(ChannelType.Telegram)] TelegramAdapter adapter,
     IResidentRepository residentRepository,
     IMessageRepository messageRepository,
     ITicketRepository ticketRepository,
@@ -22,30 +25,24 @@ public sealed class ChannelConsumerJob(
     ITriageOrchestrator orchestrator,
     ILogger<ChannelConsumerJob> logger)
 {
-    // 55s drain window: long enough to clear backlog accumulated between minute ticks,
-    // short enough not to stall the Hangfire worker thread. (Mirrors WhatsAppConsumerJob.)
-    private static readonly TimeSpan JobBudget = TimeSpan.FromSeconds(55);
-
-    // Telegram is now push-based (webhook → BoundedChannel). This job only drains the in-memory
-    // queue, so there is no getUpdates long-poll and therefore no 409 Conflict risk — the former
-    // [DisableConcurrentExecution] lock (Tier 1, commit e4a7c54) is no longer needed.
-    public async Task RunAsync(CancellationToken hangfireCt = default)
+    // Hangfire entry point invoked directly by the webhook — one durable, Postgres-backed job
+    // per Telegram update. Replaces the old in-memory BoundedChannel + minutely drain, which
+    // silently dropped any update enqueued between a process restart and the next drain tick.
+    public async Task ProcessUpdateAsync(string updateJson, CancellationToken ct = default)
     {
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(hangfireCt);
-        cts.CancelAfter(JobBudget);
+        var update = JsonSerializer.Deserialize<Telegram.Bot.Types.Update>(updateJson, JsonBotAPI.Options);
+        if (update is null)
+        {
+            logger.LogWarning("ProcessUpdateAsync: failed to deserialize update JSON");
+            return;
+        }
 
-        try
-        {
-            await foreach (var incoming in channel.ReadMessagesAsync(cts.Token))
-                await ProcessIncomingAsync(incoming, cts.Token);
-        }
-        catch (OperationCanceledException) when (!hangfireCt.IsCancellationRequested)
-        {
-            // Normal: 55s drain window exhausted (channel empty or budget hit).
-        }
+        var incoming = await adapter.ProcessUpdateAsync(update, ct);
+        if (incoming is not null)
+            await ProcessIncomingAsync(incoming, ct);
     }
 
-    private async Task ProcessIncomingAsync(IncomingMessage incoming, CancellationToken ct)
+    public async Task ProcessIncomingAsync(IncomingMessage incoming, CancellationToken ct)
     {
         logger.LogInformation(
             "Received Telegram message {ExternalId} from {SenderId} ({TextLength} chars)",

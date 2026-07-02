@@ -199,14 +199,14 @@ try
             methodCall: job => job.RunAsync(CancellationToken.None),
             cronExpression: Cron.Minutely());
 
-        // Telegram consumer: 1-minute CRON. Now a pure drain of the webhook-fed BoundedChannel
-        // (push model) — no getUpdates long-poll, so no 409 Conflict and no DisableConcurrentExecution.
-        RecurringJob.AddOrUpdate<ChannelConsumerJob>(
-            recurringJobId: "telegram-consumer",
-            methodCall: job => job.RunAsync(CancellationToken.None),
-            cronExpression: Cron.Minutely());
+        // Telegram no longer uses a recurring drain job: the webhook enqueues a durable,
+        // Postgres-backed Hangfire job per update directly (ChannelConsumerJob.ProcessUpdateAsync).
+        // The old minutely drain silently dropped updates enqueued between a process restart
+        // and the next tick (in-memory BoundedChannel); remove the stale recurring job definition
+        // left over in Hangfire storage from before this change.
+        RecurringJob.RemoveIfExists("telegram-consumer");
 
-        Log.Information("Recurring jobs configured: whatsapp-consumer, telegram-consumer");
+        Log.Information("Recurring jobs configured: whatsapp-consumer");
 
         // Register the Telegram webhook (push model). Guarded by config so dev environments
         // without a public HTTPS URL skip it — a dev bot must use a SEPARATE token (a bot can

@@ -1,9 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using ApartmentTriage.Domain.Enums;
-using ApartmentTriage.Infrastructure.Channels;
-using Microsoft.AspNetCore.Mvc;
+using ApartmentTriage.Web.Jobs;
+using Hangfire;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -30,7 +29,7 @@ public static class TelegramWebhookEndpoints
     // POST /api/webhook/telegram
     private static async Task<IResult> ReceiveUpdate(
         HttpRequest request,
-        [FromKeyedServices(ChannelType.Telegram)] TelegramAdapter adapter,
+        IBackgroundJobClient backgroundJobs,
         IConfiguration configuration,
         ILogger<Log> logger,
         CancellationToken ct)
@@ -73,8 +72,10 @@ public static class TelegramWebhookEndpoints
             return Results.BadRequest();
         }
 
-        if (adapter.TryEnqueue(update))
-            logger.LogInformation("Telegram webhook: enqueued update {UpdateId}", update.Id);
+        var updateJson = Encoding.UTF8.GetString(body);
+        var jobId = backgroundJobs.Enqueue<ChannelConsumerJob>(
+            job => job.ProcessUpdateAsync(updateJson, CancellationToken.None));
+        logger.LogInformation("Telegram webhook: enqueued update {UpdateId} as job {JobId}", update.Id, jobId);
 
         // Telegram retries on any non-2XX — always 200 so a transient triage hiccup
         // doesn't trigger redelivery storms (drain-side dedup handles duplicates).

@@ -1,8 +1,5 @@
-using System.Collections.Generic;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
-using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Infrastructure.Channels;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -14,8 +11,9 @@ namespace ApartmentTriage.Tests.Unit.Channels;
 
 /// <summary>
 /// Exercises the webhook path's core: deserialize a raw Telegram Update (exactly as the wire
-/// delivers it, via JsonBotAPI.Options) → TryEnqueue → drain via ReadMessagesAsync. This is the
-/// same Update→IncomingMessage transformation the webhook endpoint relies on, minus HTTP plumbing.
+/// delivers it, via JsonBotAPI.Options) → ProcessUpdateAsync → IncomingMessage. This is the
+/// same Update→IncomingMessage transformation the webhook's Hangfire job relies on, minus HTTP
+/// plumbing.
 /// </summary>
 public class TelegramWebhookParseTests
 {
@@ -24,21 +22,8 @@ public class TelegramWebhookParseTests
     private static TelegramAdapter NewAdapter() =>
         new(new TelegramBotClient("123456:dummytoken"), NullLogger<TelegramAdapter>.Instance);
 
-    private static async Task<List<IncomingMessage>> DrainAsync(TelegramAdapter adapter, int expected)
-    {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var collected = new List<IncomingMessage>();
-        await foreach (var msg in adapter.ReadMessagesAsync(cts.Token))
-        {
-            collected.Add(msg);
-            if (collected.Count >= expected)
-                break;
-        }
-        return collected;
-    }
-
     [Fact]
-    public async Task TextUpdate_DeserializedFromWireJson_DrainsToIncomingMessage()
+    public async Task TextUpdate_DeserializedFromWireJson_ProducesIncomingMessage()
     {
         const string json = """
         {
@@ -56,13 +41,10 @@ public class TelegramWebhookParseTests
         var update = JsonSerializer.Deserialize<Update>(json, JsonBotAPI.Options)!;
         var adapter = NewAdapter();
 
-        adapter.TryEnqueue(update).Should().BeTrue();
+        var msg = await adapter.ProcessUpdateAsync(update);
 
-        var drained = await DrainAsync(adapter, expected: 1);
-
-        drained.Should().ContainSingle();
-        var msg = drained[0];
-        msg.ExternalId.Should().Be("42");
+        msg.Should().NotBeNull();
+        msg!.ExternalId.Should().Be("42");
         msg.SenderId.Should().Be("8013067042");
         msg.Text.Should().Be("Asansör bozuldu");
         msg.LanguageCode.Should().Be("tr");
@@ -72,14 +54,25 @@ public class TelegramWebhookParseTests
     }
 
     [Fact]
-    public async Task NonMessageUpdate_IsSkipped_OnlyTextUpdateDrains()
+    public async Task NonMessageUpdate_ReturnsNull()
     {
-        // An update carrying no Message (e.g. an edited-channel-post-only payload) must be skipped,
-        // not yielded. We enqueue a skip-update first, then a valid text update, and assert the
-        // single drained item is the text one — proving the skip branch advances rather than blocks.
+        // An update carrying no Message (e.g. an edited-channel-post-only payload) must be
+        // skipped — ProcessUpdateAsync returns null rather than an IncomingMessage.
         const string skipJson = """
         { "update_id": 1, "edited_channel_post": { "message_id": 9, "chat": { "id": 5, "type": "channel" }, "date": 1735000000, "text": "edit" } }
         """;
+
+        var adapter = NewAdapter();
+        var update = JsonSerializer.Deserialize<Update>(skipJson, JsonBotAPI.Options)!;
+
+        var msg = await adapter.ProcessUpdateAsync(update);
+
+        msg.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TextUpdate_WithNoLanguageCode_StillProducesIncomingMessage()
+    {
         const string textJson = """
         {
           "update_id": 2,
@@ -94,14 +87,13 @@ public class TelegramWebhookParseTests
         """;
 
         var adapter = NewAdapter();
-        adapter.TryEnqueue(JsonSerializer.Deserialize<Update>(skipJson, JsonBotAPI.Options)!).Should().BeTrue();
-        adapter.TryEnqueue(JsonSerializer.Deserialize<Update>(textJson, JsonBotAPI.Options)!).Should().BeTrue();
+        var update = JsonSerializer.Deserialize<Update>(textJson, JsonBotAPI.Options)!;
 
-        var drained = await DrainAsync(adapter, expected: 1);
+        var msg = await adapter.ProcessUpdateAsync(update);
 
-        drained.Should().ContainSingle();
-        drained[0].ExternalId.Should().Be("7");
-        drained[0].Text.Should().Be("Su kaçağı var");
-        drained[0].SenderName.Should().Be("Mehmet");
+        msg.Should().NotBeNull();
+        msg!.ExternalId.Should().Be("7");
+        msg.Text.Should().Be("Su kaçağı var");
+        msg.SenderName.Should().Be("Mehmet");
     }
 }

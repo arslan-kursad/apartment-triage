@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 using ApartmentTriage.Application.Channels;
 using ApartmentTriage.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -9,15 +7,13 @@ using Telegram.Bot.Types;
 namespace ApartmentTriage.Infrastructure.Channels;
 
 /// <summary>
-/// Telegram channel adapter. Like WhatsApp, this is push-based: Telegram calls our webhook
-/// endpoint with a JSON Update. The webhook handler enqueues the raw Update here; ReadMessagesAsync
-/// drains the queue and runs the per-update logic (text/photo/document/voice/start, file download,
-/// rejection replies). Raw Updates are buffered (not pre-parsed IncomingMessages) because parsing a
-/// photo/document requires async CDN downloads — kept off the webhook request thread to return 200 fast.
+/// Telegram channel adapter. Push-based: Telegram calls our webhook endpoint with a JSON Update,
+/// and the webhook enqueues a Hangfire job per update directly (Postgres-backed — survives process
+/// restarts). ProcessUpdateAsync runs the per-update logic (text/photo/document/voice/start, file
+/// download, rejection replies) inside that job.
 /// </summary>
 public sealed class TelegramAdapter : IMessageChannel
 {
-    private readonly Channel<Update> _queue;
     private readonly ITelegramBotClient _bot;
     private readonly ILogger<TelegramAdapter> _logger;
 
@@ -36,150 +32,134 @@ public sealed class TelegramAdapter : IMessageChannel
     {
         _bot = bot;
         _logger = logger;
-
-        // Bounded to prevent unbounded memory growth under load (mirrors WhatsAppAdapter).
-        _queue = Channel.CreateBounded<Update>(new BoundedChannelOptions(1000)
-        {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleWriter = false,
-            SingleReader = false
-        });
     }
 
     public ChannelType ChannelType => ChannelType.Telegram;
 
+    public IAsyncEnumerable<IncomingMessage> ReadMessagesAsync(
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException(
+            "TelegramAdapter no longer buffers updates in-memory — the webhook enqueues a durable " +
+            "Hangfire job per update (see TelegramWebhookEndpoints + ChannelConsumerJob.ProcessUpdateAsync).");
+
     /// <summary>
-    /// Called by the webhook endpoint for each incoming Telegram Update.
-    /// Returns false if the queue is full and the Update was dropped.
+    /// Parses one Telegram Update, running any inline side effects (welcome message, rejection
+    /// replies, CDN downloads) and returning the resulting IncomingMessage for the triage pipeline,
+    /// or null if the update needs no further processing.
     /// </summary>
-    public bool TryEnqueue(Update update)
+    public async Task<IncomingMessage?> ProcessUpdateAsync(
+        Update update, CancellationToken cancellationToken = default)
     {
-        if (_queue.Writer.TryWrite(update))
-            return true;
+        if (update.Message is not { } msg)
+            return null;
 
-        _logger.LogWarning("Telegram queue full — dropped update {UpdateId}", update.Id);
-        return false;
-    }
+        var senderId = msg.From?.Id ?? msg.Chat.Id;
+        var languageCode = msg.From?.LanguageCode;
+        var lang = languageCode == "tr" ? "tr" : "en";
+        var senderName = string.IsNullOrWhiteSpace(msg.From?.FirstName)
+            ? null
+            : $"{msg.From.FirstName} {msg.From.LastName}".Trim();
 
-    public async IAsyncEnumerable<IncomingMessage> ReadMessagesAsync(
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        await foreach (var upd in _queue.Reader.ReadAllAsync(cancellationToken))
+        // /start — send welcome and stop
+        if (msg.Text == "/start")
         {
+            await _bot.SendMessage(senderId, lang == "tr" ? TrWelcome : EnWelcome,
+                cancellationToken: cancellationToken);
+            return null;
+        }
+
+        // Photo message (Telegram-compressed JPEG)
+        if (msg.Photo is { Length: > 0 } photos)
+        {
+            var largest = photos[^1];
+            var imageResult = await TryDownloadFileAsync(
+                largest.FileId, "image/jpeg", senderId, lang, cancellationToken);
+            if (imageResult is null)
+                return null;
+
+            var caption = msg.Caption ?? (lang == "tr" ? "[Görsel mesaj]" : "[Image message]");
+            return new IncomingMessage(
+                ExternalId: msg.MessageId.ToString(),
+                SenderId: senderId.ToString(),
+                Text: caption,
+                ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
+                LanguageCode: languageCode,
+                ImageData: imageResult.Value.Data,
+                ImageMimeType: imageResult.Value.MimeType,
+                SenderName: senderName);
+        }
+
+        // Document message — images sent "as file", PDFs, DOCX, etc.
+        if (msg.Document is { } doc)
+        {
+            var mime = doc.MimeType ?? string.Empty;
+
+            if (AllowedImageMimeTypes.Contains(mime))
             {
-                if (upd.Message is not { } msg)
-                    continue;
+                // Image document — process like a photo
+                var docResult = await TryDownloadFileAsync(
+                    doc.FileId, mime, senderId, lang, cancellationToken);
+                if (docResult is null)
+                    return null;
 
-                var senderId = msg.From?.Id ?? msg.Chat.Id;
-                var languageCode = msg.From?.LanguageCode;
-                var lang = languageCode == "tr" ? "tr" : "en";
-                var senderName = string.IsNullOrWhiteSpace(msg.From?.FirstName)
-                    ? null
-                    : $"{msg.From.FirstName} {msg.From.LastName}".Trim();
-
-                // /start — send welcome and stop
-                if (msg.Text == "/start")
-                {
-                    await _bot.SendMessage(senderId, lang == "tr" ? TrWelcome : EnWelcome,
-                        cancellationToken: cancellationToken);
-                    continue;
-                }
-
-                // Photo message (Telegram-compressed JPEG)
-                if (msg.Photo is { Length: > 0 } photos)
-                {
-                    var largest = photos[^1];
-                    var imageResult = await TryDownloadFileAsync(
-                        largest.FileId, "image/jpeg", senderId, lang, cancellationToken);
-                    if (imageResult is null)
-                        continue;
-
-                    var caption = msg.Caption ?? (lang == "tr" ? "[Görsel mesaj]" : "[Image message]");
-                    yield return new IncomingMessage(
-                        ExternalId: msg.MessageId.ToString(),
-                        SenderId: senderId.ToString(),
-                        Text: caption,
-                        ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
-                        LanguageCode: languageCode,
-                        ImageData: imageResult.Value.Data,
-                        ImageMimeType: imageResult.Value.MimeType,
-                        SenderName: senderName);
-                    continue;
-                }
-
-                // Document message — images sent "as file", PDFs, DOCX, etc.
-                if (msg.Document is { } doc)
-                {
-                    var mime = doc.MimeType ?? string.Empty;
-
-                    if (AllowedImageMimeTypes.Contains(mime))
-                    {
-                        // Image document — process like a photo
-                        var docResult = await TryDownloadFileAsync(
-                            doc.FileId, mime, senderId, lang, cancellationToken);
-                        if (docResult is null)
-                            continue;
-
-                        var caption = msg.Caption ?? (lang == "tr" ? "[Görsel mesaj]" : "[Image message]");
-                        yield return new IncomingMessage(
-                            ExternalId: msg.MessageId.ToString(),
-                            SenderId: senderId.ToString(),
-                            Text: caption,
-                            ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
-                            LanguageCode: languageCode,
-                            ImageData: docResult.Value.Data,
-                            ImageMimeType: docResult.Value.MimeType,
-                            SenderName: senderName);
-                    }
-                    else if (mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Unsupported image format (e.g. image/bmp, image/tiff)
-                        _logger.LogWarning(
-                            "Unsupported image MIME type '{Mime}' from {SenderId}", mime, senderId);
-                        await _bot.SendMessage(senderId,
-                            lang == "tr"
-                                ? "⚠️ Yalnızca JPEG, PNG, WebP veya GIF görseller kabul edilmektedir."
-                                : "⚠️ Only JPEG, PNG, WebP or GIF images are accepted.",
-                            cancellationToken: cancellationToken);
-                    }
-                    else
-                    {
-                        // Non-image document (PDF, DOCX, etc.)
-                        _logger.LogInformation(
-                            "Document type '{Mime}' from {SenderId} — rejected (not image)", mime, senderId);
-                        await _bot.SendMessage(senderId,
-                            lang == "tr"
-                                ? "⚠️ Belge göndermek için yöneticinizle iletişime geçin."
-                                : "⚠️ For documents, please contact your building manager.",
-                            cancellationToken: cancellationToken);
-                    }
-                    continue;
-                }
-
-                // Voice message — not supported (demo scope)
-                if (msg.Voice is not null)
-                {
-                    await _bot.SendMessage(senderId,
-                        lang == "tr"
-                            ? "⚠️ Ses mesajları şu an desteklenmiyor. Lütfen sorununuzu yazarak bildirin."
-                            : "⚠️ Voice messages are not supported. Please describe your issue in text.",
-                        cancellationToken: cancellationToken);
-                    continue;
-                }
-
-                // Plain text message
-                if (msg.Text is not { } text)
-                    continue;
-
-                yield return new IncomingMessage(
+                var caption = msg.Caption ?? (lang == "tr" ? "[Görsel mesaj]" : "[Image message]");
+                return new IncomingMessage(
                     ExternalId: msg.MessageId.ToString(),
                     SenderId: senderId.ToString(),
-                    Text: text,
+                    Text: caption,
                     ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
                     LanguageCode: languageCode,
+                    ImageData: docResult.Value.Data,
+                    ImageMimeType: docResult.Value.MimeType,
                     SenderName: senderName);
             }
+
+            if (mime.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                // Unsupported image format (e.g. image/bmp, image/tiff)
+                _logger.LogWarning(
+                    "Unsupported image MIME type '{Mime}' from {SenderId}", mime, senderId);
+                await _bot.SendMessage(senderId,
+                    lang == "tr"
+                        ? "⚠️ Yalnızca JPEG, PNG, WebP veya GIF görseller kabul edilmektedir."
+                        : "⚠️ Only JPEG, PNG, WebP or GIF images are accepted.",
+                    cancellationToken: cancellationToken);
+                return null;
+            }
+
+            // Non-image document (PDF, DOCX, etc.)
+            _logger.LogInformation(
+                "Document type '{Mime}' from {SenderId} — rejected (not image)", mime, senderId);
+            await _bot.SendMessage(senderId,
+                lang == "tr"
+                    ? "⚠️ Belge göndermek için yöneticinizle iletişime geçin."
+                    : "⚠️ For documents, please contact your building manager.",
+                cancellationToken: cancellationToken);
+            return null;
         }
+
+        // Voice message — not supported (demo scope)
+        if (msg.Voice is not null)
+        {
+            await _bot.SendMessage(senderId,
+                lang == "tr"
+                    ? "⚠️ Ses mesajları şu an desteklenmiyor. Lütfen sorununuzu yazarak bildirin."
+                    : "⚠️ Voice messages are not supported. Please describe your issue in text.",
+                cancellationToken: cancellationToken);
+            return null;
+        }
+
+        // Plain text message
+        if (msg.Text is not { } text)
+            return null;
+
+        return new IncomingMessage(
+            ExternalId: msg.MessageId.ToString(),
+            SenderId: senderId.ToString(),
+            Text: text,
+            ReceivedAt: DateTime.SpecifyKind(msg.Date, DateTimeKind.Utc),
+            LanguageCode: languageCode,
+            SenderName: senderName);
     }
 
     /// <summary>

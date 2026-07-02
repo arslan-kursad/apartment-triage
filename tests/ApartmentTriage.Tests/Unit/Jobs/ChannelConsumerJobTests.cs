@@ -4,6 +4,7 @@ using ApartmentTriage.Application.Repositories;
 using ApartmentTriage.Application.Services;
 using ApartmentTriage.Domain.Entities;
 using ApartmentTriage.Domain.Enums;
+using ApartmentTriage.Infrastructure.Channels;
 using ApartmentTriage.Infrastructure.Services;
 using ApartmentTriage.Web.Jobs;
 using FluentAssertions;
@@ -13,14 +14,28 @@ using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Telegram.Bot;
 using Xunit;
 
 namespace ApartmentTriage.Tests.Unit.Jobs;
 
 public class ChannelConsumerJobTests
 {
+    // ChannelConsumerJob.ProcessUpdateAsync needs a TelegramAdapter, but these tests exercise
+    // ProcessIncomingAsync directly (channel-agnostic business logic) so it is never invoked.
+    private static TelegramAdapter NewAdapter() =>
+        new(new TelegramBotClient("123456:dummytoken"), NullLogger<TelegramAdapter>.Instance);
+
+    private static IncomingMessage NewIncoming(string text = "Merhaba, asansör bozuk.", string? languageCode = null) =>
+        new(
+            ExternalId: "mock-001",
+            SenderId: "8013067042",
+            Text: text,
+            ReceivedAt: DateTime.UtcNow,
+            LanguageCode: languageCode);
+
     [Fact]
-    public async Task RunAsync_NewTelegramUser_SendsWelcomeMessage()
+    public async Task ProcessIncomingAsync_NewTelegramUser_SendsWelcomeMessage()
     {
         var sentMessages = new List<(string RecipientId, string Text)>();
         var channel = new FakeTelegramChannel(sentMessages);
@@ -30,6 +45,7 @@ public class ChannelConsumerJobTests
 
         var job = new ChannelConsumerJob(
             channel,
+            NewAdapter(),
             residentRepository,
             messageRepository,
             new FakeTicketRepository(),
@@ -39,7 +55,7 @@ public class ChannelConsumerJobTests
             NullLogger<ChannelConsumerJob>.Instance);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await job.RunAsync(cts.Token);
+        await job.ProcessIncomingAsync(NewIncoming(), cts.Token);
 
         sentMessages.Should().HaveCount(2);
         sentMessages[0].RecipientId.Should().Be("8013067042");
@@ -53,7 +69,7 @@ public class ChannelConsumerJobTests
     }
 
     [Fact]
-    public async Task RunAsync_ExistingTelegramUser_SendsAcknowledgementMessage()
+    public async Task ProcessIncomingAsync_ExistingTelegramUser_SendsAcknowledgementMessage()
     {
         var sentMessages = new List<(string RecipientId, string Text)>();
         var channel = new FakeTelegramChannel(sentMessages);
@@ -64,6 +80,7 @@ public class ChannelConsumerJobTests
 
         var job = new ChannelConsumerJob(
             channel,
+            NewAdapter(),
             residentRepository,
             messageRepository,
             new FakeTicketRepository(),
@@ -73,7 +90,7 @@ public class ChannelConsumerJobTests
             NullLogger<ChannelConsumerJob>.Instance);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await job.RunAsync(cts.Token);
+        await job.ProcessIncomingAsync(NewIncoming(), cts.Token);
 
         sentMessages.Should().ContainSingle();
         sentMessages[0].RecipientId.Should().Be("8013067042");
@@ -86,7 +103,7 @@ public class ChannelConsumerJobTests
     [Theory]
     [InlineData("/login")]
     [InlineData("/login@apartman_triage_bot")]
-    public async Task RunAsync_LoginCommand_RequestsOtpAndSkipsTriage(string loginText)
+    public async Task ProcessIncomingAsync_LoginCommand_RequestsOtpAndSkipsTriage(string loginText)
     {
         var sentMessages = new List<(string RecipientId, string Text)>();
         var channel = new FakeTelegramChannel(sentMessages, text: loginText);
@@ -97,6 +114,7 @@ public class ChannelConsumerJobTests
 
         var job = new ChannelConsumerJob(
             channel,
+            NewAdapter(),
             residentRepository,
             messageRepository,
             new FakeTicketRepository(),
@@ -106,7 +124,7 @@ public class ChannelConsumerJobTests
             NullLogger<ChannelConsumerJob>.Instance);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await job.RunAsync(cts.Token);
+        await job.ProcessIncomingAsync(NewIncoming(text: loginText), cts.Token);
 
         otpService.GenerateRequests.Should().ContainSingle(r =>
             r.Identifier == "8013067042" && r.Channel == ChannelType.Telegram);
@@ -116,7 +134,7 @@ public class ChannelConsumerJobTests
     }
 
     [Fact]
-    public async Task RunAsync_LoginCommand_Unauthorized_SendsGuidanceMessage()
+    public async Task ProcessIncomingAsync_LoginCommand_Unauthorized_SendsGuidanceMessage()
     {
         var sentMessages = new List<(string RecipientId, string Text)>();
         var channel = new FakeTelegramChannel(sentMessages, text: "/login", languageCode: "tr");
@@ -124,6 +142,7 @@ public class ChannelConsumerJobTests
 
         var job = new ChannelConsumerJob(
             channel,
+            NewAdapter(),
             new FakeResidentRepository(),
             new FakeMessageRepository(),
             new FakeTicketRepository(),
@@ -133,14 +152,14 @@ public class ChannelConsumerJobTests
             NullLogger<ChannelConsumerJob>.Instance);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await job.RunAsync(cts.Token);
+        await job.ProcessIncomingAsync(NewIncoming(text: "/login", languageCode: "tr"), cts.Token);
 
         sentMessages.Should().ContainSingle();
         sentMessages[0].Text.Should().Contain("panel girişi");
     }
 
     [Fact]
-    public async Task RunAsync_LoginCommand_NoResidentYet_CreatesResidentBeforeOtp()
+    public async Task ProcessIncomingAsync_LoginCommand_NoResidentYet_CreatesResidentBeforeOtp()
     {
         var sentMessages = new List<(string RecipientId, string Text)>();
         var channel = new FakeTelegramChannel(sentMessages, text: "/login");
@@ -149,6 +168,7 @@ public class ChannelConsumerJobTests
 
         var job = new ChannelConsumerJob(
             channel,
+            NewAdapter(),
             residentRepository,
             new FakeMessageRepository(),
             new FakeTicketRepository(),
@@ -158,7 +178,7 @@ public class ChannelConsumerJobTests
             NullLogger<ChannelConsumerJob>.Instance);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await job.RunAsync(cts.Token);
+        await job.ProcessIncomingAsync(NewIncoming(text: "/login"), cts.Token);
 
         residentRepository.AddedResidents.Should().ContainSingle(r => r.TelegramId == 8013067042);
         otpService.GenerateRequests.Should().ContainSingle();

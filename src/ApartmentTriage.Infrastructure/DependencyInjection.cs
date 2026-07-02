@@ -95,8 +95,8 @@ public static class DependencyInjection
         });
 
         // Single instance registered under two keys (mirrors AddWhatsAppChannel):
-        //   IMessageChannel (ChannelType.Telegram) — consumed by ChannelConsumerJob (drain)
-        //   TelegramAdapter (ChannelType.Telegram)  — consumed by webhook endpoint (TryEnqueue)
+        //   IMessageChannel (ChannelType.Telegram) — consumed by ChannelConsumerJob (SendAsync)
+        //   TelegramAdapter (ChannelType.Telegram)  — consumed by ChannelConsumerJob (ProcessUpdateAsync)
         services.AddKeyedSingleton<TelegramAdapter>(ChannelType.Telegram);
         services.AddKeyedSingleton<IMessageChannel>(
             ChannelType.Telegram,
