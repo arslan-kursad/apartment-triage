@@ -1,6 +1,6 @@
 # Apartman Triage AI
 
-21-günlük (14 May – 3 Jun 2026) Loom demo projesi. WhatsApp grubuna gelen apartman bakım/şikayet mesajlarını LLM agent pipeline'ı ile triage eden .NET sistem. Hedef: the outreach target (the target company) için AI Integration Solutions vitrini.
+21-günlük (14 May – 3 Jun 2026) portfolyo projesi. WhatsApp grubuna gelen apartman bakım/şikayet mesajlarını LLM agent pipeline'ı ile triage eden .NET sistem. AI Integration Solutions yeteneklerini gösteren bir vitrin projesi.
 
 ## Source of truth
 
@@ -19,14 +19,14 @@ Bu dosya özettir. Detaylı bağlam:
 - Hangfire (Postgres-backed, Redis YOK)
 - Anthropic API direct (HttpClient + System.Text.Json) — SDK YOK
 - Haiku 4.5 default, Sonnet 4.6 sadece Enricher escalation
-- Custom `IAgent<TIn,TOut>` orchestrator (~300 LOC) — Semantic Kernel / AutoGen / Microsoft.Extensions.AI YOK
+- Custom `IAgent<TIn,TOut>` orchestrator (~500 LOC) — Semantic Kernel / AutoGen / Microsoft.Extensions.AI YOK
 - ONNX Runtime + multilingual-e5-small (local embedding)
 - WhatsApp Cloud API direct (Meta) — Twilio BSP YOK
 - Razor Pages — Blazor YOK
 - xUnit + FluentAssertions + Testcontainers
 - Serilog structured JSON
 - Fly.io free tier hosting
-- Repo private (KVKK + secrets)
+- Repo public (portfolyo) — gerçek PII/secrets commit edilmez; secrets yalnızca Fly.io secrets olarak tutulur
 
 ## Mimari (4-katman)
 
@@ -47,7 +47,7 @@ Dependency akışı: Web → Application + Infrastructure → Domain. Infrastruc
 - Default proceed; yalnızca kritik, geri dönüşü zor veya yüksek maliyetli kararlarda "!" işaretiyle dikkat çek ve onay iste.
 - Genel sohbet: akış bozulmaz, sadece anlamı bozan majör hatalar.
 - Teknik yazışma: detaylı dilbilimsel geri bildirim.
-- İngilizce çıktı (the target email, README, agent prompt, eval rationale): preposition / tense / kültürel nüans titizliği; her İngilizce çıktıdan önce Türkçe tercümesi verilir.
+- İngilizce çıktı (README, agent prompt, eval rationale): preposition / tense / kültürel nüans titizliği; her İngilizce çıktıdan önce Türkçe tercümesi verilir.
 
 ## Conventions
 
@@ -63,7 +63,16 @@ Dependency akışı: Web → Application + Infrastructure → Domain. Infrastruc
 
 ## Kapanmış kararlar (don't re-open)
 
-.NET seçimi, custom orchestrator, HttpClient direct, Razor Pages, Hangfire, WhatsApp Cloud API direct, repo private, ONNX local, Fly.io. Detay: `docs/primer.md` §3.
+.NET seçimi, custom orchestrator, HttpClient direct, Razor Pages, Hangfire, WhatsApp Cloud API direct, repo public (portfolyo), ONNX local, Fly.io. Detay: `docs/primer.md` §3.
+
+## Public-face durumu (2026-07-03)
+
+Repo public bir portfolyo reposu olarak tutuluyor. 2026-07-03'te bir güvenlik/gizlilik denetimi
+yapıldı: HEAD'deki gerçek bina/konum bilgisi ve isimli iş-başvurusu hedefleme içeriği nötr
+ifadelerle değiştirildi; git geçmişinde bulunan gerçek bir telefon numarası ve Telegram ID
+(test fixture'larında, önceden anonimleştirilmemiş haliyle) `git filter-repo` ile tüm commit'lerden
+temizlendi ve force-push edildi. Gitleaks ile tam geçmiş taraması: secret bulunamadı. Detay:
+`journal/2026-07-03_day51.md`.
 
 ## Model Routing Policy
 

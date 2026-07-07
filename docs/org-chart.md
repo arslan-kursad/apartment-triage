@@ -56,7 +56,7 @@ Operasyonel/administrative thread'ler — paperwork, account setup, infrastructu
 - [ ] **🔒 Founder — Strategic**
   - Tetikleyici: PM scope dışı stratejik karar (timeline uzatma/kısaltma, pivot, kariyer planlama, Day 21 sonrası planlama).
 - [ ] **🔒 Post-Loom Liaison**
-  - Tetikleyici: Day 21 sonrası, the target olumlu yanıt + görüşme koordinasyonu gerekirse.
+  - Tetikleyici: Day 21 sonrası, hedef alıcıdan olumlu yanıt + görüşme koordinasyonu gerekirse.
 
 ---
 

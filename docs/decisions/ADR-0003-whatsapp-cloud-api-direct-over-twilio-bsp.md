@@ -17,7 +17,7 @@ gibi BSP (Business Solution Provider) üzerinden erişim.
 
 Constraint'ler:
 
-- Deployment: babanın binası (18 daire, 11 sakin) — küçük ölçek
+- Deployment: gerçek bir bina (18 daire, 11 sakin) — küçük ölçek
 - İlk 1000 service conversation/ay Meta'da ücretsiz
 - Twilio BSP maliyeti küçük ölçekte orantısız
 - Meta Business Manager verification süreci zaten

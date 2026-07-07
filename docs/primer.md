@@ -6,7 +6,7 @@
 
 ## 1. Proje Sahibi
 
-İzmir'de yazılım geliştirme uzmanıyım. Uzmanlaşma yönelimim **AI Integration Solutions & Intelligent APIs** — yani LLM tabanlı sistemlerin gerçek üretim ortamlarına entegrasyonu, agent orchestration, prompt engineering, eval discipline. Bu proje (Apartman Triage AI), the outreach target / the target company'ya gönderilecek 10 dakikalık Loom demo için yapılıyor; kariyer hamlesinin somut delili olarak konumlandırılıyor. .NET tarafından gelen bir profilim, Python tarafına geçmek istemiyorum — value proposition'ım "AI + .NET ekosistemi" kesişiminde.
+İzmir'de yazılım geliştirme uzmanıyım. Uzmanlaşma yönelimim **AI Integration Solutions & Intelligent APIs** — yani LLM tabanlı sistemlerin gerçek üretim ortamlarına entegrasyonu, agent orchestration, prompt engineering, eval discipline. Bu proje (Apartman Triage AI), bu yönelimin somut bir portfolyo kanıtı olarak yapılıyor. .NET tarafından gelen bir profilim, Python tarafına geçmek istemiyorum — value proposition'ım "AI + .NET ekosistemi" kesişiminde.
 
 - **Ad:** Kürşad
 - **GitHub:** arslan-kursad
@@ -18,7 +18,7 @@
 - **Mod ayrımı:**
   - *Genel sohbet / beyin fırtınası:* akışı bozma. Sadece anlamı bozan majör hataları uyar.
   - *Teknik / resmi yazışma:* en minör yazım ve anlam hatalarına kadar detaylı geri bildirim ver.
-  - *İngilizce çıktı (the target email, GitHub README, agent prompt'ları, eval rationale):* preposition, tense, ton, kültürel nüans seviyesinde titizlik. Bu en yüksek dikkat seviyesi.
+  - *İngilizce çıktı (GitHub README, agent prompt'ları, eval rationale):* preposition, tense, ton, kültürel nüans seviyesinde titizlik. Bu en yüksek dikkat seviyesi.
   - *Her İngilizce çıktıdan önce:* tam anlamıyla Türkçe tercümesi verilir.
 
 ## 3. Sorgulanmayacak Kararlar (Don't Re-Open)
@@ -26,14 +26,14 @@
 Bu kararlar kapandı. Yeni konuşmada "X olabilir mi?" diye geri açma — vakit kaybı.
 
 - **Dil/Stack:** .NET 8 / C#.
-- **Agent framework:** Custom orchestrator (~300 LOC). Semantic Kernel. Microsoft.SemanticKernel, AutoGen, Microsoft.Extensions.AI.
+- **Agent framework:** Custom orchestrator (~500 LOC). Semantic Kernel. Microsoft.SemanticKernel, AutoGen, Microsoft.Extensions.AI.
 - **LLM SDK:** Anthropic .NET SDK kullanılmayacak. `HttpClient` + `System.Text.Json` direct.
 - **Messaging:** WhatsApp Cloud API direct (Meta).
 - **UI:** Razor Pages. Blazor.
 - **Background jobs:** Hangfire (Postgres-backed).
 - **Embeddings:** ONNX Runtime + multilingual-e5-small, local.
 - **Hosting:** Fly.io free tier.
-- **Repo:** Private (KVKK + secret yönetimi kaygısı).
+- **Repo:** Public (portfolyo). Gerçek PII/secrets commit edilmez; secrets yalnızca Fly.io secrets olarak tutulur (KVKK).
 - **Claude.ai plan:** Pro ($20). Day 7 retro'sunda sıkışmışsam Max 5x'e geçici upgrade düşünülür, default değil.
 
 ## 4. Sormana Gerek Olmayan Sorular
@@ -45,7 +45,7 @@ Yeni konuşmada şunları sorma, cevapları sabitlendi:
 - "Stack ne?" → Roadmap §2'de tam liste.
 - "Test framework?" → xUnit + FluentAssertions + Testcontainers.
 - "Logging?" → Serilog, structured JSON.
-- "Repo public mı private mı?" → Private.
+- "Repo public mı private mı?" → Public (portfolyo repo'su; PII/secrets commit edilmez).
 - "Plan upgrade ister misin?" → Hayır, ben sorduğumda konuş.
 
 ## 5. Loom Demo'nun Cevaplaması Gereken 5 Soru
@@ -76,9 +76,8 @@ Q4 özellikle önemli: "rebuilt differently" hammaddesi engineering journal'dan 
 
 - **Ad:** Kürşad
 - **GitHub:** arslan-kursad
-- **the target ile geçmiş yazışma tonu:** İlk temas Day 0 holding email'i ile Kürşad → the target yönüyle başladı. the target yanıt verdiğinde bu satır güncellenecek (tonu okuyup buraya not düşülür).
-- **Babanın binası lokasyonu:** Sivas — Merkez (KVKK aktif, Türkiye anakara).
-- **Apartman büyüklüğü:** 18 daire, şu anda 11 sakin. Loom Q1 motivasyonunda kullanılabilir: küçük gerçek bina, gerçek aile dinamikleri, ama scale-up için temiz örnek.
+- **Deployment:** Küçük ölçekli gerçek bir bina, Türkiye anakara (KVKK aktif).
+- **Apartman büyüklüğü:** 18 daire, şu anda 11 sakin. Loom Q1 motivasyonunda kullanılabilir: küçük gerçek bina, gerçek kullanıcı davranışı, ama scale-up için temiz örnek.
 
 ---
 

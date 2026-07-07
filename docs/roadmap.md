@@ -1,6 +1,6 @@
 # Apartman Triage AI — 21-Day Roadmap
 
-**Hedef:** the outreach target (the target company) için 10 dakikalık Loom video — gerçek, canlıya alınmış, .NET tabanlı agentic apartman yönetimi triage sistemi.
+**Hedef:** 10 dakikalık Loom video (portfolyo / iş başvurusu amaçlı) — gerçek, canlıya alınmış, .NET tabanlı agentic apartman yönetimi triage sistemi.
 
 **Bugün:** 14 Mayıs 2026 Çarşamba (Day 0)
 **Teslim:** 3 Haziran 2026 Çarşamba (Day 20)
@@ -39,7 +39,7 @@
 | Stack | C#/.NET — Python değil |
 | Framework | Custom orchestrator (Semantic Kernel / LangGraph reddedildi) |
 | Input kanalı | WhatsApp Business Cloud API (primary), Telegram (dev/fallback) |
-| Deployment | Babanın binası (gerçek WhatsApp grubu) |
+| Deployment | Küçük ölçekli gerçek bir bina (gerçek WhatsApp grubu) |
 | LLM strategy | Haiku-first ($1/$5), Sonnet escalation ($3/$15) |
 | Embedding | ONNX Runtime + multilingual-e5-small (local, free) |
 | Hosting | Fly.io free tier |
@@ -71,13 +71,13 @@ Testing:             xUnit + FluentAssertions + Testcontainers
 
 | Action | Deadline | Status |
 |---|---|---|
-| Holding email to the target | Day 0 (14 May) | ⬜ |
+| Holding email to outreach target | Day 0 (14 May) | ⬜ |
 | Meta Business Manager verification paperwork | Day 1 (15 May) | ⬜ |
-| Babanın bilgilendirilmesi (stakeholder brief) | Day 12 (26 May) | ⬜ |
+| Bina yönetimine bilgilendirme (stakeholder brief) | Day 12 (26 May) | ⬜ |
 | KVKK disclosure mesajı (apartman grubu) | Day 13 (27 May) | ⬜ |
 | WhatsApp template approval submission | Day 8 (22 May) | ⬜ |
 | Loom pre-screen (arkadaş geri bildirimi) | Day 20 (2 June) | ⬜ |
-| Final Loom + email to outreach@example.com | Day 20-21 (3 June) | ⬜ |
+| Final Loom + outreach email | Day 20-21 (3 June) | ⬜ |
 
 ---
 
@@ -86,7 +86,7 @@ Testing:             xUnit + FluentAssertions + Testcontainers
 | Risk | Olasılık | Etki | Mitigation |
 |---|---|---|---|
 | Meta verification 7+ gün sürmesi | Orta | Yüksek | Telegram fallback hazır, adapter pattern bu nedenle var |
-| Babanın grubunda mesaj akışı yetersiz | Düşük | Yüksek | Kendi sentetik test mesajları + father coordination |
+| Gerçek gruptaki mesaj akışı yetersiz | Düşük | Yüksek | Kendi sentetik test mesajları + bina yönetimi koordinasyonu |
 | Pro plan Claude limitleri yetersiz | Orta | Orta | Max 5x'e geçici upgrade ($100, recoverable) |
 | Edge case yokluğu (sistem fazla "smooth" çalışır) | Orta | Yüksek | Bilinçli stress testing — multi-issue, emoji-only, voice messages |
 | API budget aşımı ($75 sınırı) | Düşük | Düşük | Aggressive caching dev sırasında, Anthropic dashboard alert $50'de |
@@ -120,7 +120,7 @@ Testing:             xUnit + FluentAssertions + Testcontainers
 
 ### Phase 2: Real Integration (Days 8-14) — Full Pipeline + WhatsApp
 
-**Hedef:** 3 agent tam pipeline + WhatsApp adapter + babanın binasına deploy hazır.
+**Hedef:** 3 agent tam pipeline + WhatsApp adapter + gerçek binaya deploy hazır.
 
 | Day | Date | Focus | Deliverable |
 |---|---|---|---|
@@ -128,14 +128,14 @@ Testing:             xUnit + FluentAssertions + Testcontainers
 | 9 | Fri 23 May | RouterAgent + emergency fast-path | Rule-based router, emergency keyword detector, LLM fallback |
 | 10 | Sat 24 May | WhatsApp adapter | Meta Cloud API webhook, signature verification, template approval submission |
 | 11 | Sun 25 May | Dashboard (Razor Pages) | Ticket list, filter by status/priority, agent decision audit view |
-| 12 | Mon 26 May | Production hardening | Error handling, idempotency, webhook retry handling, baba brief |
+| 12 | Mon 26 May | Production hardening | Error handling, idempotency, webhook retry handling, bina yönetimi brief |
 | 13 | Tue 27 May | KVKK + deploy prep | Disclosure mesaj template, Fly.io deploy script, env config, secrets management |
-| 14 | Wed 28 May | LIVE DEPLOY 🚀 | Babanın grubuna WhatsApp bot eklendi, disclosure gönderildi, monitoring çalışıyor |
+| 14 | Wed 28 May | LIVE DEPLOY 🚀 | Gerçek gruba WhatsApp bot eklendi, disclosure gönderildi, monitoring çalışıyor |
 
 **Phase 2 DoD (Day 14 akşamı):**
 - ✅ 3 agent + emergency fast-path canlı
 - ✅ WhatsApp Cloud API ile gerçek mesajlar geliyor
-- ✅ Babanın binası deployment yapıldı
+- ✅ Gerçek bina deployment yapıldı
 - ✅ Dashboard'da gerçek ticket'lar görülebiliyor
 - ✅ KVKK disclosure done
 
@@ -151,7 +151,7 @@ Testing:             xUnit + FluentAssertions + Testcontainers
 | 18 | Sun 1 Jun | LOOM PREP START | Outline 5 maddeyi 10 dakikaya sığdır, demo data hazırla, mikrofon/ortam testi |
 | 19 | Mon 2 Jun | Loom prova + polish | İlk full prova (kendine kayıt), zayıf bölümleri tekrar, kod walkthrough netleştir |
 | 20 | Tue 3 Jun | Final kayıt + pre-screen | Final Loom kaydı, bir arkadaşa pre-screen, geri bildirim al |
-| 21 | Wed 3 Jun (akşam) | GÖNDERİM | Loom + concise email → outreach@example.com |
+| 21 | Wed 3 Jun (akşam) | GÖNDERİM | Loom + concise email → outreach target |
 
 **Phase 3 DoD (Day 21):**
 - ✅ ≥30 gerçek WhatsApp mesajı pipeline'dan geçmiş
@@ -256,7 +256,7 @@ Her gün 15 dakika, bir markdown dosyasına:
 
 10 dakika hedefli (≤9:30 final süre):
 
-| Süre | İçerik | the target's Question |
+| Süre | İçerik | Reviewer's Question |
 |---|---|---|
 | 0:00-0:30 | Intro + project context | — |
 | 0:30-2:00 | Problem + motivasyon | Q1 |
@@ -287,7 +287,7 @@ Bu bölüm sıcak değişiklikleri yansıtır. Bir sonraki formal roadmap günce
 - **§5 Phase 2 revize:** Phase 2 Day 7–14 (8 gün, 1 gün kazanıldı).
 
 - **§3 Communication Checklist — tarih güncellemeleri:**
-  - Babanın bilgilendirilmesi: Day 10 (24 May) — öne çekildi
+  - Bina yönetimine bilgilendirme: Day 10 (24 May) — öne çekildi
   - KVKK disclosure mesajı: Day 11 (25 May) — öne çekildi
   - Live Deploy hedefi: Day 13 (27 May)
   - Day 14: Buffer gün (monitoring + WhatsApp fine-tuning)

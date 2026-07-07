@@ -403,7 +403,7 @@ external_outage_notification_spec:  # NEW v2
   rationale_tr: |
     Üç seçenek tartıldı:
     (1) Default on, frequency cap (örn. günde max 3 bildirim)
-        → Sivas binasının external_outage frekansı bilinmiyor. "Doğru cap" hangi rakam? Bilinmiyor.
+        → Gerçek binanın external_outage frekansı bilinmiyor. "Doğru cap" hangi rakam? Bilinmiyor.
         → Premature optimization riski; Day 14 öncesi data yok.
     (2) Default off, hiç toggle yok (sadece log)
         → Manager hiçbir bildirim almaz; external_outage tespit edildi mi bilemez.
