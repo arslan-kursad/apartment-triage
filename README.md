@@ -271,7 +271,8 @@ dotnet test    # unit + integration suites
 - **Classification eval** (48 labeled cases): **93.3%** category accuracy, **100%** emergency
   recall, **75%** emergency precision.
 - **Production:** live for a small real building, processing real resident messages.
-- **Cost:** runs entirely on free-tier infrastructure (Fly.io + Neon); LLM spend is tracked in
-  the dashboard's FinOps view, kept low by the Haiku-default / Sonnet-on-escalation routing.
+- **Cost:** Neon's Postgres free tier + a single small Fly.io machine (auto-suspended when
+  idle); LLM spend is tracked in the dashboard's FinOps view, kept low by the
+  Haiku-default / Sonnet-on-escalation routing.
 
 > Metrics are real measurements from the evaluation suite, not projections.
