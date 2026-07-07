@@ -6,6 +6,7 @@
 ![C#](https://img.shields.io/badge/C%23-12-239120)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-336791)
 ![Status](https://img.shields.io/badge/status-production-success)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
