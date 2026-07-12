@@ -49,6 +49,17 @@ public sealed class EnricherDbFixture : IAsyncLifetime
 
         await using var ctx = CreateDbContext();
         await ctx.Database.MigrateAsync();
+
+        // The migration above creates the vector extension, but the pooled connection
+        // that ran it cached its backend type catalog *before* the extension existed —
+        // Npgsql doesn't refresh that automatically mid-session. Reload it explicitly
+        // (the documented Npgsql pattern for types/extensions created at runtime) or
+        // the first vector write below fails with the same "Cannot resolve 'vector'"
+        // error even though the ADO.NET-level UseVector() above is correctly wired.
+        await ctx.Database.OpenConnectionAsync();
+        await ((NpgsqlConnection)ctx.Database.GetDbConnection()).ReloadTypesAsync();
+        await ctx.Database.CloseConnectionAsync();
+
         await SeedAsync(ctx);
     }
 
