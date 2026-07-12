@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      # Repo builds clean with 0 warnings today (verified 2026-07-12) — enforce it.
+      - name: Build
+        run: dotnet build --configuration Release --no-restore /warnaserror
+
+      # Public, checksum-verified download (scripts/download-models.sh) — no secret involved.
+      # Enables the Testcontainers-backed EnricherIntegration tests below instead of
+      # letting them silently no-op on a missing EMBEDDINGS__MODELPATH.
+      - name: Cache ONNX embedding model
+        uses: actions/cache@v4
+        with:
+          path: models/multilingual-e5-small/model.onnx
+          key: onnx-e5-small-${{ hashFiles('scripts/download-models.sh') }}
+
+      - name: Download ONNX embedding model
+        run: ./scripts/download-models.sh
+
+      # Category=Eval and Category=Smoke call the real Anthropic API and require
+      # ANTHROPIC_API_KEY. We never put that key in CI, so those traits are excluded
+      # here rather than left to fail (Smoke throws without the key) or silently
+      # no-op (Eval). Everything else, including the Testcontainers-backed
+      # EnricherIntegration tests (real Postgres+pgvector container via Docker,
+      # which ubuntu-latest ships with), runs for real.
+      - name: Test
+        env:
+          EMBEDDINGS__MODELPATH: ${{ github.workspace }}/models/multilingual-e5-small/model.onnx
+        run: >
+          dotnet test --configuration Release --no-build
+          --filter "Category!=Eval&Category!=Smoke"
+          --logger "trx"
+          --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults

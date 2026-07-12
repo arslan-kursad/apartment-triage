@@ -2,11 +2,15 @@
 
 **An agentic maintenance-request triage system for residential buildings, built on .NET 8 and Claude.**
 
+[![CI](https://github.com/arslan-kursad/apartment-triage/actions/workflows/ci.yml/badge.svg)](https://github.com/arslan-kursad/apartment-triage/actions/workflows/ci.yml)
 ![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4)
 ![C#](https://img.shields.io/badge/C%23-12-239120)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-336791)
 ![Status](https://img.shields.io/badge/status-production-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
+
+> CI runs the full suite except tests requiring a live LLM API key (`Smoke`/`Eval` traits),
+> which are documented and run locally — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ---
 
@@ -22,6 +26,9 @@ emergencies and escalating only ambiguous cases to a stronger model. A manager w
 real-time dashboard instead of a chat backlog.
 
 The system runs in production for a small real building, processing live resident messages.
+
+Want to try it? Message [@HanwasBot](https://t.me/HanwasBot) on Telegram with a maintenance-style
+complaint (Turkish or English) and watch it get triaged.
 
 ---
 
