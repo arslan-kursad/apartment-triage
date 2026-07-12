@@ -14,10 +14,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # global.json pins "8.0.0" with rollForward=latestMinor — that rollForward is a
+      # runtime SDK-selection hint, not something actions/setup-dotnet's global-json-file
+      # input honors when *acquiring* the SDK; it tries to install the literal 8.0.0 GA
+      # patch, which is no longer in the install feed. Float to latest 8.0.x instead —
+      # global.json's rollForward then happily accepts whatever patch that resolves to.
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
+          dotnet-version: '8.0.x'
 
       - name: Restore
         run: dotnet restore
