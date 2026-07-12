@@ -30,7 +30,16 @@ public sealed class OnnxEmbeddingService : IEmbeddingService, IDisposable
     {
         ct.ThrowIfCancellationRequested();
 
-        var tokenIds = Tokenize(text);
+        // multilingual-e5-small requires a task-instruction prefix on all input text.
+        // This system only ever computes symmetric complaint-to-complaint similarity —
+        // TriageOrchestrator persists the same vector EnricherAgent computes for an
+        // incoming complaint as that ticket's permanent stored representation (see
+        // TriageOrchestrator.cs SetEmbeddingVector calls), so every "past ticket" vector
+        // was itself a live complaint embedding at creation time. There is no separate
+        // index-time passage step to justify e5's asymmetric query/passage split; the
+        // model card's guidance for symmetric tasks (STS, similarity, clustering)
+        // applies instead: prefix uniformly with "query: ".
+        var tokenIds = Tokenize($"query: {text}");
         var seqLen = tokenIds.Length;
 
         var attentionMask = Enumerable.Repeat(1L, seqLen).ToArray();

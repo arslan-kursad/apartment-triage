@@ -63,6 +63,7 @@ jobs:
           dotnet test --configuration Release --no-build
           --filter "Category!=Eval&Category!=Smoke"
           --logger "trx"
+          --logger "console;verbosity=detailed"
           --results-directory TestResults
 
       - name: Upload test results
