@@ -34,8 +34,15 @@ jobs:
       # Public, checksum-verified download (scripts/download-models.sh) — no secret involved.
       # Enables the Testcontainers-backed EnricherIntegration tests below instead of
       # letting them silently no-op on a missing EMBEDDINGS__MODELPATH.
-      - name: Cache ONNX embedding model
-        uses: actions/cache@v4
+      #
+      # Split into restore/save (rather than the combined actions/cache) because that
+      # action's save step carries a built-in post-if: success() — it silently skips
+      # saving whenever a later step in the job fails, no matter what `if:` is set on
+      # the step itself. A failing Test step would otherwise mean every run re-downloads
+      # 448 MB, forever, even after the model itself is already known-good and cached.
+      - name: Restore ONNX embedding model cache
+        id: model-cache
+        uses: actions/cache/restore@v4
         with:
           path: models/multilingual-e5-small/model.onnx
           key: onnx-e5-small-${{ hashFiles('scripts/download-models.sh') }}
@@ -64,3 +71,10 @@ jobs:
         with:
           name: test-results
           path: TestResults
+
+      - name: Save ONNX embedding model cache
+        if: always() && steps.model-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: models/multilingual-e5-small/model.onnx
+          key: onnx-e5-small-${{ hashFiles('scripts/download-models.sh') }}
