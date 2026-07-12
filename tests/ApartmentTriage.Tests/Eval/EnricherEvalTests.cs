@@ -9,6 +9,8 @@ using ApartmentTriage.Infrastructure.Persistence.Repositories;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
+using Pgvector.Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -19,6 +21,7 @@ namespace ApartmentTriage.Tests.Eval;
 public sealed class EnricherDbFixture : IAsyncLifetime
 {
     private PostgreSqlContainer? _container;
+    private NpgsqlDataSource? _dataSource;
 
     public string? ModelPath { get; private set; }
     public string? ConnectionString { get; private set; }
@@ -35,6 +38,15 @@ public sealed class EnricherDbFixture : IAsyncLifetime
         await _container.StartAsync();
         ConnectionString = _container.GetConnectionString();
 
+        // Vector type must be registered on the ADO.NET data source, not just EF's
+        // LINQ-level UseVector() below — same gap DependencyInjection.AddInfrastructure
+        // documents for production. Without it, writing a Pgvector.Vector parameter
+        // (SaveChangesAsync in SeedAsync) fails with "Cannot resolve 'vector' to a
+        // fully qualified datatype name."
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(ConnectionString);
+        dataSourceBuilder.UseVector();
+        _dataSource = dataSourceBuilder.Build();
+
         await using var ctx = CreateDbContext();
         await ctx.Database.MigrateAsync();
         await SeedAsync(ctx);
@@ -42,13 +54,14 @@ public sealed class EnricherDbFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        if (_dataSource != null) await _dataSource.DisposeAsync();
         if (_container != null) await _container.DisposeAsync();
     }
 
     public ApartmentTriageDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<ApartmentTriageDbContext>()
-            .UseNpgsql(ConnectionString!, npgsql => npgsql.UseVector())
+            .UseNpgsql(_dataSource!, npgsql => npgsql.UseVector())
             .UseSnakeCaseNamingConvention()
             .Options;
         return new ApartmentTriageDbContext(options);
