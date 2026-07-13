@@ -199,40 +199,6 @@ public sealed class EnricherEvalTests : IClassFixture<EnricherDbFixture>
         _ = countPass; _ = confPass; // suppress unused-var warning
     }
 
-    // ── TEMP DIAGNOSTIC (ADR-0016 recalibration) — remove after thresholds set ──
-    // Prints the post-tokenizer-fix cosine distribution from the real pgvector path
-    // so the confidence thresholds can be recalibrated against measured numbers.
-    [Fact, Trait("Category", "EnricherIntegration")]
-    public async Task zzDiagnostic_PrintCosineDistribution()
-    {
-        if (_fixture.ModelPath == null) return;
-
-        using var onnx = new OnnxEmbeddingService(_fixture.ModelPath);
-        await using var db = _fixture.CreateDbContext();
-        var agent = new EnricherAgent(onnx, new TicketRepository(db), NullLogger<EnricherAgent>.Instance, topK: 10);
-
-        var probes = new (string Label, string Text, TicketCategory Cat)[]
-        {
-            ("plumbing_query", "Banyo musluğu arızalı, sürekli su sızdırıyor.", TicketCategory.Plumbing),
-            ("elevator_query", "Asansör bozuk, katlara çıkamıyoruz.", TicketCategory.Elevator),
-            ("noise_query", "Komşu gürültü yapıyor, gece uyuyamıyorum.", TicketCategory.Noise),
-        };
-
-        foreach (var (label, text, cat) in probes)
-        {
-            var residentId = Guid.NewGuid();
-            var input = new EnricherInput(Guid.NewGuid(), residentId, text, cat);
-            var ctx = new AgentContext(Guid.NewGuid(), Guid.NewGuid(), residentId, DateTimeOffset.UtcNow);
-            var result = await agent.ExecuteAsync(input, ctx);
-            Console.WriteLine($"=== {label}: \"{text}\" ===");
-            if (result.IsSuccess)
-                foreach (var t in result.Value!.SimilarTickets)
-                    Console.WriteLine($"  {t.Category} sim={t.CosineSimilarity:F4}");
-            else
-                Console.WriteLine($"  FAILED: {result.Error?.Message}");
-        }
-    }
-
     // ── ec-0017: Plumbing input — Category=EnricherIntegration ───────────────────
     // Seeded DB has 5 plumbing + 2 elevator tickets.
     // Similar plumbing input should surface ≥1 ticket at High confidence.
@@ -270,7 +236,7 @@ public sealed class EnricherEvalTests : IClassFixture<EnricherDbFixture>
         output.SimilarTickets.Count.Should().BeGreaterThanOrEqualTo(1,
             "ec-0017: plumbing input → at least one plumbing ticket in top-K");
         output.ConfidenceLevel.Should().Be(ConfidenceLevel.High,
-            "ec-0017: plumbing texts share significant character patterns → High");
+            "ec-0017: nearest neighbour is a Plumbing ticket, matching the classified category → High");
     }
 
     // ── ec-0018: Elevator input — Category=EnricherIntegration ───────────────────
@@ -309,22 +275,18 @@ public sealed class EnricherEvalTests : IClassFixture<EnricherDbFixture>
         output.SimilarTickets.Count.Should().BeGreaterThanOrEqualTo(1,
             "ec-0018: elevator input → at least one elevator ticket in top-K");
         output.ConfidenceLevel.Should().Be(ConfidenceLevel.High,
-            "ec-0018: elevator texts share significant character patterns → High");
+            "ec-0018: nearest neighbour is an Elevator ticket, matching the classified category → High");
     }
 
     // ── ec-0020: Unrelated input — Category=EnricherIntegration ─────────────────
-    // SKIPPED — see ADR-0015 and issue #5 (github.com/arslan-kursad/apartment-triage/issues/5).
-    // Measured against the real pgvector path: noise_query's best (wrong) match scores
-    // higher than plumbing_query's own 4th-best (correct) match. No fixed threshold can
-    // separate this given the current placeholder tokenizer (character-level, not real
-    // XLM-RoBERTa/SentencePiece) — the similarity signal itself isn't discriminative,
-    // not a calibration problem. Do not un-skip by loosening this assertion; the real
-    // fix is the tokenizer replacement tracked in issue #5.
+    // Formerly failing (ADR-0015), now passing on its ORIGINAL Be(Low) assertion after
+    // two real fixes (ADR-0016): the real XLM-R tokenizer, and category-consensus
+    // confidence. The noise complaint (classified Noise) finds only Plumbing/Elevator
+    // neighbours — no Noise ticket among them — so confidence is Low because nothing
+    // corroborates the classification, not because of a hand-tuned cosine cut. The
+    // assertion was never wrong; the system was. Un-skipped without weakening it.
 
-    [Fact(Skip = "Blocked by placeholder tokenizer — see ADR-0015 and " +
-                 "github.com/arslan-kursad/apartment-triage/issues/5. Do not un-skip by " +
-                 "loosening the assertion; fix the tokenizer first.")]
-    [Trait("Category", "EnricherIntegration")]
+    [Fact, Trait("Category", "EnricherIntegration")]
     public async Task ec0020_NoiseInput_LowSimilarity_LowConfidence()
     {
         if (_fixture.ModelPath == null) return;
@@ -354,10 +316,9 @@ public sealed class EnricherEvalTests : IClassFixture<EnricherDbFixture>
         PrintResult("ec-0020", output.SimilarTickets.Count, minCount: 0,
             output.ConfidenceLevel, ConfidenceLevel.Low);
 
-        // Character-level tokenizer may score differently — High is the only excluded outcome.
-        // Exact Low assertion; update to Medium if consistently failing.
         output.ConfidenceLevel.Should().Be(ConfidenceLevel.Low,
-            "ec-0020: noise text should not be highly similar to plumbing/elevator seed");
+            "ec-0020: no Noise ticket among the neighbours → nothing corroborates the " +
+            "classification → Low, regardless of raw cosine");
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────────

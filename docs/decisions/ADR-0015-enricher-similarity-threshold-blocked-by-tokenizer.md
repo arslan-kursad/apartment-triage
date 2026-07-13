@@ -1,9 +1,14 @@
 # ADR-0015 — Enricher Similarity Thresholds: Calibration Blocked by Placeholder Tokenizer
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0016](ADR-0016-real-tokenizer-and-category-consensus-confidence.md)
 **Date:** 2026-07-12
 **Decider:** Architect
 **Context:** İlk gerçek CI run'ı (Testcontainers + pgvector, taze DB) — `ec0020` fail
+
+> **Not (2026-07-13):** Bu ADR'ın tespit ettiği iki kök sebep (placeholder tokenizer +
+> kalibrasyonsuz mutlak eşik) ADR-0016 ile çözüldü: gerçek XLM-R tokenizer (BlingFire) +
+> category-consensus confidence. `ec0020` orijinal `Be(Low)` assertion'ıyla un-skip edildi.
+> Aşağıdaki içerik o günkü durumu (skip gerekçesi) tarihsel kayıt olarak koruyor.
 
 ---
 

@@ -83,7 +83,7 @@ public sealed class EnricherAgent : AgentBase<EnricherInput, EnricherOutput>
                 AgentErrorKind.Transient, $"Similarity search failed: {ex.Message}", ex));
         }
 
-        var confidence = ComputeConfidence(similar);
+        var confidence = ComputeConfidence(similar, input.ClassifiedCategory);
 
         Logger.LogInformation(
             "EnricherAgent: ticket {TicketId} — {SimilarCount} similar tickets, confidence {Confidence}",
@@ -96,17 +96,31 @@ public sealed class EnricherAgent : AgentBase<EnricherInput, EnricherOutput>
             ConfidenceLevel: confidence));
     }
 
-    private static ConfidenceLevel ComputeConfidence(IReadOnlyList<SimilarTicket> similar)
+    // Category consensus — not an absolute cosine threshold — is the trustworthy signal.
+    // Turkish maintenance complaints share enough surface vocabulary that even an unrelated
+    // message scores a moderately-high cosine against some ticket: an off-topic noise
+    // complaint still hit ~0.89 against a plumbing ticket, barely below a genuinely-related
+    // plumbing match at ~0.92 (measured on the real pgvector path — ADR-0016). Any fixed
+    // cosine cut that admits the 0.92 match also admits the 0.89 false one, so a threshold
+    // can't separate them without overfitting to a handful of probes. What does separate a
+    // useful enrichment from a spurious one is whether the nearest past tickets corroborate
+    // the category the Classifier already assigned.
+    private static ConfidenceLevel ComputeConfidence(
+        IReadOnlyList<SimilarTicket> similar, TicketCategory classifiedCategory)
     {
         if (similar.Count == 0)
             return ConfidenceLevel.Low;
 
-        var top = similar[0].CosineSimilarity;
-        return top switch
-        {
-            > 0.85 => ConfidenceLevel.High,
-            > 0.65 => ConfidenceLevel.Medium,
-            _       => ConfidenceLevel.Low
-        };
+        // Nearest neighbour agrees with the classification → strongest corroboration.
+        if (similar[0].Category == classifiedCategory)
+            return ConfidenceLevel.High;
+
+        // Classified category present further down the top-K → partial corroboration.
+        if (similar.Any(s => s.Category == classifiedCategory))
+            return ConfidenceLevel.Medium;
+
+        // No neighbour shares the classified category → nothing trustworthy to enrich with,
+        // regardless of raw cosine (this is the unrelated-complaint case).
+        return ConfidenceLevel.Low;
     }
 }
