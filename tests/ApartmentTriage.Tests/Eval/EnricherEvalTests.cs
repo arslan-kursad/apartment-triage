@@ -199,6 +199,40 @@ public sealed class EnricherEvalTests : IClassFixture<EnricherDbFixture>
         _ = countPass; _ = confPass; // suppress unused-var warning
     }
 
+    // ── TEMP DIAGNOSTIC (ADR-0016 recalibration) — remove after thresholds set ──
+    // Prints the post-tokenizer-fix cosine distribution from the real pgvector path
+    // so the confidence thresholds can be recalibrated against measured numbers.
+    [Fact, Trait("Category", "EnricherIntegration")]
+    public async Task zzDiagnostic_PrintCosineDistribution()
+    {
+        if (_fixture.ModelPath == null) return;
+
+        using var onnx = new OnnxEmbeddingService(_fixture.ModelPath);
+        await using var db = _fixture.CreateDbContext();
+        var agent = new EnricherAgent(onnx, new TicketRepository(db), NullLogger<EnricherAgent>.Instance, topK: 10);
+
+        var probes = new (string Label, string Text, TicketCategory Cat)[]
+        {
+            ("plumbing_query", "Banyo musluğu arızalı, sürekli su sızdırıyor.", TicketCategory.Plumbing),
+            ("elevator_query", "Asansör bozuk, katlara çıkamıyoruz.", TicketCategory.Elevator),
+            ("noise_query", "Komşu gürültü yapıyor, gece uyuyamıyorum.", TicketCategory.Noise),
+        };
+
+        foreach (var (label, text, cat) in probes)
+        {
+            var residentId = Guid.NewGuid();
+            var input = new EnricherInput(Guid.NewGuid(), residentId, text, cat);
+            var ctx = new AgentContext(Guid.NewGuid(), Guid.NewGuid(), residentId, DateTimeOffset.UtcNow);
+            var result = await agent.ExecuteAsync(input, ctx);
+            Console.WriteLine($"=== {label}: \"{text}\" ===");
+            if (result.IsSuccess)
+                foreach (var t in result.Value!.SimilarTickets)
+                    Console.WriteLine($"  {t.Category} sim={t.CosineSimilarity:F4}");
+            else
+                Console.WriteLine($"  FAILED: {result.Error?.Message}");
+        }
+    }
+
     // ── ec-0017: Plumbing input — Category=EnricherIntegration ───────────────────
     // Seeded DB has 5 plumbing + 2 elevator tickets.
     // Similar plumbing input should surface ≥1 ticket at High confidence.

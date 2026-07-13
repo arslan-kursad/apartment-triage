@@ -1,4 +1,5 @@
 using ApartmentTriage.Application.Embeddings;
+using BlingFire;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 
@@ -10,7 +11,16 @@ namespace ApartmentTriage.Infrastructure.Embeddings;
 /// </summary>
 public sealed class OnnxEmbeddingService : IEmbeddingService, IDisposable
 {
+    private const int MaxTokens = 128;
+
+    // XLM-RoBERTa special-token IDs (fairseq layout) — the sentence-piece IDs from
+    // BlingFire are wrapped with these to match what the ONNX model was trained on.
+    private const int BosId = 0;   // <s>
+    private const int EosId = 2;   // </s>
+    private const int UnkId = 3;   // <unk>
+
     private readonly InferenceSession _session;
+    private readonly ulong _tokenizerHandle;
 
     public int Dimensions => 384;
 
@@ -24,6 +34,22 @@ public sealed class OnnxEmbeddingService : IEmbeddingService, IDisposable
 
         var opts = new SessionOptions { InterOpNumThreads = 1, IntraOpNumThreads = 2 };
         _session = new InferenceSession(modelPath, opts);
+
+        // BlingFire's xlm_roberta_base.bin ships in the BlingFireNuget package and is
+        // copied next to this assembly at build time (see Infrastructure.csproj). It
+        // reproduces the real XLM-RoBERTa SentencePiece token IDs — the character-level
+        // placeholder this replaced produced semantically meaningless embeddings (ADR-0016).
+        var tokenizerModelPath = Path.Combine(AppContext.BaseDirectory, "xlm_roberta_base.bin");
+        if (!File.Exists(tokenizerModelPath))
+            throw new FileNotFoundException(
+                $"XLM-R tokenizer model not found at '{tokenizerModelPath}'. " +
+                "It ships with the BlingFireNuget package; check that it was copied to output.",
+                tokenizerModelPath);
+
+        _tokenizerHandle = BlingFireUtils.LoadModel(tokenizerModelPath);
+        if (_tokenizerHandle == 0)
+            throw new InvalidOperationException(
+                $"BlingFire failed to load tokenizer model '{tokenizerModelPath}'.");
     }
 
     public Task<float[]> GetEmbeddingAsync(string text, CancellationToken ct = default)
@@ -69,26 +95,28 @@ public sealed class OnnxEmbeddingService : IEmbeddingService, IDisposable
     }
 
     // ── Tokenizer ─────────────────────────────────────────────────────────────
-    // PLACEHOLDER: character-level mapping produces valid tensor shapes but
-    // semantically approximate embeddings.
-    // Replace with proper XLM-RoBERTa SentencePiece tokenizer before Day 14 deploy.
-    // Pending: tokenizer library Architect approval (separate flag).
-    private static long[] Tokenize(string text, int maxLength = 128)
+    // Real XLM-RoBERTa SentencePiece tokenization via BlingFire's xlm_roberta_base.bin.
+    // BlingFire emits the inner sub-word IDs (verified byte-exact against HuggingFace's
+    // XLMRobertaTokenizer — ADR-0016); we wrap them with <s>(0) … </s>(2), matching the
+    // special-token layout the ONNX model expects. Truncation keeps room for </s>.
+    private long[] Tokenize(string text)
     {
-        const long Cls = 0L;
-        const long Sep = 2L;
+        var utf8 = System.Text.Encoding.UTF8.GetBytes(text);
 
-        var ids = new List<long>(maxLength) { Cls };
+        // BlingFire needs a caller-sized output buffer; worst case one id per byte.
+        var buffer = new int[utf8.Length + 1];
+        var count = BlingFireUtils.TextToIds(_tokenizerHandle, utf8, utf8.Length, buffer, buffer.Length, UnkId);
+        if (count < 0) count = 0;
 
-        foreach (var ch in text.Normalize().Take(maxLength - 2))
-        {
-            // Map each character to a stable vocab range [100, 50099]
-            // avoiding reserved special token IDs (0-99).
-            ids.Add((long)(ch % 50_000) + 100L);
-        }
+        // Leave room for the two special tokens; truncate the sub-word ids if needed.
+        var innerCount = Math.Min(count, MaxTokens - 2);
 
-        ids.Add(Sep);
-        return ids.ToArray();
+        var ids = new long[innerCount + 2];
+        ids[0] = BosId;
+        for (var i = 0; i < innerCount; i++)
+            ids[i + 1] = buffer[i];
+        ids[innerCount + 1] = EosId;
+        return ids;
     }
 
     // ── Pooling + normalization ───────────────────────────────────────────────
@@ -119,5 +147,10 @@ public sealed class OnnxEmbeddingService : IEmbeddingService, IDisposable
         return norm == 0f ? v : v.Select(x => x / norm).ToArray();
     }
 
-    public void Dispose() => _session.Dispose();
+    public void Dispose()
+    {
+        _session.Dispose();
+        if (_tokenizerHandle != 0)
+            BlingFireUtils.FreeModel(_tokenizerHandle);
+    }
 }

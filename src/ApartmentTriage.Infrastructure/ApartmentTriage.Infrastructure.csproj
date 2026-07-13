@@ -25,12 +25,36 @@
     <!-- ONNX embedding (multilingual-e5-small, CPU-only) -->
     <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.26.0" />
 
+    <!-- Real XLM-RoBERTa (SentencePiece Unigram) tokenizer for the e5 model.
+         Microsoft.ML.Tokenizers can't load XLM-R's Unigram model (BPE only);
+         BlingFire ships a prebuilt xlm_roberta_base.bin that reproduces the
+         HF token IDs byte-for-byte (verified — see ADR-0016). ExcludeAssets
+         =contentFiles stops the package auto-copying all 17 bundled models
+         (~99 MB) to output; we re-include only the wrapper + the one model +
+         the native libs (~14 MB). -->
+    <PackageReference Include="BlingFireNuget" Version="0.1.8"
+                      GeneratePathProperty="true" ExcludeAssets="contentFiles" />
+
     <!-- Telegram channel adapter (dev/fallback) -->
     <PackageReference Include="Telegram.Bot" Version="22.10.0.1" />
 
     <!-- Background jobs -->
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.20.9" />
+  </ItemGroup>
+
+  <!-- BlingFire is shipped as source + native libs + models via contentFiles
+       (no managed DLL). Since we excluded contentFiles above, re-include exactly
+       what OnnxEmbeddingService needs: the P/Invoke wrapper (compiled in), the
+       XLM-R model, and the per-platform native libs. CopyToOutputDirectory items
+       flow to referencing projects (Web, Tests) so the model/libs land next to
+       whichever host runs. -->
+  <ItemGroup>
+    <Compile Include="$(PkgBlingFireNuget)/contentFiles/cs/any/BlingFireUtils.cs" Link="Embeddings/BlingFireUtils.cs" />
+    <None Include="$(PkgBlingFireNuget)/contentFiles/cs/any/xlm_roberta_base.bin"     CopyToOutputDirectory="PreserveNewest" Link="xlm_roberta_base.bin" />
+    <None Include="$(PkgBlingFireNuget)/contentFiles/cs/any/libblingfiretokdll.so"    CopyToOutputDirectory="PreserveNewest" Link="libblingfiretokdll.so" />
+    <None Include="$(PkgBlingFireNuget)/contentFiles/cs/any/libblingfiretokdll.dylib" CopyToOutputDirectory="PreserveNewest" Link="libblingfiretokdll.dylib" />
+    <None Include="$(PkgBlingFireNuget)/contentFiles/cs/any/blingfiretokdll.dll"      CopyToOutputDirectory="PreserveNewest" Link="blingfiretokdll.dll" />
   </ItemGroup>
 
 </Project>
