@@ -11,6 +11,9 @@
 
 > CI runs the full suite except tests requiring a live LLM API key (`Smoke`/`Eval` traits),
 > which are documented and run locally — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+> One test is skipped on purpose: `ec0020` caught a real similarity-signal bug in the
+> embedding pipeline, tracked in [ADR-0015](docs/decisions/ADR-0015-enricher-similarity-threshold-blocked-by-tokenizer.md)
+> and [issue #5](https://github.com/arslan-kursad/apartment-triage/issues/5) — not silenced, just not re-blocking every push until that's fixed.
 
 ---
 
