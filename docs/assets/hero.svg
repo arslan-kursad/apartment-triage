@@ -1,0 +1,100 @@
+<svg viewBox="0 0 1200 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <title id="t">Hanwas AI — agentic maintenance-request triage pipeline</title>
+  <desc id="d">Resident messages on WhatsApp and Telegram are classified, enriched and routed into triaged tickets, with emergency fast-path and human-in-the-loop escalation.</desc>
+
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0f1522"/>
+      <stop offset="1" stop-color="#0a0e17"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.02" r="0.75">
+      <stop offset="0" stop-color="#6ea8fe" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#6ea8fe" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5cc8d6"/>
+      <stop offset="0.5" stop-color="#8b9cf7"/>
+      <stop offset="1" stop-color="#b18cf0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- card -->
+  <rect x="8" y="8" width="1184" height="624" rx="20" fill="url(#card)" stroke="#232b3a" stroke-width="1"/>
+  <rect x="8" y="8" width="1184" height="624" rx="20" fill="url(#glow)"/>
+  <rect x="8" y="8" width="1184" height="3" rx="1.5" fill="url(#flow)" opacity="0.9"/>
+
+  <!-- header -->
+  <text x="600" y="140" text-anchor="middle" font-size="46" font-weight="800" fill="#eef2f8" style="letter-spacing:1px">AGENTIC MAINTENANCE TRIAGE</text>
+  <text x="600" y="190" text-anchor="middle" font-size="16.5" fill="#99a3b4">Free-form resident messages on WhatsApp and Telegram become triaged, actionable tickets.</text>
+  <text x="600" y="214" text-anchor="middle" font-size="16.5" fill="#99a3b4">Emergencies flagged automatically · only ambiguous cases escalated · every decision auditable.</text>
+
+  <!-- ── pipeline (y-center 358) ─────────────────────────────────────────── -->
+
+  <!-- N1 Message -->
+  <rect x="78" y="318" width="170" height="80" rx="12" fill="#141b28" stroke="#263042"/>
+  <text x="163" y="355" text-anchor="middle" font-size="18" font-weight="700" fill="#5cc8d6">Message</text>
+  <text x="163" y="378" text-anchor="middle" font-size="12" fill="#8892a4" font-family="'SF Mono','Cascadia Code',Consolas,monospace">WhatsApp · Telegram</text>
+
+  <!-- arrow 1 -->
+  <line x1="254" y1="358" x2="292" y2="358" stroke="#47536b" stroke-width="1.6"/>
+  <path d="M292,354 L299,358 L292,362 Z" fill="#5f6b85"/>
+
+  <!-- N2 Classifier -->
+  <rect x="301" y="318" width="170" height="80" rx="12" fill="#141b28" stroke="#263042"/>
+  <text x="386" y="355" text-anchor="middle" font-size="18" font-weight="700" fill="#6ea8fe">Classifier</text>
+  <text x="386" y="378" text-anchor="middle" font-size="12" fill="#8892a4" font-family="'SF Mono','Cascadia Code',Consolas,monospace">Haiku 4.5</text>
+
+  <!-- arrow 2 -->
+  <line x1="477" y1="358" x2="515" y2="358" stroke="#47536b" stroke-width="1.6"/>
+  <path d="M515,354 L522,358 L515,362 Z" fill="#5f6b85"/>
+
+  <!-- N3 Enricher -->
+  <rect x="524" y="318" width="170" height="80" rx="12" fill="#141b28" stroke="#263042"/>
+  <text x="609" y="355" text-anchor="middle" font-size="18" font-weight="700" fill="#8b9cf7">Enricher</text>
+  <text x="609" y="378" text-anchor="middle" font-size="12" fill="#8892a4" font-family="'SF Mono','Cascadia Code',Consolas,monospace">ONNX · pgvector</text>
+
+  <!-- arrow 3 -->
+  <line x1="700" y1="358" x2="738" y2="358" stroke="#47536b" stroke-width="1.6"/>
+  <path d="M738,354 L745,358 L738,362 Z" fill="#5f6b85"/>
+
+  <!-- N4 Router -->
+  <rect x="747" y="318" width="170" height="80" rx="12" fill="#141b28" stroke="#263042"/>
+  <text x="832" y="355" text-anchor="middle" font-size="18" font-weight="700" fill="#b18cf0">Router</text>
+  <text x="832" y="378" text-anchor="middle" font-size="12" fill="#8892a4" font-family="'SF Mono','Cascadia Code',Consolas,monospace">rules + LLM</text>
+
+  <!-- arrow 4 -->
+  <line x1="923" y1="358" x2="961" y2="358" stroke="#47536b" stroke-width="1.6"/>
+  <path d="M961,354 L968,358 L961,362 Z" fill="#5f6b85"/>
+
+  <!-- outcome badges -->
+  <rect x="970" y="320" width="152" height="22" rx="11" fill="#f2626d" fill-opacity="0.09" stroke="#f2626d" stroke-opacity="0.5"/>
+  <text x="1046" y="335" text-anchor="middle" font-size="11.5" font-weight="700" fill="#f78c93" style="letter-spacing:1px">EMERGENCY</text>
+
+  <rect x="970" y="347" width="152" height="22" rx="11" fill="#3fb950" fill-opacity="0.09" stroke="#3fb950" stroke-opacity="0.5"/>
+  <text x="1046" y="362" text-anchor="middle" font-size="11.5" font-weight="700" fill="#57c96a" style="letter-spacing:1px">ROUTE</text>
+
+  <rect x="970" y="374" width="152" height="22" rx="11" fill="#e3b341" fill-opacity="0.09" stroke="#e3b341" stroke-opacity="0.5"/>
+  <text x="1046" y="389" text-anchor="middle" font-size="11.5" font-weight="700" fill="#e8c25f" style="letter-spacing:1px">ESCALATE</text>
+
+  <!-- caption -->
+  <text x="600" y="452" text-anchor="middle" font-size="13" fill="#6b7688" font-family="'SF Mono','Cascadia Code',Consolas,monospace">Haiku 4.5 by default · Sonnet 4.6 on escalation · human-in-the-loop on emergency &amp; ambiguity</text>
+
+  <!-- ── property pills (y-center 546) ───────────────────────────────────── -->
+  <g fill="#aab4c4" font-size="14" font-weight="600">
+    <rect x="308" y="528" width="160" height="36" rx="18" fill="#ffffff" fill-opacity="0.015" stroke="#2b3444"/>
+    <circle cx="330" cy="546" r="4" fill="#f2626d"/>
+    <text x="344" y="551">Emergency-Safe</text>
+
+    <rect x="486" y="528" width="128" height="36" rx="18" fill="#ffffff" fill-opacity="0.015" stroke="#2b3444"/>
+    <circle cx="508" cy="546" r="4" fill="#e3b341"/>
+    <text x="522" y="551">Cost-Aware</text>
+
+    <rect x="632" y="528" width="120" height="36" rx="18" fill="#ffffff" fill-opacity="0.015" stroke="#2b3444"/>
+    <circle cx="654" cy="546" r="4" fill="#6ea8fe"/>
+    <text x="668" y="551">Bilingual</text>
+
+    <rect x="770" y="528" width="122" height="36" rx="18" fill="#ffffff" fill-opacity="0.015" stroke="#2b3444"/>
+    <circle cx="792" cy="546" r="4" fill="#b18cf0"/>
+    <text x="806" y="551">Auditable</text>
+  </g>
+</svg>

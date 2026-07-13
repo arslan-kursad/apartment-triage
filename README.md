@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/hero.svg" alt="Agentic Maintenance Triage — Message → Classifier → Enricher → Router pipeline with emergency, route and escalate outcomes" width="100%">
+</p>
+
 # Hanwas AI
 
 **An agentic maintenance-request triage system for residential buildings, built on .NET 8 and Claude.**
